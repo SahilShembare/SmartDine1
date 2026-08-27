@@ -148,23 +148,45 @@ export default function Home() {
 
         {/* Action Buttons */}
         <div className="space-y-2.5 pt-1">
-          <button
-            onClick={handleProceedToLogin}
-            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
-          >
-            <LogIn className="w-4 h-4" />
-            <span>
-              Proceed to {selectedRole === 'customer' ? 'Customer Login' : selectedRole === 'kitchen' ? 'Kitchen Staff Login' : 'Administrator Login'}
-            </span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+          {selectedRole === 'customer' ? (
+            <div className="space-y-2">
+              <button
+                onClick={() => navigate('/login?role=customer&mode=login')}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Customer Sign In (Login)</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => navigate('/login?role=customer&mode=register')}
+                className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-orange-500/40 text-orange-300 font-extrabold text-xs transition active:scale-95 flex items-center justify-center gap-2 shadow-sm"
+              >
+                <Sparkles className="w-4 h-4 text-orange-400" />
+                <span>Create New Account (Mobile OTP)</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={handleProceedToLogin}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>
+                Proceed to {selectedRole === 'kitchen' ? 'Kitchen Staff Login' : 'Administrator Login'}
+              </span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
 
           <button
             onClick={handleInstantDemoLogin}
-            className="w-full py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-semibold text-xs transition flex items-center justify-center gap-1.5"
+            className="w-full py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 font-semibold text-xs transition flex items-center justify-center gap-1.5"
           >
             <Sparkles className="w-3.5 h-3.5 text-orange-400" />
-            <span>Fast 1-Click {selectedRole === 'customer' ? 'Customer' : selectedRole === 'kitchen' ? 'Kitchen' : 'Admin'} Access</span>
+            <span>Fast 1-Click {selectedRole === 'customer' ? 'Customer' : selectedRole === 'kitchen' ? 'Kitchen' : 'Admin'} Demo Access</span>
           </button>
         </div>
 
