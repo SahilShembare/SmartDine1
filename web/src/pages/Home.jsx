@@ -1,6 +1,7 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTableOrder } from '../context/TableOrderContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   UtensilsCrossed, 
   QrCode, 
@@ -8,141 +9,230 @@ import {
   LayoutDashboard, 
   ArrowRight, 
   Sparkles, 
-  Smartphone, 
-  Flame, 
-  Clock,
-  ShieldCheck,
-  Zap
+  User, 
+  ShieldCheck, 
+  Lock,
+  CheckCircle2,
+  Table
 } from 'lucide-react';
 
 export default function Home() {
-  const { currentTable } = useTableOrder();
+  const navigate = useNavigate();
+  const { currentTable, setTableSession, tables } = useTableOrder();
+  const { currentUser, demoLogin } = useAuth();
+  const [selectedTable, setSelectedTable] = useState(currentTable || '01');
+  const [accessDeniedMsg, setAccessDeniedMsg] = useState('');
+
+  const handleCustomerLaunch = (tableNum) => {
+    const formatted = String(tableNum || selectedTable || '01').padStart(2, '0');
+    setTableSession(formatted);
+    if (!currentUser) {
+      demoLogin('customer');
+    }
+    navigate(`/menu?table=${formatted}`);
+  };
+
+  const handleKitchenLaunch = () => {
+    if (currentUser?.role === 'customer') {
+      setAccessDeniedMsg('Access Denied: Customer accounts cannot access the Kitchen live queue. Please sign in as Kitchen Staff.');
+      setTimeout(() => setAccessDeniedMsg(''), 4000);
+      return;
+    }
+    if (!currentUser) {
+      demoLogin('kitchen');
+    }
+    navigate('/kitchen');
+  };
+
+  const handleAdminLaunch = () => {
+    if (currentUser?.role === 'customer' || currentUser?.role === 'kitchen') {
+      setAccessDeniedMsg('Access Denied: Staff accounts cannot access the Admin Management. Please sign in as Administrator.');
+      setTimeout(() => setAccessDeniedMsg(''), 4000);
+      return;
+    }
+    if (!currentUser) {
+      demoLogin('admin');
+    }
+    navigate('/admin');
+  };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-950 flex flex-col justify-between">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-950 flex flex-col justify-between p-4 sm:p-6 lg:p-8">
       
-      {/* Hero Section */}
-      <section className="relative px-4 pt-12 pb-20 max-w-6xl mx-auto text-center space-y-8">
+      <div className="max-w-5xl mx-auto w-full space-y-8 my-auto">
         
-        {/* Glow ambient background */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        {/* Brand Header */}
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-semibold">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Select Your Portal to Proceed</span>
+          </div>
 
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-semibold">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Next-Generation QR Restaurant Ordering Ecosystem</span>
-        </div>
-
-        {/* Headline */}
-        <div className="space-y-3">
-          <h1 className="text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-tight">
-            Smart Ordering. <br className="hidden sm:block" />
+          <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
+            SMART DINE{' '}
             <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">
-              Faster Service. Better Dining.
+              Platform
             </span>
           </h1>
-          <p className="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto">
-            Scan your table QR code to explore digital menus, place orders instantly, and track cooking progress in real-time from mobile or browser.
+          <p className="text-sm text-slate-400 max-w-xl mx-auto">
+            Choose your role below to access the contactless customer menu, live kitchen cooking queue, or restaurant administration.
           </p>
         </div>
 
-        {/* Action Portal Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-6 text-left max-w-4xl mx-auto">
+        {/* Access Denied Toast Notice */}
+        {accessDeniedMsg && (
+          <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/40 text-red-400 text-xs font-semibold text-center max-w-xl mx-auto flex items-center justify-center gap-2 animate-bounce">
+            <Lock className="w-4 h-4 shrink-0" />
+            <span>{accessDeniedMsg}</span>
+          </div>
+        )}
+
+        {/* 3 Main Role Portals */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           
-          {/* Customer Menu */}
-          <Link
-            to={currentTable ? `/menu?table=${currentTable}` : '/menu?table=01'}
-            className="p-6 rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-orange-950/20 border border-slate-800 hover:border-orange-500/50 shadow-xl transition-all group duration-200"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/40 flex items-center justify-center mb-4 group-hover:scale-110 transition">
-              <QrCode className="w-6 h-6" />
-            </div>
-            <h3 className="font-extrabold text-lg text-white group-hover:text-orange-400 transition flex items-center justify-between">
-              <span>Customer QR Menu</span>
-              <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition" />
-            </h3>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Explore food dishes, customize ingredients, place table orders, and watch live tracking.
-            </p>
-            <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-orange-400 font-bold">
-              <span>{currentTable ? `Active: Table ${currentTable}` : 'Test Scan (Table 01)'}</span>
-              <span>Launch →</span>
-            </div>
-          </Link>
+          {/* ROLE 1: CUSTOMER (DINER) */}
+          <div className="rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-orange-950/30 border-2 border-orange-500/50 p-6 flex flex-col justify-between shadow-2xl relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl group-hover:bg-orange-500/20 transition"></div>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white flex items-center justify-center shadow-glow">
+                  <User className="w-7 h-7" />
+                </div>
+                <span className="px-2.5 py-1 rounded-full bg-orange-500/20 text-orange-400 text-[11px] font-extrabold border border-orange-500/30 uppercase">
+                  Role 1: Customer
+                </span>
+              </div>
 
-          {/* Kitchen Live */}
-          <Link
-            to="/kitchen"
-            className="p-6 rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-amber-950/20 border border-slate-800 hover:border-amber-500/50 shadow-xl transition-all group duration-200"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center mb-4 group-hover:scale-110 transition">
-              <ChefHat className="w-6 h-6" />
-            </div>
-            <h3 className="font-extrabold text-lg text-white group-hover:text-amber-400 transition flex items-center justify-between">
-              <span>Kitchen Live Station</span>
-              <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition" />
-            </h3>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Real-time multi-stage Kanban queue (Pending, Accepted, Cooking, Ready) with sound chimes.
-            </p>
-            <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-amber-400 font-bold">
-              <span>Live Order Stream</span>
-              <span>Open Kitchen →</span>
-            </div>
-          </Link>
+              <div>
+                <h2 className="text-xl font-extrabold text-white">Dine-In Customer</h2>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Scan table QR code to automatically connect your table, browse digital menu, order food, and track live cooking.
+                </p>
+              </div>
 
-          {/* Admin Management */}
-          <Link
-            to="/admin"
-            className="p-6 rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-purple-950/20 border border-slate-800 hover:border-purple-500/50 shadow-xl transition-all group duration-200"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 text-purple-400 border border-purple-500/40 flex items-center justify-center mb-4 group-hover:scale-110 transition">
-              <LayoutDashboard className="w-6 h-6" />
+              {/* Table Auto Selector */}
+              <div className="bg-slate-950/80 rounded-2xl p-3 border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+                  <span className="flex items-center gap-1.5">
+                    <QrCode className="w-3.5 h-3.5 text-orange-400" />
+                    Table QR Detected:
+                  </span>
+                  <span className="text-orange-400 font-extrabold">Table {selectedTable}</span>
+                </div>
+
+                <div className="grid grid-cols-5 gap-1 pt-1">
+                  {['01', '02', '03', '04', '05'].map((tbl) => (
+                    <button
+                      key={tbl}
+                      type="button"
+                      onClick={() => {
+                        setSelectedTable(tbl);
+                        setTableSession(tbl);
+                      }}
+                      className={`py-1 rounded-lg text-xs font-bold transition border ${
+                        selectedTable === tbl 
+                          ? 'bg-orange-500 text-white border-orange-400' 
+                          : 'bg-slate-900 text-slate-400 hover:text-white border-slate-800'
+                      }`}
+                    >
+                      {tbl}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
-            <h3 className="font-extrabold text-lg text-white group-hover:text-purple-400 transition flex items-center justify-between">
-              <span>Admin Management</span>
-              <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition" />
-            </h3>
-            <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
-              Revenue analytics, food menu CRUD, table QR generator, printable standees & categories.
-            </p>
-            <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-purple-400 font-bold">
-              <span>Admin Controls</span>
-              <span>Manage →</span>
+
+            <button
+              onClick={() => handleCustomerLaunch(selectedTable)}
+              className="mt-6 w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+            >
+              <span>Scan QR / Open Menu (Table {selectedTable})</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* ROLE 2: KITCHEN (CHEF) */}
+          <div className="rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-amber-950/30 border border-slate-800 hover:border-amber-500/50 p-6 flex flex-col justify-between shadow-xl relative overflow-hidden group">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-600 to-yellow-500 text-white flex items-center justify-center shadow-lg">
+                  <ChefHat className="w-7 h-7" />
+                </div>
+                <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 text-[11px] font-extrabold border border-amber-500/30 uppercase">
+                  Role 2: Kitchen
+                </span>
+              </div>
+
+              <div>
+                <h2 className="text-xl font-extrabold text-white">Kitchen Chef Station</h2>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Real-time ticket queue for chefs. Receive incoming orders with audio bells, accept tickets, update cooking stages, and complete dishes.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80 text-xs text-slate-400 space-y-1">
+                <div className="flex items-center gap-1.5 text-amber-400 font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Protected Role Access</span>
+                </div>
+                <p className="text-[11px]">Customers cannot access kitchen controls.</p>
+              </div>
             </div>
-          </Link>
+
+            <button
+              onClick={handleKitchenLaunch}
+              className="mt-6 w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-sm border border-slate-700 transition active:scale-95 flex items-center justify-center gap-2 group-hover:border-amber-500/50"
+            >
+              <span>Kitchen Live Queue</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* ROLE 3: ADMIN (MANAGER) */}
+          <div className="rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-purple-950/30 border border-slate-800 hover:border-purple-500/50 p-6 flex flex-col justify-between shadow-xl relative overflow-hidden group">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 text-white flex items-center justify-center shadow-lg">
+                  <LayoutDashboard className="w-7 h-7" />
+                </div>
+                <span className="px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-400 text-[11px] font-extrabold border border-purple-500/30 uppercase">
+                  Role 3: Admin
+                </span>
+              </div>
+
+              <div>
+                <h2 className="text-xl font-extrabold text-white">Admin Management</h2>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Full control over restaurant revenue metrics, food menu CRUD, category management, and high-resolution printable table QR standees.
+                </p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80 text-xs text-slate-400 space-y-1">
+                <div className="flex items-center gap-1.5 text-purple-400 font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Master Administrator</span>
+                </div>
+                <p className="text-[11px]">Customers and kitchen staff cannot modify dishes or tables.</p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleAdminLaunch}
+              className="mt-6 w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-sm border border-slate-700 transition active:scale-95 flex items-center justify-center gap-2 group-hover:border-purple-500/50"
+            >
+              <span>Admin Dashboard</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
 
         </div>
 
-        {/* Feature Highlights Banner */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-4xl mx-auto pt-6">
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 text-center">
-            <Zap className="w-4 h-4 text-orange-400 mx-auto mb-1" />
-            <span className="text-xs font-bold text-slate-200">Zero Wait Time</span>
-            <p className="text-[10px] text-slate-500">Direct order to kitchen</p>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 text-center">
-            <Smartphone className="w-4 h-4 text-amber-400 mx-auto mb-1" />
-            <span className="text-xs font-bold text-slate-200">App + Web Fallback</span>
-            <p className="text-[10px] text-slate-500">Works on all devices</p>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 text-center">
-            <Clock className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
-            <span className="text-xs font-bold text-slate-200">Live Status Stepper</span>
-            <p className="text-[10px] text-slate-500">Real-time sync</p>
-          </div>
-          <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 text-center">
-            <ShieldCheck className="w-4 h-4 text-blue-400 mx-auto mb-1" />
-            <span className="text-xs font-bold text-slate-200">Locked Table Session</span>
-            <p className="text-[10px] text-slate-500">Accurate bill per table</p>
-          </div>
-        </div>
-
-      </section>
+      </div>
 
       {/* Footer */}
-      <footer className="border-t border-slate-900 py-6 text-center text-xs text-slate-500">
-        <p>© 2026 SMART DINE Ecosystem • React Native + Expo • Firebase Firestore • Netlify</p>
+      <footer className="text-center text-xs text-slate-500 pt-6">
+        <p>SMART DINE • 3-Tier Role System (Customer, Kitchen, Admin)</p>
       </footer>
 
     </div>

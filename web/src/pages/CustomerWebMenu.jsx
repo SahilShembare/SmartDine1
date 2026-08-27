@@ -91,37 +91,38 @@ export default function CustomerWebMenu() {
           
           <div className="absolute top-0 right-0 w-36 h-36 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-          {/* Locked Badge */}
+          {/* Table QR Badge */}
           <div className="w-16 h-16 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center mx-auto shadow-glow">
-            <Lock className="w-8 h-8" />
+            <QrCode className="w-8 h-8" />
           </div>
 
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-bold">
-              <span>Table {currentTable || '01'} Connected</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>QR Verified: Table {currentTable || '01'}</span>
             </div>
-            <h2 className="text-2xl font-extrabold text-white">Login Required to View Menu</h2>
+            <h2 className="text-2xl font-extrabold text-white">Welcome to Smart Dine</h2>
             <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-              Please sign in or create an account to explore our digital menu, customize dishes, and send orders directly to the kitchen.
+              Table <strong>{currentTable || '01'}</strong> has been detected. Sign in to browse the digital menu and send orders directly to the chef.
             </p>
           </div>
 
           <div className="space-y-3 pt-2">
-            <Link
-              to={`/login?table=${currentTable || '01'}`}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition flex items-center justify-center gap-2"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Sign In / Create Account</span>
-            </Link>
-
             <button
               onClick={() => demoLogin('customer')}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Continue as Table {currentTable || '01'} Diner</span>
+            </button>
+
+            <Link
+              to={`/login?table=${currentTable || '01'}`}
               className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-4 h-4 text-orange-400" />
-              <span>1-Click Instant Diner Login</span>
-            </button>
+              <LogIn className="w-4 h-4 text-orange-400" />
+              <span>Sign In with Email / Password</span>
+            </Link>
           </div>
 
         </div>
