@@ -25,16 +25,32 @@ import {
 } from 'lucide-react';
 
 export default function KitchenDashboard() {
-  const { orders, updateOrderStatus } = useTableOrder();
+  const { orders, updateOrderStatus, refreshOrders } = useTableOrder();
   const [activeTab, setActiveTab] = useState('all'); // all, pending, accepted, preparing, ready, completed
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [newOrderAlert, setNewOrderAlert] = useState(null);
+  const [lastSyncTime, setLastSyncTime] = useState(() => new Date().toLocaleTimeString());
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [notifPermission, setNotifPermission] = useState(() => {
     return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'default';
   });
 
   const prevOrdersCountRef = useRef(orders.length);
   const prevOrderIdsRef = useRef(new Set(orders.map(o => o.id)));
+
+  // 3-Second Active Auto-Refresh Interval
+  useEffect(() => {
+    const syncTimer = setInterval(async () => {
+      setIsRefreshing(true);
+      if (refreshOrders) {
+        await refreshOrders();
+      }
+      setLastSyncTime(new Date().toLocaleTimeString());
+      setTimeout(() => setIsRefreshing(false), 500);
+    }, 3000);
+
+    return () => clearInterval(syncTimer);
+  }, [refreshOrders]);
 
   // Detect newly arrived orders
   useEffect(() => {
@@ -172,6 +188,16 @@ export default function KitchenDashboard() {
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Live 3s Auto-Sync Indicator */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold shadow-inner">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span>Auto-Sync: 3s</span>
+              <span className="text-[10px] text-slate-400 font-mono font-normal hidden sm:inline">({lastSyncTime})</span>
+            </div>
+
             {/* Test Sound Bell */}
             <button
               onClick={handleTestSound}

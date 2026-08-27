@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, localStore, isFirebaseConfigured } from '../firebase/config';
-import { collection, addDoc, onSnapshot, query, orderBy, where } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, where, getDocs } from 'firebase/firestore';
 
 const TableOrderContext = createContext();
 
@@ -220,6 +220,24 @@ export function TableOrderProvider({ children }) {
     }
   };
 
+  const refreshOrders = async () => {
+    if (isFirebaseConfigured) {
+      try {
+        const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const ords = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setOrders(ords);
+        }
+      } catch (e) {
+        console.warn('Error refreshing orders', e);
+      }
+    } else {
+      const latest = localStore.getOrders();
+      setOrders([...latest]);
+    }
+  };
+
   return (
     <TableOrderContext.Provider value={{
       currentTable,
@@ -244,6 +262,7 @@ export function TableOrderProvider({ children }) {
       setOrders,
       placeOrder,
       updateOrderStatus,
+      refreshOrders,
       latestPlacedOrderId
     }}>
       {children}
