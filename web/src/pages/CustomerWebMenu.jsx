@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useTableOrder } from '../context/TableOrderContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   Search, 
   Flame, 
@@ -14,12 +15,16 @@ import {
   X,
   Clock,
   ChevronRight,
-  Info
+  Info,
+  LogIn,
+  Lock,
+  UserCheck
 } from 'lucide-react';
 
 export default function CustomerWebMenu() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { currentUser, demoLogin } = useAuth();
   const { 
     currentTable, 
     setTableSession, 
@@ -78,6 +83,51 @@ export default function CustomerWebMenu() {
       setTableModalOpen(false);
     }
   };
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] bg-slate-950 flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
+          
+          <div className="absolute top-0 right-0 w-36 h-36 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+          {/* Locked Badge */}
+          <div className="w-16 h-16 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center mx-auto shadow-glow">
+            <Lock className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-bold">
+              <span>Table {currentTable || '01'} Connected</span>
+            </div>
+            <h2 className="text-2xl font-extrabold text-white">Login Required to View Menu</h2>
+            <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+              Please sign in or create an account to explore our digital menu, customize dishes, and send orders directly to the kitchen.
+            </p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <Link
+              to={`/login?table=${currentTable || '01'}`}
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition flex items-center justify-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              <span>Sign In / Create Account</span>
+            </Link>
+
+            <button
+              onClick={() => demoLogin('customer')}
+              className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-4 h-4 text-orange-400" />
+              <span>1-Click Instant Diner Login</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 pb-28">

@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTable } from '../context/TableContext';
 import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { 
   ArrowLeft, 
   Plus, 
@@ -20,11 +21,14 @@ import {
   ShoppingBag, 
   Receipt, 
   Utensils, 
-  ChevronRight 
+  ChevronRight,
+  Lock,
+  LogIn 
 } from 'lucide-react-native';
 
 export default function CartScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { currentTable } = useTable();
   const { 
     cart, 
@@ -35,6 +39,34 @@ export default function CartScreen() {
     cartTax, 
     cartTotal 
   } = useCart();
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <ArrowLeft size={20} color="#ffffff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>My Cart</Text>
+          <View style={{ width: 38 }} />
+        </View>
+
+        <View style={styles.emptyContent}>
+          <Lock size={48} color="#f97316" />
+          <Text style={styles.emptyTitle}>Login Required</Text>
+          <Text style={styles.emptyDesc}>
+            Please sign in to access your dining cart and place orders.
+          </Text>
+          <TouchableOpacity 
+            style={styles.browseButton}
+            onPress={() => router.push('/auth/login')}
+          >
+            <Text style={styles.browseButtonText}>Sign In / Register</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (cart.length === 0) {
     return (

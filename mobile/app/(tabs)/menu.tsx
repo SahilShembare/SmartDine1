@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTable } from '../../context/TableContext';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import { 
   Search, 
   Flame, 
@@ -20,11 +21,14 @@ import {
   Minus, 
   ShoppingBag, 
   ChevronRight, 
-  Filter 
+  Filter,
+  Lock,
+  LogIn 
 } from 'lucide-react-native';
 
 export default function MenuScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { menuItems, categories, currentTable } = useTable();
   const { cart, addToCart, cartCount, cartTotal } = useCart();
   
@@ -39,6 +43,30 @@ export default function MenuScreen() {
     const matchesVeg = !vegOnly || item.isVeg;
     return matchesCat && matchesSearch && matchesVeg;
   });
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loginGateContainer}>
+          <View style={styles.loginGateIconBg}>
+            <Lock size={36} color="#f97316" />
+          </View>
+          <Text style={styles.loginGateTitle}>Login Required to View Menu</Text>
+          <Text style={styles.loginGateDesc}>
+            Please sign in or create a customer account to browse our digital menu and order dishes.
+          </Text>
+          <TouchableOpacity
+            style={styles.loginGateButton}
+            onPress={() => router.push('/auth/login')}
+            activeOpacity={0.85}
+          >
+            <LogIn size={18} color="#ffffff" />
+            <Text style={styles.loginGateButtonText}>Sign In / Register</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -471,5 +499,54 @@ const styles = StyleSheet.create({
   floatingCartSub: {
     color: '#fed7aa',
     fontSize: 10,
+  },
+  loginGateContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 30,
+    gap: 12,
+  },
+  loginGateIconBg: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(249, 115, 22, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(249, 115, 22, 0.3)',
+  },
+  loginGateTitle: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  loginGateDesc: {
+    color: '#94a3b8',
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+    maxWidth: 280,
+  },
+  loginGateButton: {
+    backgroundColor: '#ea580c',
+    borderRadius: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+    width: '100%',
+    maxWidth: 280,
+    justifyContent: 'center',
+  },
+  loginGateButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });
