@@ -102,24 +102,37 @@ export default function Login() {
           </p>
         </div>
 
-        {/* 1-Click Fast Login for Instant Testing */}
+        {/* 1-Click Fast Login / Autofill for Instant Testing */}
         <div className="p-4 rounded-2xl bg-gradient-to-r from-orange-950/40 via-slate-900 to-amber-950/40 border border-orange-500/30 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-orange-400">
-            <Sparkles className="w-4 h-4" />
-            <span>Instant 1-Click Access</span>
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-bold text-orange-400 flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4" />
+              <span>Autofill Registered Account</span>
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono">Password: 123456</span>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
             <button
-              onClick={() => handleQuickLogin('customer')}
+              type="button"
+              onClick={() => {
+                setEmail('customer@smartdine.com');
+                setPassword('customer123456');
+                setIsRegister(false);
+              }}
               className="p-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-glow text-center transition"
             >
               <User className="w-4 h-4 mx-auto mb-1" />
-              <span>Diner Login</span>
+              <span>Customer</span>
             </button>
 
             <button
-              onClick={() => handleQuickLogin('kitchen')}
+              type="button"
+              onClick={() => {
+                setEmail('kitchen@smartdine.com');
+                setPassword('kitchen123456');
+                setIsRegister(false);
+              }}
               className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-center transition"
             >
               <ChefHat className="w-4 h-4 mx-auto mb-1 text-amber-400" />
@@ -127,7 +140,12 @@ export default function Login() {
             </button>
 
             <button
-              onClick={() => handleQuickLogin('admin')}
+              type="button"
+              onClick={() => {
+                setEmail('admin@smartdine.com');
+                setPassword('admin123456');
+                setIsRegister(false);
+              }}
               className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-center transition"
             >
               <LayoutDashboard className="w-4 h-4 mx-auto mb-1 text-orange-400" />
