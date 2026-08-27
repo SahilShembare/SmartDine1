@@ -29,13 +29,15 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Preserve table query param if coming from QR scan
+  // Preserve table & role query params
   const tableParam = searchParams.get('table');
+  const roleParam = searchParams.get('role'); // 'customer', 'kitchen', 'admin'
   if (tableParam && !currentTable) {
     setTableSession(tableParam);
   }
 
-  const from = location.state?.from?.pathname || (tableParam || currentTable ? `/menu?table=${tableParam || currentTable}` : '/menu');
+  const defaultDestination = roleParam === 'kitchen' ? '/kitchen' : roleParam === 'admin' ? '/admin' : (tableParam || currentTable ? `/menu?table=${tableParam || currentTable}` : '/menu');
+  const from = location.state?.from?.pathname || defaultDestination;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,7 +45,7 @@ export default function Login() {
     setLoading(true);
     try {
       if (isRegister) {
-        const user = await registerWithEmail(name, email, password, 'customer');
+        const user = await registerWithEmail(name, email, password, roleParam || 'customer');
         navigate(from);
       } else {
         const user = await loginWithEmail(email, password);
@@ -73,6 +75,14 @@ export default function Login() {
     }
   };
 
+  const portalTitle = roleParam === 'kitchen' 
+    ? 'Kitchen Staff Sign In' 
+    : roleParam === 'admin' 
+    ? 'Administrator Sign In' 
+    : isRegister 
+    ? 'Create Smart Dine Account' 
+    : 'Diner Sign In';
+
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-slate-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
@@ -83,7 +93,7 @@ export default function Login() {
             <UtensilsCrossed className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">
-            {isRegister ? 'Create Smart Dine Account' : 'Sign In to Smart Dine'}
+            {portalTitle}
           </h1>
           <p className="text-xs text-slate-400">
             {isRegister 

@@ -1,239 +1,245 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTableOrder } from '../context/TableOrderContext';
 import { useAuth } from '../context/AuthContext';
 import { 
   UtensilsCrossed, 
-  QrCode, 
   ChefHat, 
   LayoutDashboard, 
   ArrowRight, 
   Sparkles, 
   User, 
-  ShieldCheck, 
-  Lock,
+  QrCode, 
+  Lock, 
   CheckCircle2,
-  Table
+  ShieldCheck,
+  LogIn
 } from 'lucide-react';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { currentTable, setTableSession, tables } = useTableOrder();
+  const { currentTable, setTableSession } = useTableOrder();
   const { currentUser, demoLogin } = useAuth();
+  
+  // Single box role selection: 'customer', 'kitchen', 'admin'
+  const [selectedRole, setSelectedRole] = useState('customer');
   const [selectedTable, setSelectedTable] = useState(currentTable || '01');
-  const [accessDeniedMsg, setAccessDeniedMsg] = useState('');
 
-  const handleCustomerLaunch = (tableNum) => {
-    const formatted = String(tableNum || selectedTable || '01').padStart(2, '0');
-    setTableSession(formatted);
-    if (!currentUser) {
+  const handleProceed = () => {
+    if (selectedRole === 'customer') {
+      const formatted = String(selectedTable || '01').padStart(2, '0');
+      setTableSession(formatted);
+      navigate(`/login?role=customer&table=${formatted}`);
+    } else if (selectedRole === 'kitchen') {
+      navigate('/login?role=kitchen');
+    } else if (selectedRole === 'admin') {
+      navigate('/login?role=admin');
+    }
+  };
+
+  const handleInstantDemoLogin = () => {
+    if (selectedRole === 'customer') {
+      const formatted = String(selectedTable || '01').padStart(2, '0');
+      setTableSession(formatted);
       demoLogin('customer');
-    }
-    navigate(`/menu?table=${formatted}`);
-  };
-
-  const handleKitchenLaunch = () => {
-    if (currentUser?.role === 'customer') {
-      setAccessDeniedMsg('Access Denied: Customer accounts cannot access the Kitchen live queue. Please sign in as Kitchen Staff.');
-      setTimeout(() => setAccessDeniedMsg(''), 4000);
-      return;
-    }
-    if (!currentUser) {
+      navigate(`/menu?table=${formatted}`);
+    } else if (selectedRole === 'kitchen') {
       demoLogin('kitchen');
-    }
-    navigate('/kitchen');
-  };
-
-  const handleAdminLaunch = () => {
-    if (currentUser?.role === 'customer' || currentUser?.role === 'kitchen') {
-      setAccessDeniedMsg('Access Denied: Staff accounts cannot access the Admin Management. Please sign in as Administrator.');
-      setTimeout(() => setAccessDeniedMsg(''), 4000);
-      return;
-    }
-    if (!currentUser) {
+      navigate('/kitchen');
+    } else if (selectedRole === 'admin') {
       demoLogin('admin');
+      navigate('/admin');
     }
-    navigate('/admin');
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-950 flex flex-col justify-between p-4 sm:p-6 lg:p-8">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-950 flex items-center justify-center p-4 sm:p-6">
       
-      <div className="max-w-5xl mx-auto w-full space-y-8 my-auto">
+      {/* Centralized Single Box Card */}
+      <div className="w-full max-w-xl bg-slate-900/95 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
         
-        {/* Brand Header */}
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Select Your Portal to Proceed</span>
-          </div>
+        {/* Glow ambient background */}
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-orange-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
-          <h1 className="text-3xl sm:text-5xl font-extrabold text-white tracking-tight">
-            SMART DINE{' '}
-            <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-orange-500 bg-clip-text text-transparent">
-              Platform
-            </span>
+        {/* Brand Header */}
+        <div className="text-center space-y-2">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center mx-auto shadow-glow">
+            <UtensilsCrossed className="w-7 h-7 text-white" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            SMART DINE
           </h1>
-          <p className="text-sm text-slate-400 max-w-xl mx-auto">
-            Choose your role below to access the contactless customer menu, live kitchen cooking queue, or restaurant administration.
+          <p className="text-xs text-slate-400">
+            Select your role below to proceed to login and portal access
           </p>
         </div>
 
-        {/* Access Denied Toast Notice */}
-        {accessDeniedMsg && (
-          <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/40 text-red-400 text-xs font-semibold text-center max-w-xl mx-auto flex items-center justify-center gap-2 animate-bounce">
-            <Lock className="w-4 h-4 shrink-0" />
-            <span>{accessDeniedMsg}</span>
+        {/* 3 Roles Selector inside the single box */}
+        <div className="space-y-2">
+          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300">
+            Step 1: Choose Your Role
+          </label>
+
+          <div className="grid grid-cols-3 gap-2.5">
+            
+            {/* ROLE 1: CUSTOMER */}
+            <button
+              type="button"
+              onClick={() => setSelectedRole('customer')}
+              className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 relative ${
+                selectedRole === 'customer'
+                  ? 'bg-gradient-to-b from-orange-950/60 to-slate-900 border-orange-500 text-white shadow-glow'
+                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+              }`}
+            >
+              {selectedRole === 'customer' && (
+                <CheckCircle2 className="w-4 h-4 text-orange-400 absolute top-2 right-2" />
+              )}
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                selectedRole === 'customer' ? 'bg-orange-500 text-white' : 'bg-slate-800 text-slate-400'
+              }`}>
+                <User className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="block text-xs font-extrabold">Customer</span>
+                <span className="text-[10px] text-slate-400">Table QR & Menu</span>
+              </div>
+            </button>
+
+            {/* ROLE 2: KITCHEN */}
+            <button
+              type="button"
+              onClick={() => setSelectedRole('kitchen')}
+              className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 relative ${
+                selectedRole === 'kitchen'
+                  ? 'bg-gradient-to-b from-amber-950/60 to-slate-900 border-amber-500 text-white shadow-lg'
+                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+              }`}
+            >
+              {selectedRole === 'kitchen' && (
+                <CheckCircle2 className="w-4 h-4 text-amber-400 absolute top-2 right-2" />
+              )}
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                selectedRole === 'kitchen' ? 'bg-amber-500 text-white' : 'bg-slate-800 text-slate-400'
+              }`}>
+                <ChefHat className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="block text-xs font-extrabold">Kitchen</span>
+                <span className="text-[10px] text-slate-400">Chef Orders Queue</span>
+              </div>
+            </button>
+
+            {/* ROLE 3: ADMIN */}
+            <button
+              type="button"
+              onClick={() => setSelectedRole('admin')}
+              className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 relative ${
+                selectedRole === 'admin'
+                  ? 'bg-gradient-to-b from-purple-950/60 to-slate-900 border-purple-500 text-white shadow-lg'
+                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+              }`}
+            >
+              {selectedRole === 'admin' && (
+                <CheckCircle2 className="w-4 h-4 text-purple-400 absolute top-2 right-2" />
+              )}
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                selectedRole === 'admin' ? 'bg-purple-500 text-white' : 'bg-slate-800 text-slate-400'
+              }`}>
+                <LayoutDashboard className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="block text-xs font-extrabold">Admin</span>
+                <span className="text-[10px] text-slate-400">Full Controls</span>
+              </div>
+            </button>
+
+          </div>
+        </div>
+
+        {/* Role Specific Configuration / Details */}
+        {selectedRole === 'customer' && (
+          <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 space-y-3 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
+              <span className="flex items-center gap-1.5">
+                <QrCode className="w-4 h-4 text-orange-400" />
+                Select Dine-In Table Number:
+              </span>
+              <span className="text-orange-400 font-extrabold">Table {selectedTable}</span>
+            </div>
+
+            <div className="grid grid-cols-5 gap-1.5">
+              {['01', '02', '03', '04', '05', '06', '07', '08', '09', '10'].map((tbl) => (
+                <button
+                  key={tbl}
+                  type="button"
+                  onClick={() => {
+                    setSelectedTable(tbl);
+                    setTableSession(tbl);
+                  }}
+                  className={`py-1.5 rounded-xl text-xs font-bold transition border ${
+                    selectedTable === tbl 
+                      ? 'bg-orange-500 text-white border-orange-400 shadow-sm' 
+                      : 'bg-slate-900 text-slate-400 hover:text-white border-slate-800'
+                  }`}
+                >
+                  {tbl}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-400">
+              Scanning Table QR automatically selects this table and opens your digital menu.
+            </p>
           </div>
         )}
 
-        {/* 3 Main Role Portals */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          
-          {/* ROLE 1: CUSTOMER (DINER) */}
-          <div className="rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-orange-950/30 border-2 border-orange-500/50 p-6 flex flex-col justify-between shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl group-hover:bg-orange-500/20 transition"></div>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white flex items-center justify-center shadow-glow">
-                  <User className="w-7 h-7" />
-                </div>
-                <span className="px-2.5 py-1 rounded-full bg-orange-500/20 text-orange-400 text-[11px] font-extrabold border border-orange-500/30 uppercase">
-                  Role 1: Customer
-                </span>
-              </div>
-
-              <div>
-                <h2 className="text-xl font-extrabold text-white">Dine-In Customer</h2>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Scan table QR code to automatically connect your table, browse digital menu, order food, and track live cooking.
-                </p>
-              </div>
-
-              {/* Table Auto Selector */}
-              <div className="bg-slate-950/80 rounded-2xl p-3 border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between text-xs font-semibold text-slate-300">
-                  <span className="flex items-center gap-1.5">
-                    <QrCode className="w-3.5 h-3.5 text-orange-400" />
-                    Table QR Detected:
-                  </span>
-                  <span className="text-orange-400 font-extrabold">Table {selectedTable}</span>
-                </div>
-
-                <div className="grid grid-cols-5 gap-1 pt-1">
-                  {['01', '02', '03', '04', '05'].map((tbl) => (
-                    <button
-                      key={tbl}
-                      type="button"
-                      onClick={() => {
-                        setSelectedTable(tbl);
-                        setTableSession(tbl);
-                      }}
-                      className={`py-1 rounded-lg text-xs font-bold transition border ${
-                        selectedTable === tbl 
-                          ? 'bg-orange-500 text-white border-orange-400' 
-                          : 'bg-slate-900 text-slate-400 hover:text-white border-slate-800'
-                      }`}
-                    >
-                      {tbl}
-                    </button>
-                  ))}
-                </div>
-              </div>
+        {selectedRole === 'kitchen' && (
+          <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 space-y-2 animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Kitchen Staff Live Station Access</span>
             </div>
-
-            <button
-              onClick={() => handleCustomerLaunch(selectedTable)}
-              className="mt-6 w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
-            >
-              <span>Scan QR / Open Menu (Table {selectedTable})</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Sign in with your kitchen staff credentials to view live incoming orders, play bell alerts, and update dish cooking stages.
+            </p>
           </div>
+        )}
 
-          {/* ROLE 2: KITCHEN (CHEF) */}
-          <div className="rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-amber-950/30 border border-slate-800 hover:border-amber-500/50 p-6 flex flex-col justify-between shadow-xl relative overflow-hidden group">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-600 to-yellow-500 text-white flex items-center justify-center shadow-lg">
-                  <ChefHat className="w-7 h-7" />
-                </div>
-                <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-400 text-[11px] font-extrabold border border-amber-500/30 uppercase">
-                  Role 2: Kitchen
-                </span>
-              </div>
-
-              <div>
-                <h2 className="text-xl font-extrabold text-white">Kitchen Chef Station</h2>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Real-time ticket queue for chefs. Receive incoming orders with audio bells, accept tickets, update cooking stages, and complete dishes.
-                </p>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80 text-xs text-slate-400 space-y-1">
-                <div className="flex items-center gap-1.5 text-amber-400 font-semibold">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Protected Role Access</span>
-                </div>
-                <p className="text-[11px]">Customers cannot access kitchen controls.</p>
-              </div>
+        {selectedRole === 'admin' && (
+          <div className="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 space-y-2 animate-in fade-in duration-200">
+            <div className="flex items-center gap-2 text-purple-400 font-bold text-xs">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Restaurant Master Administrator Access</span>
             </div>
-
-            <button
-              onClick={handleKitchenLaunch}
-              className="mt-6 w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-sm border border-slate-700 transition active:scale-95 flex items-center justify-center gap-2 group-hover:border-amber-500/50"
-            >
-              <span>Kitchen Live Queue</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Sign in as Administrator to access sales analytics, manage food dishes & categories, and generate high-res table QR standees.
+            </p>
           </div>
+        )}
 
-          {/* ROLE 3: ADMIN (MANAGER) */}
-          <div className="rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-purple-950/30 border border-slate-800 hover:border-purple-500/50 p-6 flex flex-col justify-between shadow-xl relative overflow-hidden group">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 text-white flex items-center justify-center shadow-lg">
-                  <LayoutDashboard className="w-7 h-7" />
-                </div>
-                <span className="px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-400 text-[11px] font-extrabold border border-purple-500/30 uppercase">
-                  Role 3: Admin
-                </span>
-              </div>
+        {/* Action Buttons */}
+        <div className="space-y-2.5 pt-2">
+          <button
+            onClick={handleProceed}
+            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+          >
+            <LogIn className="w-4 h-4" />
+            <span>
+              Proceed to {selectedRole === 'customer' ? `Customer Login (Table ${selectedTable})` : selectedRole === 'kitchen' ? 'Kitchen Login' : 'Admin Login'}
+            </span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
 
-              <div>
-                <h2 className="text-xl font-extrabold text-white">Admin Management</h2>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Full control over restaurant revenue metrics, food menu CRUD, category management, and high-resolution printable table QR standees.
-                </p>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800/80 text-xs text-slate-400 space-y-1">
-                <div className="flex items-center gap-1.5 text-purple-400 font-semibold">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Master Administrator</span>
-                </div>
-                <p className="text-[11px]">Customers and kitchen staff cannot modify dishes or tables.</p>
-              </div>
-            </div>
-
-            <button
-              onClick={handleAdminLaunch}
-              className="mt-6 w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-sm border border-slate-700 transition active:scale-95 flex items-center justify-center gap-2 group-hover:border-purple-500/50"
-            >
-              <span>Admin Dashboard</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </div>
-
+          <button
+            onClick={handleInstantDemoLogin}
+            className="w-full py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-semibold text-xs transition flex items-center justify-center gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+            <span>Fast 1-Click {selectedRole === 'customer' ? 'Customer' : selectedRole === 'kitchen' ? 'Kitchen' : 'Admin'} Access</span>
+          </button>
         </div>
 
       </div>
-
-      {/* Footer */}
-      <footer className="text-center text-xs text-slate-500 pt-6">
-        <p>SMART DINE • 3-Tier Role System (Customer, Kitchen, Admin)</p>
-      </footer>
 
     </div>
   );
