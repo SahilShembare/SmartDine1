@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        getUserData().role == 'admin' || 
+        request.auth.token.role == 'admin' ||
+        request.auth.token.email == 'admin@smartdine.com'
+      );
+    }
+    
+    function isKitchen() {
+      return isAuthenticated() && (
+        getUserData().role == 'kitchen' || 
+        getUserData().role == 'admin' ||
+        request.auth.token.role == 'kitchen' ||
+        request.auth.token.email == 'kitchen@smartdine.com'
+      );
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      // Anyone can read basic user profile if authenticated
+      allow read: if isAuthenticated();
+      // Users can write their own profile, or Admins can write any profile
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    // Categories Collection
+    match /categories/{categoryId} {
+      // Public read access for customers browsing the menu
+      allow read: if true;
+      // Only admin can create, update, or delete categories
+      allow write: if isAdmin();
+    }
+
+    // Menu Items Collection
+    match /menuItems/{itemId} {
+      // Public read access for customers browsing the menu
+      allow read: if true;
+      // Only admin can create, update, or delete menu items
+      allow write: if isAdmin();
+    }
+
+    // Tables Collection
+    match /tables/{tableId} {
+      // Public read access to validate table when scanning QR
+      allow read: if true;
+      // Only admin can manage restaurant tables
+      allow write: if isAdmin();
+    }
+
+    // Orders Collection
+    match /orders/{orderId} {
+      // Public read for the specific order (customers track by ID), or kitchen/admin staff
+      allow read: if true;
+      
+      // Anyone (including guests with table QR) can create a valid order with items and tableNumber
+      allow create: if request.resource.data.tableNumber != null &&
+                       request.resource.data.items != null &&
+                       request.resource.data.items.size() > 0 &&
+                       request.resource.data.status in ['pending', 'placed'];
+      
+      // Kitchen and admin staff can update order status; customer can cancel if still pending
+      allow update: if isKitchen() || isAdmin() || 
+                       (resource.data.status == 'pending' && request.resource.data.status == 'cancelled');
+      
+      // Only admin can delete orders
+      allow delete: if isAdmin();
+    }
+  }
+}
