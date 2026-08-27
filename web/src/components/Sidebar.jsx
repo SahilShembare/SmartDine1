@@ -23,6 +23,7 @@ export default function Sidebar({ mode = 'admin' }) {
     { to: '/admin/menu', label: 'Food Menu Items', icon: UtensilsCrossed },
     { to: '/admin/categories', label: 'Categories', icon: Layers },
     { to: '/admin/tables', label: 'Tables & QR Codes', icon: QrCode },
+    { to: '/kitchen', label: 'Kitchen Monitor (View Only)', icon: ChefHat },
   ];
 
   const kitchenLinks = [

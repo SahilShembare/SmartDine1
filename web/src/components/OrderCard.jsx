@@ -13,7 +13,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 
-export default function OrderCard({ order, onUpdateStatus }) {
+export default function OrderCard({ order, onUpdateStatus, readOnly = false }) {
   const getStatusBadge = (status) => {
     switch (status) {
       case 'pending':
@@ -153,69 +153,76 @@ export default function OrderCard({ order, onUpdateStatus }) {
           </span>
         </div>
 
-        {/* Action Buttons based on status */}
-        <div className="grid grid-cols-2 gap-2 pt-1">
-          {order.status === 'pending' && (
-            <>
-              <button
-                onClick={() => onUpdateStatus(order.id, 'accepted')}
-                className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-md transition active:scale-95"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Accept Order
-              </button>
-            </>
-          )}
+        {/* Action Buttons based on status (Hidden if Read-Only Admin View) */}
+        {readOnly ? (
+          <div className="text-center py-2 px-3 rounded-xl bg-slate-900/80 text-slate-400 text-xs font-semibold border border-slate-800 flex items-center justify-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+            <span>Admin Monitor (Read-Only Mode)</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            {order.status === 'pending' && (
+              <>
+                <button
+                  onClick={() => onUpdateStatus(order.id, 'accepted')}
+                  className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-xs shadow-md transition active:scale-95"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Accept Order
+                </button>
+              </>
+            )}
 
-          {order.status === 'accepted' && (
-            <>
-              <button
-                onClick={() => onUpdateStatus(order.id, 'preparing')}
-                className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-semibold text-xs shadow-glow transition active:scale-95"
-              >
-                <ChefHat className="w-3.5 h-3.5" />
-                Start Preparing
-              </button>
-            </>
-          )}
+            {order.status === 'accepted' && (
+              <>
+                <button
+                  onClick={() => onUpdateStatus(order.id, 'preparing')}
+                  className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-semibold text-xs shadow-glow transition active:scale-95"
+                >
+                  <ChefHat className="w-3.5 h-3.5" />
+                  Start Preparing
+                </button>
+              </>
+            )}
 
-          {order.status === 'preparing' && (
-            <>
-              <button
-                onClick={() => onUpdateStatus(order.id, 'ready')}
-                className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs shadow-md transition active:scale-95"
-              >
-                <BellRing className="w-3.5 h-3.5" />
-                Mark as Ready
-              </button>
-            </>
-          )}
+            {order.status === 'preparing' && (
+              <>
+                <button
+                  onClick={() => onUpdateStatus(order.id, 'ready')}
+                  className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs shadow-md transition active:scale-95"
+                >
+                  <BellRing className="w-3.5 h-3.5" />
+                  Mark as Ready
+                </button>
+              </>
+            )}
 
-          {order.status === 'ready' && (
-            <>
-              <button
-                onClick={() => onUpdateStatus(order.id, 'completed')}
-                className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-600 hover:to-green-600 text-white font-semibold text-xs shadow-md transition active:scale-95"
-              >
-                <CheckCheck className="w-3.5 h-3.5" />
-                Complete & Serve
-              </button>
-            </>
-          )}
+            {order.status === 'ready' && (
+              <>
+                <button
+                  onClick={() => onUpdateStatus(order.id, 'completed')}
+                  className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-600 hover:to-green-600 text-white font-semibold text-xs shadow-md transition active:scale-95"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  Complete & Serve
+                </button>
+              </>
+            )}
 
-          {order.status !== 'completed' && order.status !== 'cancelled' && (
-            <button
-              onClick={() => {
-                if (confirm(`Are you sure you want to cancel order #${order.id}?`)) {
-                  onUpdateStatus(order.id, 'cancelled');
-                }
-              }}
-              className="col-span-2 text-center text-[11px] text-slate-400 hover:text-red-400 py-1 transition"
-            >
-              Cancel Order
-            </button>
-          )}
-        </div>
+            {order.status !== 'completed' && order.status !== 'cancelled' && (
+              <button
+                onClick={() => {
+                  if (confirm(`Are you sure you want to cancel order #${order.id}?`)) {
+                    onUpdateStatus(order.id, 'cancelled');
+                  }
+                }}
+                className="col-span-2 text-center text-[11px] text-slate-400 hover:text-red-400 py-1 transition"
+              >
+                Cancel Order
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
     </div>

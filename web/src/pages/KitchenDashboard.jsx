@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from '../components/Sidebar';
 import OrderCard from '../components/OrderCard';
 import { useTableOrder } from '../context/TableOrderContext';
+import { useAuth } from '../context/AuthContext';
 import { db, isFirebaseConfigured } from '../firebase/config';
 import { doc, updateDoc } from 'firebase/firestore';
 import { 
@@ -21,11 +22,15 @@ import {
   Sparkles, 
   X, 
   ShoppingBag,
-  BellRing
+  BellRing,
+  Eye,
+  ShieldAlert
 } from 'lucide-react';
 
 export default function KitchenDashboard() {
+  const { currentUser } = useAuth();
   const { orders, updateOrderStatus, refreshOrders } = useTableOrder();
+  const isAdminReadOnly = currentUser?.role === 'admin';
   const [activeTab, setActiveTab] = useState('all'); // all, pending, accepted, preparing, ready, completed
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [newOrderAlert, setNewOrderAlert] = useState(null);
@@ -98,6 +103,10 @@ export default function KitchenDashboard() {
   };
 
   const handleStatusUpdate = async (orderId, newStatus) => {
+    if (isAdminReadOnly) {
+      alert('Action Blocked: Administrator account is in Read-Only monitor mode and cannot modify kitchen order tickets.');
+      return;
+    }
     if (isFirebaseConfigured) {
       await updateDoc(doc(db, 'orders', orderId), {
         status: newStatus,
@@ -236,6 +245,21 @@ export default function KitchenDashboard() {
           </div>
         </div>
 
+        {/* Admin Read-Only Banner */}
+        {isAdminReadOnly && (
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center justify-between gap-3 shadow-md">
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>
+                <strong>Admin Monitor Mode:</strong> You are viewing live kitchen tickets in <strong>Read-Only</strong> view. Order progression controls are reserved for Kitchen Staff.
+              </span>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-[10px] uppercase font-extrabold border border-amber-500/30">
+              View Only
+            </span>
+          </div>
+        )}
+
         {/* Tab Filters */}
         <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-800/80 scrollbar-none">
           
@@ -343,6 +367,7 @@ export default function KitchenDashboard() {
                 key={order.id}
                 order={order}
                 onUpdateStatus={handleStatusUpdate}
+                readOnly={isAdminReadOnly}
               />
             ))}
           </div>
