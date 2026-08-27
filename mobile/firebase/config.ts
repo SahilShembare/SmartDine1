@@ -6,18 +6,15 @@ import { DEMO_CATEGORIES, DEMO_MENU_ITEMS, DEMO_TABLES, DEMO_ORDERS } from '../.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyDEMO-KEY-SMART-DINE-2026",
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "smart-dine-app.firebaseapp.com",
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "smart-dine-app",
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "smart-dine-app.firebasestorage.app",
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "123456789012",
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:123456789012:android:abcdef123456"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyDjpryj-feHO_SiyCJXHTlEZcUV-nibyfA",
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "smartdine1-81c82.firebaseapp.com",
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "smartdine1-81c82",
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "smartdine1-81c82.firebasestorage.app",
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "732105111093",
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:732105111093:web:1018e79194d3f0faa7637c"
 };
 
-export const isFirebaseConfigured = Boolean(
-  process.env.EXPO_PUBLIC_FIREBASE_API_KEY && 
-  !process.env.EXPO_PUBLIC_FIREBASE_API_KEY.includes('your_api_key')
-);
+export const isFirebaseConfigured = true;
 
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);

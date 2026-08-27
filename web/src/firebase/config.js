@@ -6,19 +6,15 @@ import { DEMO_CATEGORIES, DEMO_MENU_ITEMS, DEMO_TABLES, DEMO_ORDERS } from '../.
 
 // Firebase configuration from environment or fallback
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDEMO-KEY-SMART-DINE-2026",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "smart-dine-app.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "smart-dine-app",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "smart-dine-app.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789012",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789012:web:abcdef123456"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDjpryj-feHO_SiyCJXHTlEZcUV-nibyfA",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "smartdine1-81c82.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "smartdine1-81c82",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "smartdine1-81c82.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "732105111093",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:732105111093:web:1018e79194d3f0faa7637c"
 };
 
-export const isFirebaseConfigured = Boolean(
-  import.meta.env.VITE_FIREBASE_API_KEY && 
-  import.meta.env.VITE_FIREBASE_PROJECT_ID &&
-  !import.meta.env.VITE_FIREBASE_API_KEY.includes('your_api_key')
-);
+export const isFirebaseConfigured = true;
 
 // Initialize Firebase
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
