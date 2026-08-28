@@ -10,7 +10,7 @@ import {
   LogOut, 
   User,
   Home as HomeIcon,
-  LogIn
+  Sparkles
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -26,35 +26,38 @@ export default function Navbar() {
                           location.pathname.startsWith('/track');
 
   return (
-    <header className="sticky top-0 z-50 bg-emerald-800 border-b border-emerald-700 shadow-md">
+    <header className="sticky top-0 z-50 bg-slate-950/85 backdrop-blur-xl border-b border-emerald-500/25 shadow-[0_4px_30px_rgba(0,0,0,0.6)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         {/* Brand Logo (🍽️ SmartDine) */}
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform duration-200">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 border border-emerald-400/40 flex items-center justify-center text-white shadow-[0_0_20px_rgba(16,185,129,0.35)] group-hover:scale-105 transition-transform duration-200">
             <UtensilsCrossed className="w-5 h-5 text-white" />
           </div>
-          <span className="font-extrabold text-xl tracking-tight text-white font-sans drop-shadow-sm">
-            SmartDine
-          </span>
+          <div>
+            <span className="font-black text-xl tracking-tight text-white font-sans drop-shadow-sm flex items-center gap-1.5">
+              <span>SmartDine</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+            </span>
+          </div>
         </Link>
 
-        {/* Center Table Indicator for customer (Only on menu/cart/track) */}
+        {/* Center Table Indicator for customer */}
         {currentTable && isCustomerRoute && (
-          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/20 border border-white/20 text-white text-xs sm:text-sm font-medium backdrop-blur-sm">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-950/70 border border-emerald-500/40 text-emerald-200 text-xs sm:text-sm font-medium backdrop-blur-md shadow-lg">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
             </span>
-            <span>Ordering for <strong>Table {currentTable}</strong></span>
+            <span>Table <strong className="text-white font-bold">{currentTable}</strong></span>
             <button 
               onClick={() => {
-                if (confirm('Change or disconnect active table?')) {
+                if (confirm('Change active table session?')) {
                   clearTableSession();
                   navigate('/menu');
                 }
               }}
-              className="ml-1 text-xs text-amber-200 hover:text-white underline cursor-pointer"
+              className="ml-1 text-xs text-amber-300 hover:text-white underline cursor-pointer"
             >
               Change
             </button>
@@ -67,10 +70,10 @@ export default function Navbar() {
           {/* Home Button */}
           <Link
             to="/"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
               isHomePage 
-                ? 'text-amber-300 bg-white/15 shadow-inner' 
-                : 'text-emerald-100 hover:text-white hover:bg-white/10'
+                ? 'text-amber-300 bg-amber-400/15 border border-amber-400/30 shadow-inner' 
+                : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
             }`}
           >
             <HomeIcon className="w-3.5 h-3.5" />
@@ -82,17 +85,17 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 to="/login?role=kitchen"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-bold border border-white/20 transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 text-xs font-extrabold border border-emerald-500/40 transition cursor-pointer shadow-sm"
               >
-                <ChefHat className="w-3.5 h-3.5 text-emerald-300" />
+                <ChefHat className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="hidden xs:inline">Kitchen</span>
               </Link>
 
               <Link
                 to="/login?role=admin"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-600/60 hover:bg-purple-600 text-white text-xs font-bold border border-purple-400/40 transition cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-300 text-xs font-extrabold border border-purple-500/40 transition cursor-pointer shadow-sm"
               >
-                <LayoutDashboard className="w-3.5 h-3.5 text-purple-200" />
+                <LayoutDashboard className="w-3.5 h-3.5 text-purple-400" />
                 <span className="hidden xs:inline">Admin Portal</span>
               </Link>
             </div>
@@ -104,7 +107,9 @@ export default function Navbar() {
                 <Link
                   to="/menu"
                   className={`hidden md:flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
-                    location.pathname === '/menu' ? 'text-white bg-white/20 shadow-inner' : 'text-emerald-100 hover:text-white hover:bg-white/10'
+                    location.pathname === '/menu' 
+                      ? 'text-amber-300 bg-amber-400/15 border border-amber-400/30' 
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
                   }`}
                 >
                   Digital Menu
@@ -113,9 +118,9 @@ export default function Navbar() {
                 {/* Cart button */}
                 <Link
                   to="/cart"
-                  className="relative flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-950 text-xs sm:text-sm font-bold shadow-md transition active:scale-95"
+                  className="relative flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-950 text-xs sm:text-sm font-black shadow-[0_0_20px_rgba(251,191,36,0.35)] transition active:scale-95"
                 >
-                  <ShoppingBag className="w-4 h-4" />
+                  <ShoppingBag className="w-4 h-4 stroke-[2.5]" />
                   <span className="hidden sm:inline">Cart</span>
                   {cartItemCount > 0 && (
                     <span className="flex items-center justify-center min-w-[18px] h-4.5 px-1 rounded-full bg-slate-950 text-amber-400 font-extrabold text-[11px]">
@@ -130,17 +135,17 @@ export default function Navbar() {
                     {currentUser.role === 'admin' ? (
                       <Link
                         to="/admin"
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold border border-white/20 transition"
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-300 text-xs font-bold border border-purple-500/40 transition"
                       >
-                        <LayoutDashboard className="w-3.5 h-3.5 text-amber-300" />
+                        <LayoutDashboard className="w-3.5 h-3.5 text-purple-400" />
                         <span>Admin</span>
                       </Link>
                     ) : currentUser.role === 'kitchen' ? (
                       <Link
                         to="/kitchen"
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white text-xs font-semibold border border-white/20 transition"
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 text-xs font-bold border border-emerald-500/40 transition"
                       >
-                        <ChefHat className="w-3.5 h-3.5 text-amber-300" />
+                        <ChefHat className="w-3.5 h-3.5 text-emerald-400" />
                         <span>Kitchen</span>
                       </Link>
                     ) : null}
@@ -148,7 +153,7 @@ export default function Navbar() {
                     <button
                       onClick={logout}
                       title="Log out"
-                      className="p-2 rounded-xl text-emerald-100 hover:text-white hover:bg-red-600/40 transition"
+                      className="p-2 rounded-xl text-slate-300 hover:text-white hover:bg-red-600/40 transition"
                     >
                       <LogOut className="w-4 h-4" />
                     </button>
@@ -157,16 +162,16 @@ export default function Navbar() {
                   <div className="flex items-center gap-1.5">
                     <Link
                       to="/login?role=kitchen"
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold border border-white/15 transition"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition"
                     >
-                      <ChefHat className="w-3.5 h-3.5 text-emerald-300" />
+                      <ChefHat className="w-3.5 h-3.5 text-emerald-400" />
                       <span className="hidden sm:inline">Kitchen</span>
                     </Link>
                     <Link
                       to="/login?role=admin"
-                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-600/50 hover:bg-purple-600 text-white text-xs font-semibold border border-purple-400/30 transition"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-purple-950/70 hover:bg-purple-900 text-purple-200 text-xs font-bold border border-purple-500/30 transition"
                     >
-                      <LayoutDashboard className="w-3.5 h-3.5 text-purple-200" />
+                      <LayoutDashboard className="w-3.5 h-3.5 text-purple-300" />
                       <span className="hidden sm:inline">Admin</span>
                     </Link>
                   </div>
