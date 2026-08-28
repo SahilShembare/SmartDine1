@@ -62,6 +62,12 @@ export default function Login() {
       setActiveTab('login');
       setSuccessMsg('⚙️ Admin Portal mode active');
       setError('');
+    } else if (role === 'customer') {
+      setLoginIdentifier('');
+      setPassword('');
+      setActiveTab('login');
+      setSuccessMsg('👤 Customer Login mode active');
+      setError('');
     }
   }, [searchParams]);
 

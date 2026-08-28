@@ -79,12 +79,20 @@ export default function Navbar() {
             </Link>
           )}
 
-          {/* If on Login Page: Show Kitchen & Admin Portal direct login options in Top Bar */}
+          {/* If on Login Page: Show Customer, Kitchen & Admin Portal direct login options in Top Bar */}
           {isLoginPage ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Link
+                to="/login?role=customer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-400/20 hover:bg-amber-400/30 text-amber-300 text-xs font-extrabold border border-amber-400/40 transition cursor-pointer shadow-sm"
+              >
+                <User className="w-3.5 h-3.5 text-amber-400" />
+                <span className="inline">Customer</span>
+              </Link>
+
               <Link
                 to="/login?role=kitchen"
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 text-xs font-extrabold border border-emerald-500/40 transition cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 text-xs font-extrabold border border-emerald-500/40 transition cursor-pointer shadow-sm"
               >
                 <ChefHat className="w-3.5 h-3.5 text-emerald-400" />
                 <span className="hidden xs:inline">Kitchen</span>
@@ -92,10 +100,10 @@ export default function Navbar() {
 
               <Link
                 to="/login?role=admin"
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-300 text-xs font-extrabold border border-purple-500/40 transition cursor-pointer shadow-sm"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/80 hover:bg-purple-900 text-purple-300 text-xs font-extrabold border border-purple-500/40 transition cursor-pointer shadow-sm"
               >
                 <LayoutDashboard className="w-3.5 h-3.5 text-purple-400" />
-                <span className="hidden xs:inline">Admin Portal</span>
+                <span className="hidden xs:inline">Admin</span>
               </Link>
             </div>
           ) : (
