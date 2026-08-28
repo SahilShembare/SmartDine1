@@ -314,9 +314,13 @@ export default function Login() {
         
         {/* Top Brand Logo */}
         <div className="text-center space-y-2 mb-6">
-          <Link to="/" className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-lg hover:border-amber-400/40 transition">
-            <UtensilsCrossed className="w-5 h-5 text-amber-400" />
-            <span className="font-black text-base text-white tracking-tight">SmartDine</span>
+          <Link to="/" className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 backdrop-blur-md shadow-lg hover:border-amber-400/40 transition group">
+            <img 
+              src="/logo.png" 
+              alt="Smart Dine Logo" 
+              className="w-7 h-7 rounded-full object-cover border border-amber-400/60 shadow-sm group-hover:scale-105 transition-transform"
+            />
+            <span className="font-black text-base text-white tracking-tight">Smart Dine</span>
           </Link>
 
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight drop-shadow-md">

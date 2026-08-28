@@ -212,14 +212,23 @@ export default function Home() {
             <span>Live Kitchen Active • Instant Contactless Table Orders</span>
           </div>
 
+          {/* Official Round Brand Logo */}
+          <div className="flex justify-center">
+            <img
+              src="/logo.png"
+              alt="Smart Dine Official Logo"
+              className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-amber-400/80 shadow-[0_0_35px_rgba(251,191,36,0.45)] animate-in zoom-in-95 duration-500 hover:scale-105 transition-transform"
+            />
+          </div>
+
           {/* Main Heading */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)] font-sans">
-            Welcome To SmartDine
+            Welcome To Smart Dine
           </h1>
 
           {/* Subtitle */}
           <p className="text-sm sm:text-base md:text-lg text-slate-100/90 font-medium tracking-wide drop-shadow-md max-w-2xl mx-auto">
-            QR Based Smart Restaurant Ordering System
+            Smart Choice, Great Experience! • QR Based Food Ordering
           </p>
 
           {/* 2 Main Action Option Buttons */}
