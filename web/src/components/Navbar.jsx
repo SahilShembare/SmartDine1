@@ -67,18 +67,16 @@ export default function Navbar() {
         {/* Top Bar Action Navigation */}
         <div className="flex items-center gap-2 sm:gap-3">
           
-          {/* Home Button */}
-          <Link
-            to="/"
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition ${
-              isHomePage 
-                ? 'text-amber-300 bg-amber-400/15 border border-amber-400/30 shadow-inner' 
-                : 'text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent'
-            }`}
-          >
-            <HomeIcon className="w-3.5 h-3.5" />
-            <span>Home</span>
-          </Link>
+          {/* Home Button (Hidden on Home page, visible on other pages) */}
+          {!isHomePage && (
+            <Link
+              to="/"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800/80 border border-transparent transition"
+            >
+              <HomeIcon className="w-3.5 h-3.5" />
+              <span>Home</span>
+            </Link>
+          )}
 
           {/* If on Login Page: Show Kitchen & Admin Portal direct login options in Top Bar */}
           {isLoginPage ? (
