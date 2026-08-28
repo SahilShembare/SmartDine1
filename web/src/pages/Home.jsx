@@ -1,197 +1,113 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import React from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
-  UtensilsCrossed, 
+  LogIn, 
+  UserPlus, 
   ChefHat, 
-  LayoutDashboard, 
-  ArrowRight, 
-  Sparkles, 
-  User, 
-  CheckCircle2,
-  LogIn
+  LayoutDashboard,
+  QrCode,
+  UtensilsCrossed,
+  Sparkles
 } from 'lucide-react';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { demoLogin } = useAuth();
-  
-  // Single box role selection: 'customer', 'kitchen', 'admin'
-  const [selectedRole, setSelectedRole] = useState('customer');
-
-  const handleProceedToLogin = () => {
-    navigate(`/login?role=${selectedRole}`);
-  };
-
-  const handleInstantDemoLogin = () => {
-    demoLogin(selectedRole);
-    if (selectedRole === 'customer') {
-      navigate('/menu?table=01');
-    } else if (selectedRole === 'kitchen') {
-      navigate('/kitchen');
-    } else if (selectedRole === 'admin') {
-      navigate('/admin');
-    }
-  };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-slate-950 flex items-center justify-center p-4 sm:p-6">
+    <div className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-between overflow-hidden bg-slate-950">
       
-      {/* Centralized Single Box Card */}
-      <div className="w-full max-w-lg bg-slate-900/95 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
+      {/* Background Image with Dark Vignette Overlay */}
+      <div className="absolute inset-0 z-0">
+        <img
+          src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&auto=format&fit=crop&q=80"
+          alt="Restaurant Dining Area"
+          className="w-full h-full object-cover object-center scale-105 animate-in fade-in duration-1000"
+        />
+        {/* Dark gradient overlays to ensure text contrast and match the screenshot */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/60 to-black/85"></div>
+      </div>
+
+      {/* Empty Top spacer for flex balance */}
+      <div className="relative z-10"></div>
+
+      {/* Main Centered Content (Exactly matching screenshot) */}
+      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 text-center space-y-6 py-12">
         
-        {/* Glow ambient background */}
-        <div className="absolute -top-12 -right-12 w-48 h-48 bg-orange-500/15 rounded-full blur-3xl pointer-events-none"></div>
+        {/* Main Heading */}
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] font-sans">
+          Welcome To SmartDine
+        </h1>
 
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center mx-auto shadow-glow">
-            <UtensilsCrossed className="w-7 h-7 text-white" />
+        {/* Subtitle */}
+        <p className="text-sm sm:text-base md:text-lg text-slate-100/90 font-medium tracking-wide drop-shadow-md max-w-2xl mx-auto">
+          QR Based Smart Restaurant Ordering System
+        </p>
+
+        {/* 2 Main Action Option Buttons */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 max-w-md mx-auto">
+          
+          {/* Option 1: Login (Yellow / Amber rounded button) */}
+          <button
+            onClick={() => navigate('/login?mode=login')}
+            className="w-full sm:w-auto min-w-[140px] px-7 py-3 rounded-full bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-950 font-black text-sm tracking-wide shadow-[0_4px_20px_rgba(251,191,36,0.4)] transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <LogIn className="w-4 h-4 stroke-[2.5]" />
+            <span>Login</span>
+          </button>
+
+          {/* Option 2: Create New Account (Green rounded button) */}
+          <button
+            onClick={() => navigate('/login?mode=register')}
+            className="w-full sm:w-auto px-7 py-3 rounded-full bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black text-sm tracking-wide shadow-[0_4px_20px_rgba(16,185,129,0.4)] transition-all transform hover:scale-105 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4 stroke-[2.5]" />
+            <span>Create New Account</span>
+          </button>
+
+        </div>
+
+      </div>
+
+      {/* Bottom Footer / Staff Access Shortcuts */}
+      <div className="relative z-10 p-4 sm:p-6 bg-gradient-to-t from-black/80 to-transparent">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-300/80">
+          
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>Contactless Dining • Scan QR Code to Order Instantly</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            SMART DINE
-          </h1>
-          <p className="text-xs text-slate-400">
-            Select your role to sign in and enter your portal
-          </p>
-        </div>
 
-        {/* 3 Roles Selector inside the single box */}
-        <div className="space-y-3">
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 text-center">
-            Select Your Role
-          </label>
-
-          <div className="grid grid-cols-3 gap-3">
-            
-            {/* ROLE 1: CUSTOMER */}
-            <button
-              type="button"
-              onClick={() => setSelectedRole('customer')}
-              className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 relative cursor-pointer ${
-                selectedRole === 'customer'
-                  ? 'bg-gradient-to-b from-orange-950/60 to-slate-900 border-orange-500 text-white shadow-glow ring-2 ring-orange-500/20'
-                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-              }`}
+          <div className="flex items-center gap-4">
+            <Link
+              to="/menu?table=01"
+              className="text-amber-300 hover:text-amber-200 font-semibold underline flex items-center gap-1 transition"
             >
-              {selectedRole === 'customer' && (
-                <CheckCircle2 className="w-4 h-4 text-orange-400 absolute top-2 right-2" />
-              )}
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition ${
-                selectedRole === 'customer' ? 'bg-orange-500 text-white shadow' : 'bg-slate-800 text-slate-400'
-              }`}>
-                <User className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="block text-xs font-extrabold">Customer</span>
-                <span className="text-[10px] text-slate-400">Diner Menu</span>
-              </div>
-            </button>
+              <QrCode className="w-3.5 h-3.5" />
+              <span>Direct Digital Menu</span>
+            </Link>
 
-            {/* ROLE 2: KITCHEN */}
-            <button
-              type="button"
-              onClick={() => setSelectedRole('kitchen')}
-              className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 relative cursor-pointer ${
-                selectedRole === 'kitchen'
-                  ? 'bg-gradient-to-b from-amber-950/60 to-slate-900 border-amber-500 text-white shadow-lg ring-2 ring-amber-500/20'
-                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-              }`}
+            <span className="text-slate-600">|</span>
+
+            <Link
+              to="/login?role=kitchen"
+              className="text-slate-300 hover:text-white transition flex items-center gap-1"
             >
-              {selectedRole === 'kitchen' && (
-                <CheckCircle2 className="w-4 h-4 text-amber-400 absolute top-2 right-2" />
-              )}
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition ${
-                selectedRole === 'kitchen' ? 'bg-amber-500 text-white shadow' : 'bg-slate-800 text-slate-400'
-              }`}>
-                <ChefHat className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="block text-xs font-extrabold">Kitchen</span>
-                <span className="text-[10px] text-slate-400">Chef Queue</span>
-              </div>
-            </button>
+              <ChefHat className="w-3.5 h-3.5 text-amber-400" />
+              <span>Kitchen</span>
+            </Link>
 
-            {/* ROLE 3: ADMIN */}
-            <button
-              type="button"
-              onClick={() => setSelectedRole('admin')}
-              className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 relative cursor-pointer ${
-                selectedRole === 'admin'
-                  ? 'bg-gradient-to-b from-purple-950/60 to-slate-900 border-purple-500 text-white shadow-lg ring-2 ring-purple-500/20'
-                  : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-              }`}
+            <span className="text-slate-600">|</span>
+
+            <Link
+              to="/login?role=admin"
+              className="text-slate-300 hover:text-white transition flex items-center gap-1"
             >
-              {selectedRole === 'admin' && (
-                <CheckCircle2 className="w-4 h-4 text-purple-400 absolute top-2 right-2" />
-              )}
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition ${
-                selectedRole === 'admin' ? 'bg-purple-500 text-white shadow' : 'bg-slate-800 text-slate-400'
-              }`}>
-                <LayoutDashboard className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="block text-xs font-extrabold">Admin</span>
-                <span className="text-[10px] text-slate-400">Management</span>
-              </div>
-            </button>
-
+              <LayoutDashboard className="w-3.5 h-3.5 text-purple-400" />
+              <span>Admin</span>
+            </Link>
           </div>
+
         </div>
-
-        {/* Selected Role Description Pill */}
-        <div className="text-center p-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-xs text-slate-400">
-          {selectedRole === 'customer' && '🍽️ Browse digital menu, place dine-in table orders, and watch live tracking.'}
-          {selectedRole === 'kitchen' && '👨‍🍳 Live cooking queue, order sound chimes, and food preparation status.'}
-          {selectedRole === 'admin' && '👑 Sales analytics, food dishes CRUD, categories, and table QR generator.'}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="space-y-2.5 pt-1">
-          {selectedRole === 'customer' ? (
-            <div className="space-y-2">
-              <button
-                onClick={() => navigate('/login?role=customer&mode=login')}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Customer Sign In (Login)</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={() => navigate('/login?role=customer&mode=register')}
-                className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-orange-500/40 text-orange-300 font-extrabold text-xs transition active:scale-95 flex items-center justify-center gap-2 shadow-sm"
-              >
-                <Sparkles className="w-4 h-4 text-orange-400" />
-                <span>Create New Account (Mobile OTP)</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleProceedToLogin}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>
-                Proceed to {selectedRole === 'kitchen' ? 'Kitchen Staff Login' : 'Administrator Login'}
-              </span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          )}
-
-          {selectedRole !== 'customer' && (
-            <button
-              onClick={handleInstantDemoLogin}
-              className="w-full py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 font-semibold text-xs transition flex items-center justify-center gap-1.5"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-orange-400" />
-              <span>Fast 1-Click {selectedRole === 'kitchen' ? 'Kitchen' : 'Admin'} Demo Access</span>
-            </button>
-          )}
-        </div>
-
       </div>
 
     </div>
