@@ -47,6 +47,24 @@ export default function Login() {
   );
   const [showPassword, setShowPassword] = useState(false);
 
+  // Sync role parameters when clicking top bar
+  useEffect(() => {
+    const role = searchParams.get('role');
+    if (role === 'kitchen') {
+      setLoginIdentifier('kitchen@smartdine.com');
+      setPassword('kitchen123456');
+      setActiveTab('login');
+      setSuccessMsg('👨‍🍳 Kitchen Staff mode active');
+      setError('');
+    } else if (role === 'admin') {
+      setLoginIdentifier('admin@smartdine.com');
+      setPassword('admin123456');
+      setActiveTab('login');
+      setSuccessMsg('⚙️ Admin Portal mode active');
+      setError('');
+    }
+  }, [searchParams]);
+
   // Customer 3-Step Registration States
   // Step 1: Name + Phone -> Send OTP
   // Step 2: Enter & Verify 6-digit OTP
