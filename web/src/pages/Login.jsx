@@ -195,7 +195,7 @@ export default function Login() {
     try {
       await registerWithEmail(regName.trim(), regEmail.trim(), regPassword.trim(), 'customer');
       toast.success(`🎉 Welcome to Smart Dine, ${regName.trim()}! Account created successfully.`);
-      navigate(from);
+      navigate('/scan');
     } catch (err) {
       setError(err.message || 'Failed to complete registration.');
     } finally {
@@ -218,9 +218,19 @@ export default function Login() {
       }
 
       await loginWithEmail(finalEmail, password);
-      const userName = finalEmail.includes('kitchen') ? 'Kitchen Staff' : finalEmail.includes('admin') ? 'Admin' : 'Customer';
+      const isKitchen = finalEmail.includes('kitchen');
+      const isAdmin = finalEmail.includes('admin');
+      const userName = isKitchen ? 'Kitchen Staff' : isAdmin ? 'Admin' : 'Customer';
       toast.success(`✅ Login Successful! Welcome back, ${userName}.`);
-      navigate(from);
+
+      // Force redirect: Customer -> /scan, Kitchen -> /kitchen, Admin -> /admin
+      if (isKitchen) {
+        navigate('/kitchen');
+      } else if (isAdmin) {
+        navigate('/admin');
+      } else {
+        navigate('/scan');
+      }
     } catch (err) {
       setError(err.message || 'Invalid login credentials. Please check your email/mobile and password.');
     } finally {
