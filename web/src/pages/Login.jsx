@@ -112,7 +112,7 @@ export default function Login() {
     ? '/kitchen' 
     : roleParam === 'admin' 
     ? '/admin' 
-    : (tableParam || currentTable ? `/menu?table=${tableParam || currentTable}` : '/menu');
+    : (tableParam || currentTable ? `/menu?table=${tableParam || currentTable}` : '/scan');
   const from = location.state?.from?.pathname || defaultDestination;
 
   // OTP Countdown timer for Register

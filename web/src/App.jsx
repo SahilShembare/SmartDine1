@@ -18,6 +18,7 @@ import AdminCategories from './pages/AdminCategories';
 import AdminTables from './pages/AdminTables';
 import KitchenDashboard from './pages/KitchenDashboard';
 import Login from './pages/Login';
+import ScanTable from './pages/ScanTable';
 
 export default function App() {
   return (
@@ -56,6 +57,7 @@ export default function App() {
                 <Route path="/cart" element={<CustomerWebCart />} />
                 <Route path="/track/:orderId" element={<CustomerWebTrack />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/scan" element={<ScanTable />} />
 
                 {/* Protected Staff Routes */}
                 <Route 
