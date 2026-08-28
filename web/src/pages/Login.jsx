@@ -445,11 +445,57 @@ export default function Login() {
                 <span className="text-xs text-slate-400">New to SmartDine? </span>
                 <button
                   type="button"
-                  onClick={() => { setActiveTab('register'); setRegStep(1); }}
+                  onClick={() => { setActiveTab('register'); setRegStep(1); setError(''); setSuccessMsg(''); }}
                   className="text-xs font-bold text-emerald-400 hover:underline"
                 >
                   Create Account
                 </button>
+              </div>
+
+              {/* Kitchen & Admin Staff Login Options */}
+              <div className="pt-4 border-t border-slate-800 space-y-2.5">
+                <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 text-center">
+                  Staff & Admin Portal Login
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginIdentifier('kitchen@smartdine.com');
+                      setPassword('kitchen123456');
+                      setActiveTab('login');
+                      setError('');
+                      setSuccessMsg('👨‍🍳 Kitchen Staff credentials selected');
+                    }}
+                    className={`p-3 rounded-2xl border text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
+                      loginIdentifier.includes('kitchen')
+                        ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 shadow-glow'
+                        : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white hover:border-emerald-500/40 hover:bg-slate-800'
+                    }`}
+                  >
+                    <ChefHat className="w-4 h-4 text-emerald-400" />
+                    <span>Kitchen Staff</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginIdentifier('admin@smartdine.com');
+                      setPassword('admin123456');
+                      setActiveTab('login');
+                      setError('');
+                      setSuccessMsg('⚙️ Admin Portal credentials selected');
+                    }}
+                    className={`p-3 rounded-2xl border text-xs font-extrabold transition flex items-center justify-center gap-2 cursor-pointer shadow-sm ${
+                      loginIdentifier.includes('admin')
+                        ? 'bg-purple-500/20 border-purple-500/60 text-purple-300 shadow-glow'
+                        : 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white hover:border-purple-500/40 hover:bg-slate-800'
+                    }`}
+                  >
+                    <LayoutDashboard className="w-4 h-4 text-purple-400" />
+                    <span>Admin Portal</span>
+                  </button>
+                </div>
               </div>
             </form>
           )}

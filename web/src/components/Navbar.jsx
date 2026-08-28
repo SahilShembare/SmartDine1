@@ -18,6 +18,8 @@ export default function Navbar() {
   const location = useLocation();
 
   const isHomePage = location.pathname === '/';
+  const isLoginPage = location.pathname === '/login';
+  const hideNavActions = isHomePage || isLoginPage;
   const isCustomerRoute = location.pathname === '/menu' || 
                           location.pathname === '/cart' || 
                           location.pathname.startsWith('/track');
@@ -58,8 +60,8 @@ export default function Navbar() {
           </div>
         )}
 
-        {/* Navigation & Action buttons (Hidden on Home Page as requested) */}
-        {!isHomePage && (
+        {/* Navigation & Action buttons (Hidden on Home and Login Page) */}
+        {!hideNavActions && (
           <div className="flex items-center gap-3">
             {/* Digital Menu */}
             <Link
