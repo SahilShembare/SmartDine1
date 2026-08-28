@@ -37,6 +37,17 @@ export default function CustomerWebTrack() {
     }
   }, [orderId, orders]);
 
+  // Guaranteed 3-Second Active Sync
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const found = orders.find(o => o.id === orderId);
+      if (found) {
+        setOrder({ ...found });
+      }
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [orderId, orders]);
+
   const steps = [
     { key: 'placed', label: 'Order Received', desc: 'Sent to restaurant kitchen', icon: CheckCircle2 },
     { key: 'accepted', label: 'Order Accepted', desc: 'Chef acknowledged order', icon: Clock },

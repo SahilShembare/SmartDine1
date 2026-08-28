@@ -44,7 +44,40 @@ export function TableOrderProvider({ children }) {
     localStorage.setItem('smartdine_cart', JSON.stringify(cart));
   }, [cart]);
 
-  // Real-time synchronization
+  // Last Sync timestamp
+  const [lastSyncTime, setLastSyncTime] = useState(() => new Date().toLocaleTimeString());
+
+  // 3-Second Guaranteed Live Auto-Sync Engine (For Netlify and all client devices)
+  useEffect(() => {
+    const syncAllData = async () => {
+      try {
+        if (isFirebaseConfigured) {
+          // Sync Orders
+          const ordQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+          const ordSnap = await getDocs(ordQuery);
+          if (!ordSnap.empty) {
+            const ords = ordSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setOrders(ords);
+          }
+        } else {
+          setOrders(localStore.getOrders());
+          setMenuItems(localStore.getMenuItems());
+          setCategories(localStore.getCategories());
+          setTables(localStore.getTables());
+        }
+        const now = new Date().toLocaleTimeString();
+        setLastSyncTime(now);
+        window.dispatchEvent(new CustomEvent('smartdine_sync_tick', { detail: { time: now } }));
+      } catch (err) {
+        console.warn('Sync tick error:', err);
+      }
+    };
+
+    const intervalId = setInterval(syncAllData, 3000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  // Real-time synchronization listeners
   useEffect(() => {
     if (isFirebaseConfigured) {
       // Menu items listener
@@ -263,7 +296,8 @@ export function TableOrderProvider({ children }) {
       placeOrder,
       updateOrderStatus,
       refreshOrders,
-      latestPlacedOrderId
+      latestPlacedOrderId,
+      lastSyncTime
     }}>
       {children}
     </TableOrderContext.Provider>
