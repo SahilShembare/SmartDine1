@@ -8,17 +8,17 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: '#ecfdf5',
-          100: '#d1fae5',
-          200: '#a7f3d0',
-          300: '#6ee7b7',
-          400: '#34d399',
-          500: '#10b981',
-          600: '#059669',
-          700: '#047857',
-          800: '#065f46',
-          900: '#064e3b',
-          DEFAULT: '#10b981',
+          50: '#fff7ed',
+          100: '#ffedd5',
+          200: '#fed7aa',
+          300: '#fdba74',
+          400: '#fb923c',
+          500: '#f97316',
+          600: '#ea580c',
+          700: '#c2410c',
+          800: '#9a3412',
+          900: '#7c2d12',
+          DEFAULT: '#f97316',
         },
         dark: {
           900: '#0f172a',
@@ -31,8 +31,8 @@ export default {
         sans: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
       },
       boxShadow: {
-        'glow': '0 0 25px -5px rgba(16, 185, 129, 0.4)',
-        'glow-lg': '0 0 40px -10px rgba(16, 185, 129, 0.5)',
+        'glow': '0 0 25px -5px rgba(249, 115, 22, 0.4)',
+        'glow-lg': '0 0 40px -10px rgba(249, 115, 22, 0.5)',
       }
     },
   },

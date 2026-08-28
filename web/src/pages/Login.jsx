@@ -247,7 +247,7 @@ export default function Login() {
         
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center mx-auto shadow-glow">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center mx-auto shadow-glow">
             {roleParam === 'kitchen' ? (
               <ChefHat className="w-7 h-7 text-white" />
             ) : roleParam === 'admin' ? (
@@ -287,7 +287,7 @@ export default function Login() {
               }}
               className={`py-2.5 rounded-xl font-extrabold text-xs transition-all ${
                 activeTab === 'login'
-                  ? 'bg-emerald-600 text-white shadow-glow'
+                  ? 'bg-orange-600 text-white shadow-glow'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -303,7 +303,7 @@ export default function Login() {
               }}
               className={`py-2.5 rounded-xl font-extrabold text-xs transition-all flex items-center justify-center gap-1.5 ${
                 activeTab === 'register'
-                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-glow'
+                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -315,9 +315,9 @@ export default function Login() {
 
         {/* Register OTP Notification Banner Simulation */}
         {otpNotice && otpStep && activeTab === 'register' && (
-          <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-between gap-2 animate-bounce">
+          <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center justify-between gap-2 animate-bounce">
             <div className="flex items-center gap-2">
-              <MessageSquareCode className="w-4 h-4 shrink-0 text-emerald-400" />
+              <MessageSquareCode className="w-4 h-4 shrink-0" />
               <span>{otpNotice}</span>
             </div>
             <button
@@ -332,15 +332,15 @@ export default function Login() {
 
         {/* Forgot Password OTP Notification Banner Simulation */}
         {forgotOtpNotice && forgotOtpStep && activeTab === 'forgot' && (
-          <div className="p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-between gap-2 animate-bounce">
+          <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold flex items-center justify-between gap-2 animate-bounce">
             <div className="flex items-center gap-2">
-              <KeyRound className="w-4 h-4 shrink-0 text-emerald-400" />
+              <KeyRound className="w-4 h-4 shrink-0" />
               <span>{forgotOtpNotice}</span>
             </div>
             <button
               type="button"
               onClick={() => setUserEnteredForgotOtp(generatedForgotOtp)}
-              className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg text-[10px] font-extrabold shrink-0"
+              className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-[10px] font-extrabold shrink-0"
             >
               Autofill
             </button>
@@ -370,7 +370,7 @@ export default function Login() {
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <h2 className="text-sm font-extrabold text-white flex items-center gap-2">
-                  <KeyRound className="w-4 h-4 text-emerald-400" />
+                  <KeyRound className="w-4 h-4 text-orange-400" />
                   Forgot Password OTP Reset
                 </h2>
                 <button
@@ -403,7 +403,7 @@ export default function Login() {
                         placeholder="e.g. 9876543210 or name@example.com"
                         value={forgotIdentifier}
                         onChange={(e) => setForgotIdentifier(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
                       />
                     </div>
                   </div>
@@ -412,7 +412,7 @@ export default function Login() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+                      className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
                     >
                       <ShieldCheck className="w-4 h-4" />
                       <span>Send 6-Digit OTP Code</span>
@@ -425,7 +425,7 @@ export default function Login() {
                       onClick={handleSendRealEmailReset}
                       className="w-full py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white font-bold text-xs transition flex items-center justify-center gap-2"
                     >
-                      <Mail className="w-4 h-4 text-emerald-400" />
+                      <Mail className="w-4 h-4 text-orange-400" />
                       <span>Send Real Reset Link to Email Inbox (Gmail)</span>
                     </button>
                   </div>
@@ -448,7 +448,7 @@ export default function Login() {
                       placeholder="• • • • • •"
                       value={userEnteredForgotOtp}
                       onChange={(e) => setUserEnteredForgotOtp(e.target.value.replace(/\D/g, ''))}
-                      className="w-full py-2.5 text-center tracking-[0.5em] text-lg font-extrabold font-mono rounded-xl bg-slate-800 border-2 border-emerald-500/50 text-emerald-400 focus:outline-none focus:border-emerald-500"
+                      className="w-full py-2.5 text-center tracking-[0.5em] text-lg font-extrabold font-mono rounded-xl bg-slate-800 border-2 border-orange-500/50 text-orange-400 focus:outline-none focus:border-orange-500"
                     />
                   </div>
 
@@ -458,7 +458,7 @@ export default function Login() {
                       <button
                         type="button"
                         onClick={handleSendForgotOtp}
-                        className="text-emerald-400 font-bold hover:underline"
+                        className="text-orange-400 font-bold hover:underline"
                       >
                         Resend OTP
                       </button>
@@ -466,7 +466,7 @@ export default function Login() {
                       <button
                         type="button"
                         onClick={() => setUserEnteredForgotOtp(generatedForgotOtp)}
-                        className="text-emerald-400 font-bold hover:underline"
+                        className="text-orange-400 font-bold hover:underline"
                       >
                         Autofill ({generatedForgotOtp})
                       </button>
@@ -484,7 +484,7 @@ export default function Login() {
                         placeholder="At least 6 characters"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                        className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
                       />
                       <button
                         type="button"
@@ -507,7 +507,7 @@ export default function Login() {
                         placeholder="Re-enter new password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
                       />
                     </div>
                   </div>
@@ -515,7 +515,7 @@ export default function Login() {
                   <button
                     type="submit"
                     disabled={loading || userEnteredForgotOtp.length !== 6}
-                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 disabled:opacity-50 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{loading ? 'Updating Password...' : 'Verify OTP & Set New Password'}</span>
@@ -547,7 +547,7 @@ export default function Login() {
                         placeholder="e.g. Sahil Shembare"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
                       />
                     </div>
                   </div>
@@ -563,7 +563,7 @@ export default function Login() {
                         placeholder="10-digit mobile number (e.g. 9876543210)"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 font-mono"
                       />
                     </div>
                   </div>
@@ -577,14 +577,14 @@ export default function Login() {
                         placeholder="name@example.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
                       />
                     </div>
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
                   >
                     <ShieldCheck className="w-4 h-4" />
                     <span>Send Verification OTP</span>
@@ -595,7 +595,7 @@ export default function Login() {
                 /* Step 2: Enter 6-Digit OTP */
                 <form onSubmit={handleVerifyOtpAndRegister} className="space-y-4">
                   <div className="text-center space-y-1">
-                    <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-2 border border-emerald-500/30">
+                    <div className="w-10 h-10 rounded-full bg-orange-500/20 text-orange-400 flex items-center justify-center mx-auto mb-2 border border-orange-500/30">
                       <KeyRound className="w-5 h-5" />
                     </div>
                     <h3 className="text-sm font-extrabold text-white">Enter 6-Digit OTP</h3>
@@ -612,7 +612,7 @@ export default function Login() {
                       placeholder="• • • • • •"
                       value={userEnteredOtp}
                       onChange={(e) => setUserEnteredOtp(e.target.value.replace(/\D/g, ''))}
-                      className="w-full py-3 text-center tracking-[0.6em] text-xl font-extrabold font-mono rounded-2xl bg-slate-800 border-2 border-emerald-500/50 text-emerald-400 focus:outline-none focus:border-emerald-500"
+                      className="w-full py-3 text-center tracking-[0.6em] text-xl font-extrabold font-mono rounded-2xl bg-slate-800 border-2 border-orange-500/50 text-orange-400 focus:outline-none focus:border-orange-500"
                     />
                   </div>
 
@@ -622,7 +622,7 @@ export default function Login() {
                       <button
                         type="button"
                         onClick={handleSendOtp}
-                        className="text-emerald-400 font-bold hover:underline"
+                        className="text-orange-400 font-bold hover:underline"
                       >
                         Resend OTP
                       </button>
@@ -630,7 +630,7 @@ export default function Login() {
                       <button
                         type="button"
                         onClick={() => setUserEnteredOtp(generatedOtp)}
-                        className="text-emerald-400 font-bold hover:underline"
+                        className="text-orange-400 font-bold hover:underline"
                       >
                         Autofill OTP ({generatedOtp})
                       </button>
@@ -640,7 +640,7 @@ export default function Login() {
                   <button
                     type="submit"
                     disabled={loading || userEnteredOtp.length !== 6}
-                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+                    className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 disabled:opacity-50 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
                   >
                     <CheckCircle2 className="w-4 h-4" />
                     <span>{loading ? 'Verifying...' : 'Verify OTP & Enter Menu'}</span>
@@ -673,7 +673,7 @@ export default function Login() {
                         setEmail('kitchen@smartdine.com');
                         setPassword('kitchen123456');
                       }}
-                      className="py-1.5 px-2 rounded-lg bg-teal-600/30 hover:bg-teal-600/50 text-teal-300 border border-teal-500/30 text-xs font-semibold transition"
+                      className="py-1.5 px-2 rounded-lg bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 border border-amber-500/30 text-xs font-semibold transition"
                     >
                       👨‍🍳 Kitchen Staff
                     </button>
@@ -683,7 +683,7 @@ export default function Login() {
                         setEmail('admin@smartdine.com');
                         setPassword('admin123456');
                       }}
-                      className="py-1.5 px-2 rounded-lg bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition"
+                      className="py-1.5 px-2 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-300 border border-purple-500/30 text-xs font-semibold transition"
                     >
                       👑 Admin Manager
                     </button>
@@ -707,7 +707,7 @@ export default function Login() {
                     placeholder={isCustomer ? 'e.g. 9876543210 or name@example.com' : 'name@smartdine.com'}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 font-medium"
                   />
                 </div>
               </div>
@@ -725,7 +725,7 @@ export default function Login() {
                         setForgotOtpStep(false);
                         setForgotIdentifier(email);
                       }}
-                      className="text-[11px] text-emerald-400 hover:text-emerald-300 font-bold hover:underline"
+                      className="text-[11px] text-orange-400 hover:text-orange-300 font-bold hover:underline"
                     >
                       Forgot Password?
                     </button>
@@ -739,7 +739,7 @@ export default function Login() {
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
                   />
                   <button
                     type="button"
@@ -754,7 +754,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
               >
                 <span>{loading ? 'Authenticating...' : `Sign In to ${roleParam === 'kitchen' ? 'Kitchen Station' : roleParam === 'admin' ? 'Admin Panel' : 'Customer Menu'}`}</span>
                 <ArrowRight className="w-3.5 h-3.5" />

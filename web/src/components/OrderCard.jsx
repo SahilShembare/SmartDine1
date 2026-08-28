@@ -55,7 +55,7 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false }) {
       {/* Header */}
       <div className="p-4 border-b border-slate-800/80 bg-slate-800/30 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="px-3 py-1.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-extrabold text-base tracking-wide flex items-center gap-1.5">
+          <div className="px-3 py-1.5 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-400 font-extrabold text-base tracking-wide flex items-center gap-1.5">
             <span>Table {order.tableNumber || 'N/A'}</span>
           </div>
           <div>
@@ -108,7 +108,7 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false }) {
                 </span>
                 <div>
                   <div className="font-semibold text-slate-200">
-                    <span className="text-emerald-400 font-bold mr-1.5">{item.quantity}x</span>
+                    <span className="text-orange-400 font-bold mr-1.5">{item.quantity}x</span>
                     {item.name}
                   </div>
                   {item.instructions && (
@@ -177,7 +177,7 @@ export default function OrderCard({ order, onUpdateStatus, readOnly = false }) {
               <>
                 <button
                   onClick={() => onUpdateStatus(order.id, 'preparing')}
-                  className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-semibold text-xs shadow-glow transition active:scale-95"
+                  className="col-span-2 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-semibold text-xs shadow-glow transition active:scale-95"
                 >
                   <ChefHat className="w-3.5 h-3.5" />
                   Start Preparing

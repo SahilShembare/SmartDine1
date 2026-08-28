@@ -14,9 +14,9 @@ import {
   Receipt, 
   Phone, 
   User, 
-  Sparkles, 
-  ShieldCheck, 
-  CreditCard 
+  Sparkles,
+  ShieldCheck,
+  CreditCard
 } from 'lucide-react';
 
 export default function CustomerWebCart() {
@@ -83,7 +83,7 @@ export default function CustomerWebCart() {
   if (!currentUser) {
     return (
       <div className="min-h-[calc(100vh-4rem)] bg-slate-950 flex flex-col items-center justify-center p-4 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mb-4 shadow-glow">
+        <div className="w-16 h-16 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center mb-4 shadow-glow">
           <User className="w-8 h-8" />
         </div>
         <h2 className="text-xl font-extrabold text-white">Login Required to View Cart</h2>
@@ -93,7 +93,7 @@ export default function CustomerWebCart() {
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <Link
             to="/login"
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold text-xs shadow-glow transition"
+            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white font-extrabold text-xs shadow-glow transition"
           >
             Sign In / Register
           </Link>
@@ -114,7 +114,7 @@ export default function CustomerWebCart() {
         </p>
         <Link
           to="/menu"
-          className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-bold text-sm shadow-glow transition active:scale-95 flex items-center gap-2"
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white font-bold text-sm shadow-glow transition active:scale-95 flex items-center gap-2"
         >
           <UtensilsCrossed className="w-4 h-4" />
           <span>Browse Menu</span>
@@ -137,7 +137,7 @@ export default function CustomerWebCart() {
             <span>Back to Menu</span>
           </Link>
 
-          <div className="px-3 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-extrabold text-xs">
+          <div className="px-3 py-1 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-400 font-extrabold text-xs">
             TABLE {currentTable || '01'}
           </div>
         </div>
@@ -157,7 +157,7 @@ export default function CustomerWebCart() {
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-800/60 shadow-lg">
           <div className="p-4 bg-slate-800/30 flex items-center justify-between">
             <h2 className="font-extrabold text-sm text-white flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4 text-emerald-400" />
+              <ShoppingBag className="w-4 h-4 text-orange-400" />
               Order Items ({cart.length})
             </h2>
             <button
@@ -190,11 +190,11 @@ export default function CustomerWebCart() {
                     </span>
                     <h4 className="font-bold text-sm text-white">{item.name}</h4>
                   </div>
-                  <div className="text-xs font-semibold text-emerald-400 mt-0.5">
+                  <div className="text-xs font-semibold text-orange-400 mt-0.5">
                     ₹{item.price} each
                   </div>
                   {item.instructions && (
-                    <p className="text-[11px] text-slate-400 italic mt-0.5">
+                    <p className="text-[11px] text-amber-300/80 italic mt-0.5">
                       "{item.instructions}"
                     </p>
                   )}
@@ -226,7 +226,7 @@ export default function CustomerWebCart() {
         {/* Customer Details Form */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-lg">
           <h3 className="font-bold text-sm text-white flex items-center gap-2">
-            <User className="w-4 h-4 text-emerald-400" />
+            <User className="w-4 h-4 text-orange-400" />
             Dine-In Customer Details
           </h3>
 
@@ -238,7 +238,7 @@ export default function CustomerWebCart() {
                 placeholder="e.g. Rahul / Priya"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
               />
             </div>
             <div>
@@ -248,7 +248,7 @@ export default function CustomerWebCart() {
                 placeholder="+91 98765 43210"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
               />
             </div>
           </div>
@@ -260,7 +260,7 @@ export default function CustomerWebCart() {
               placeholder="e.g. Please bring water, less chili in curry"
               value={orderNotes}
               onChange={(e) => setOrderNotes(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+              className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
             />
           </div>
 
@@ -274,7 +274,7 @@ export default function CustomerWebCart() {
                   onClick={() => setPaymentMethod(m)}
                   className={`p-2.5 rounded-xl text-xs font-semibold border text-center transition ${
                     paymentMethod === m 
-                      ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-sm' 
+                      ? 'bg-orange-500/20 border-orange-500 text-orange-400' 
                       : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'
                   }`}
                 >
@@ -288,7 +288,7 @@ export default function CustomerWebCart() {
         {/* Bill Summary */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-3 shadow-lg">
           <h3 className="font-bold text-sm text-white flex items-center gap-2">
-            <Receipt className="w-4 h-4 text-emerald-400" />
+            <Receipt className="w-4 h-4 text-orange-400" />
             Bill Details
           </h3>
 
@@ -303,7 +303,7 @@ export default function CustomerWebCart() {
             </div>
             <div className="pt-2 border-t border-slate-800 flex justify-between text-base font-extrabold text-white">
               <span>Grand Total</span>
-              <span className="text-emerald-400 font-extrabold">₹{cartTotal.toFixed(2)}</span>
+              <span className="text-orange-400">₹{cartTotal.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -311,7 +311,7 @@ export default function CustomerWebCart() {
         {/* Place Order CTA */}
         <button
           onClick={() => setShowConfirmModal(true)}
-          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-base shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+          className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-base shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
         >
           <CheckCircle2 className="w-5 h-5" />
           <span>Confirm & Place Order (₹{cartTotal.toFixed(0)})</span>
@@ -324,7 +324,7 @@ export default function CustomerWebCart() {
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl p-5 space-y-4">
             <div className="text-center space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto shadow-glow">
+              <div className="w-12 h-12 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/40 flex items-center justify-center mx-auto">
                 <UtensilsCrossed className="w-6 h-6" />
               </div>
               <h3 className="font-extrabold text-lg text-white">Send Order to Kitchen?</h3>
@@ -345,7 +345,7 @@ export default function CustomerWebCart() {
                 type="button"
                 disabled={loading}
                 onClick={handlePlaceOrder}
-                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-xs font-extrabold text-white shadow-glow"
+                className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-xs font-extrabold text-white shadow-glow"
               >
                 {loading ? 'Sending...' : 'Yes, Order Now'}
               </button>

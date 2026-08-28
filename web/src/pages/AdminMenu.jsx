@@ -159,7 +159,7 @@ export default function AdminMenu() {
 
           <button
             onClick={handleOpenAdd}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-sm shadow-glow transition active:scale-95"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-semibold text-sm shadow-glow transition active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Dish</span>
@@ -176,7 +176,7 @@ export default function AdminMenu() {
               placeholder="Search dishes..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+              className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-orange-500"
             />
           </div>
 
@@ -184,7 +184,7 @@ export default function AdminMenu() {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full md:w-48 px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500"
+            className="w-full md:w-48 px-3 py-2 rounded-xl bg-slate-800/80 border border-slate-700 text-sm text-white focus:outline-none focus:border-orange-500"
           >
             <option value="all">All Categories ({menuItems.length})</option>
             {categories.map(cat => (
@@ -197,7 +197,7 @@ export default function AdminMenu() {
             <button
               onClick={() => setVegFilter('all')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                vegFilter === 'all' ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
+                vegFilter === 'all' ? 'bg-orange-500 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'
               }`}
             >
               All
@@ -262,9 +262,9 @@ export default function AdminMenu() {
 
                 {/* Popular Badge */}
                 {item.popular && (
-                  <div className="absolute top-3 right-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 shadow-md">
-                    <Flame className="w-3 h-3 text-white" />
-                    Bestseller
+                  <div className="absolute top-3 right-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 shadow-md">
+                    <Flame className="w-3 h-3" />
+                    BESTSELLER
                   </div>
                 )}
 
@@ -362,8 +362,8 @@ export default function AdminMenu() {
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Garlic Naan"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="e.g. Paneer Butter Masala"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-orange-500"
                 />
               </div>
 
@@ -373,12 +373,11 @@ export default function AdminMenu() {
                   <input
                     type="number"
                     required
-                    min="0"
-                    step="1"
+                    min="1"
                     value={formData.price}
                     onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                    placeholder="180"
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    placeholder="280"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-orange-500"
                   />
                 </div>
                 <div>
@@ -386,10 +385,10 @@ export default function AdminMenu() {
                   <select
                     value={formData.categoryId}
                     onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-orange-500"
                   >
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                 </div>
@@ -401,8 +400,8 @@ export default function AdminMenu() {
                   type="url"
                   value={formData.imageUrl}
                   onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  placeholder="https://images.unsplash.com/photo-..."
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-orange-500"
                 />
               </div>
 
@@ -412,8 +411,8 @@ export default function AdminMenu() {
                   rows="2"
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Fresh and delicious..."
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="Appetizing description of ingredients, cooking style, and flavors..."
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-orange-500"
                 />
               </div>
 
@@ -424,7 +423,7 @@ export default function AdminMenu() {
                   value={formData.ingredients}
                   onChange={(e) => setFormData({ ...formData, ingredients: e.target.value })}
                   placeholder="Paneer, Cashew cream, Butter, Kasturi methi"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-orange-500"
                 />
               </div>
 
@@ -435,7 +434,7 @@ export default function AdminMenu() {
                     type="checkbox"
                     checked={formData.isVeg}
                     onChange={(e) => setFormData({ ...formData, isVeg: e.target.checked })}
-                    className="rounded text-emerald-500 focus:ring-0"
+                    className="rounded text-orange-500 focus:ring-0"
                   />
                   <span className="text-xs font-medium text-slate-200">Is Veg</span>
                 </label>
@@ -445,7 +444,7 @@ export default function AdminMenu() {
                     type="checkbox"
                     checked={formData.popular}
                     onChange={(e) => setFormData({ ...formData, popular: e.target.checked })}
-                    className="rounded text-emerald-500 focus:ring-0"
+                    className="rounded text-orange-500 focus:ring-0"
                   />
                   <span className="text-xs font-medium text-slate-200">Popular</span>
                 </label>
@@ -455,7 +454,7 @@ export default function AdminMenu() {
                     type="checkbox"
                     checked={formData.available}
                     onChange={(e) => setFormData({ ...formData, available: e.target.checked })}
-                    className="rounded text-emerald-500 focus:ring-0"
+                    className="rounded text-orange-500 focus:ring-0"
                   />
                   <span className="text-xs font-medium text-slate-200">In Stock</span>
                 </label>
@@ -472,7 +471,7 @@ export default function AdminMenu() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs shadow-glow transition active:scale-95"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-semibold text-xs shadow-glow transition active:scale-95"
                 >
                   {editingItem ? 'Save Changes' : 'Create Dish'}
                 </button>
