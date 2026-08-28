@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTableOrder } from '../context/TableOrderContext';
+import confetti from 'canvas-confetti';
 import { 
   LogIn, 
   UserPlus, 
@@ -14,23 +15,45 @@ import {
   UtensilsCrossed,
   ShieldCheck,
   Zap,
-  X
+  X,
+  Bell,
+  CheckCircle2,
+  Droplets,
+  Receipt,
+  FileText,
+  HelpCircle,
+  Percent,
+  Gift,
+  Heart,
+  Quote
 } from 'lucide-react';
 
 export default function Home() {
   const navigate = useNavigate();
-  const { menuItems } = useTableOrder();
+  const { menuItems, currentTable, addToCart } = useTableOrder();
   
   // PWA Install prompt state
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallSuccess, setShowInstallSuccess] = useState(false);
   const [showIosGuide, setShowIosGuide] = useState(false);
 
-  // Filter top dishes (bestsellers / popular or top 6)
-  const [activeFilter, setActiveFilter] = useState('all'); // all, veg, non-veg
+  // Top Dishes Filter
+  const [activeFilter, setActiveFilter] = useState('all');
   const [previewDish, setPreviewDish] = useState(null);
 
-  React.useEffect(() => {
+  // Feature 1: Food Mood Matcher State
+  const [selectedMood, setSelectedMood] = useState(null);
+  const [moodRecommendation, setMoodRecommendation] = useState(null);
+  const [isSpinning, setIsSpinning] = useState(false);
+
+  // Feature 2: Call Waiter State
+  const [isWaiterModalOpen, setIsWaiterModalOpen] = useState(false);
+  const [waiterRequestSent, setWaiterRequestSent] = useState(null);
+
+  // Feature 4: Customer Reviews Carousel
+  const [reviewIndex, setReviewIndex] = useState(0);
+
+  useEffect(() => {
     const handlePrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -58,11 +81,11 @@ export default function Home() {
     }
   };
 
+  // Top Dishes (Strictly 5, No Price shown)
   const topDishes = (menuItems && menuItems.length > 0 ? menuItems : [
     {
       id: 'top-1',
       name: 'Butter Chicken Special',
-      price: 340,
       isVeg: false,
       popular: true,
       description: 'Tender chicken simmered in rich velvety makhani gravy with aromatic spices and butter.',
@@ -72,7 +95,6 @@ export default function Home() {
     {
       id: 'top-2',
       name: 'Paneer Butter Masala',
-      price: 290,
       isVeg: true,
       popular: true,
       description: 'Fresh cottage cheese cubes in luscious tomato gravy with fresh cream and butter.',
@@ -82,7 +104,6 @@ export default function Home() {
     {
       id: 'top-3',
       name: 'Hyderabadi Dum Biryani',
-      price: 320,
       isVeg: false,
       popular: true,
       description: 'Fragrant basmati rice cooked on dum with marinated tender cuts, saffron, and fried onions.',
@@ -92,7 +113,6 @@ export default function Home() {
     {
       id: 'top-4',
       name: 'Crispy Garlic Butter Naan',
-      price: 65,
       isVeg: true,
       popular: true,
       description: 'Clay tandoor baked leavened bread brushed with garlic butter and fresh coriander.',
@@ -102,22 +122,11 @@ export default function Home() {
     {
       id: 'top-5',
       name: 'Dal Makhani Bukhara',
-      price: 240,
       isVeg: true,
       popular: true,
       description: 'Slow-simmered black lentils and kidney beans cooked overnight with white butter & cream.',
       imageUrl: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600&auto=format&fit=crop&q=80',
       ingredients: 'Black Urad, Rajma, White Butter, Fresh Cream'
-    },
-    {
-      id: 'top-6',
-      name: 'Royal Shahi Tukda',
-      price: 180,
-      isVeg: true,
-      popular: true,
-      description: 'Crispy golden bread soaked in saffron cardamom syrup topped with rabri and silver vark.',
-      imageUrl: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&auto=format&fit=crop&q=80',
-      ingredients: 'Bread, Rabri, Saffron, Pistachios, Cardamom'
     }
   ]).filter(item => {
     if (activeFilter === 'veg') return item.isVeg === true;
@@ -125,20 +134,69 @@ export default function Home() {
     return true;
   }).slice(0, 5);
 
+  // Food Mood Matcher Options
+  const moods = [
+    { key: 'spicy', label: '🔥 Spicy & Fiery', dishName: 'Hyderabadi Dum Biryani', tag: 'Aromatic & Spicy' },
+    { key: 'cheesy', label: '🧀 Creamy & Cheesy', dishName: 'Paneer Butter Masala', tag: 'Velvety Rich' },
+    { key: 'crispy', label: '🧄 Crispy & Fresh', dishName: 'Crispy Garlic Butter Naan', tag: 'Tandoor Sizzling' },
+    { key: 'royal', label: '👑 Royal Feast', dishName: 'Butter Chicken Special', tag: 'Chef Signature' },
+    { key: 'sweet', label: '🍨 Sweet Indulgence', dishName: 'Royal Shahi Tukda', tag: 'Mouthwatering Sweet' }
+  ];
+
+  const handlePickMood = (mood) => {
+    setSelectedMood(mood);
+    setIsSpinning(true);
+    setTimeout(() => {
+      setIsSpinning(false);
+      const foundDish = menuItems.find(m => m.name.toLowerCase().includes(mood.dishName.toLowerCase())) || topDishes[0];
+      setMoodRecommendation({ ...foundDish, moodLabel: mood.label, tag: mood.tag });
+      try {
+        confetti({
+          particleCount: 60,
+          spread: 60,
+          origin: { y: 0.7 }
+        });
+      } catch {}
+    }, 600);
+  };
+
+  // Call Waiter handler
+  const handleCallWaiter = (serviceType) => {
+    setWaiterRequestSent(serviceType);
+    setTimeout(() => {
+      setWaiterRequestSent(null);
+      setIsWaiterModalOpen(false);
+    }, 3000);
+  };
+
+  // Real Dining Reviews
+  const reviews = [
+    { name: 'Rohit Sharma', text: 'Loved the fast QR ordering! Butter Chicken was mindblowing and served in 12 minutes.', table: 'Table 04', stars: 5 },
+    { name: 'Pooja Verma', text: 'No waiting for the waiter, order customization is so easy directly from the phone. 10/10 service.', table: 'Table 08', stars: 5 },
+    { name: 'Amit Kulkarni', text: 'Crispy Garlic Naan with Dal Makhani is an absolute must-try! Seamless dining experience.', table: 'Table 02', stars: 5 }
+  ];
+
+  useEffect(() => {
+    const reviewTimer = setInterval(() => {
+      setReviewIndex(prev => (prev + 1) % reviews.length);
+    }, 4500);
+    return () => clearInterval(reviewTimer);
+  }, [reviews.length]);
+
   return (
-    <div className="relative min-h-screen bg-transparent text-slate-100">
+    <div className="relative min-h-screen bg-transparent text-slate-100 pb-20">
       
       {/* 1. HERO SECTION */}
       <section className="relative min-h-[85vh] flex flex-col justify-center items-center overflow-hidden px-4 sm:px-6">
         
-        {/* Background Image: Cozy Warm Restaurant Interior */}
+        {/* Background Image: User Uploaded Warm Cafe/Restaurant Interior */}
         <div className="absolute inset-0 z-0">
           <img
             src="/restaurant-bg.jpg"
             alt="SmartDine Restaurant Interior"
             className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000"
           />
-          {/* Cinematic dark overlay for crystal-clear readability */}
+          {/* Cinematic dark overlay */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/50 to-slate-950/95"></div>
         </div>
 
@@ -164,7 +222,7 @@ export default function Home() {
             QR Based Smart Restaurant Ordering System
           </p>
 
-          {/* 2 Main Action Option Buttons (Matching exact requested design) */}
+          {/* 2 Main Action Option Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 max-w-md mx-auto">
             
             {/* Option 1: Login (Amber / Yellow button) */}
@@ -198,7 +256,7 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Feature Badge Highlights */}
+          {/* Quick Stats Badges */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-md mx-auto pt-4 text-[11px] sm:text-xs text-slate-300 font-semibold">
             <div className="p-2.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-emerald-400" />
@@ -210,40 +268,104 @@ export default function Home() {
             </div>
           </div>
 
-          {/* iOS Guide Modal */}
-          {showIosGuide && (
-            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl animate-in zoom-in-95">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-2xl">
-                  📲
-                </div>
-                <h3 className="text-lg font-extrabold text-white">Install on iPhone / iPad</h3>
-                <ol className="text-xs text-slate-300 text-left space-y-2 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
-                  <li className="flex items-center gap-2">
-                    <span className="font-bold text-amber-400">1.</span> Tap the <strong>Share</strong> button (box with arrow) in Safari.
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="font-bold text-amber-400">2.</span> Scroll down and tap <strong>"Add to Home Screen"</strong>.
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="font-bold text-amber-400">3.</span> Tap <strong>Add</strong> to use SmartDine like a native app!
-                  </li>
-                </ol>
-                <button
-                  onClick={() => setShowIosGuide(false)}
-                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition"
-                >
-                  Got It!
-                </button>
-              </div>
-            </div>
-          )}
-
         </div>
 
       </section>
 
-      {/* 2. TOP SIGNATURE DISHES SHOWCASE */}
+      {/* FEATURE 3: TODAY'S CHEF DAILY SPECIAL & LIMITED OFFER BANNER */}
+      <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 -mt-8">
+        <div className="rounded-3xl bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 p-5 sm:p-6 text-white shadow-glow-lg border-2 border-white/20 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4 text-center sm:text-left">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shrink-0 shadow-inner">
+              🎁
+            </div>
+            <div>
+              <span className="inline-block text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded-full bg-white text-orange-700 mb-1">
+                TODAY'S CHEF OFFER
+              </span>
+              <h3 className="font-extrabold text-base sm:text-lg">
+                Complimentary Hot Gulab Jamun on Orders Above ₹499!
+              </h3>
+              <p className="text-xs text-orange-100">
+                Freshly fried & soaked in aromatic saffron syrup • Auto applied at table billing
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate('/login?mode=login')}
+            className="px-5 py-2.5 rounded-2xl bg-white text-orange-700 hover:bg-orange-50 font-black text-xs shadow-lg transition active:scale-95 whitespace-nowrap flex items-center gap-1.5 cursor-pointer"
+          >
+            <span>Claim Offer</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </section>
+
+      {/* FEATURE 1: 🎰 FOOD MOOD MATCHER / RECOMMENDATION PICKER */}
+      <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 pt-16 space-y-6">
+        <div className="rounded-3xl bg-slate-900/90 border border-slate-800 p-6 sm:p-8 space-y-6 shadow-2xl backdrop-blur-md">
+          <div className="text-center space-y-1.5">
+            <span className="text-xs font-bold uppercase tracking-widest text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+              🎰 Confused What To Order?
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
+              Pick Your Mood — Chef Will Match Your Dish!
+            </h2>
+            <p className="text-xs text-slate-400">
+              Tap a craving below to get an instant tailored recommendation with recipe secrets
+            </p>
+          </div>
+
+          {/* Mood Selector Buttons */}
+          <div className="flex items-center justify-center gap-2.5 flex-wrap">
+            {moods.map((m) => (
+              <button
+                key={m.key}
+                onClick={() => handlePickMood(m)}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-extrabold transition-all transform active:scale-95 cursor-pointer border ${
+                  selectedMood?.key === m.key
+                    ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-[0_0_20px_rgba(251,191,36,0.5)] scale-105'
+                    : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:border-amber-400/50 hover:text-white'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Result Card */}
+          {moodRecommendation && (
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-amber-500/15 via-slate-950 to-slate-900 border border-amber-400/40 animate-in zoom-in-95 duration-300 flex flex-col sm:flex-row items-center gap-4">
+              <img
+                src={moodRecommendation.imageUrl}
+                alt={moodRecommendation.name}
+                className="w-24 h-24 rounded-2xl object-cover border border-amber-400/40 shrink-0 shadow-lg"
+              />
+              <div className="flex-1 text-center sm:text-left space-y-1">
+                <div className="flex items-center justify-center sm:justify-start gap-2">
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400 text-slate-950">
+                    {moodRecommendation.moodLabel} Match!
+                  </span>
+                  <span className="text-xs text-amber-300 font-bold">⭐ 4.9 Rating</span>
+                </div>
+                <h4 className="font-extrabold text-lg text-white">{moodRecommendation.name}</h4>
+                <p className="text-xs text-slate-300 line-clamp-2">{moodRecommendation.description}</p>
+              </div>
+
+              <button
+                onClick={() => navigate('/login?mode=login')}
+                className="px-5 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs shadow-glow transition active:scale-95 whitespace-nowrap cursor-pointer flex items-center gap-1.5"
+              >
+                <span>Order This Dish</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 2. TOP SIGNATURE DISHES SHOWCASE (STRICTLY TOP 5, NO PRICES) */}
       <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-8">
         
         {/* Section Header with Veg Filter Pills */}
@@ -254,7 +376,7 @@ export default function Home() {
               Chef's Special Recommendations
             </div>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
-              <span>Top Popular Dishes</span>
+              <span>Top 5 Signature Dishes</span>
               <Sparkles className="w-6 h-6 text-amber-400" />
             </h2>
             <p className="text-xs sm:text-sm text-slate-400 mt-1">
@@ -272,7 +394,7 @@ export default function Home() {
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              All Bestsellers
+              All Top 5
             </button>
             <button
               onClick={() => setActiveFilter('veg')}
@@ -382,65 +504,138 @@ export default function Home() {
 
       </section>
 
-      {/* 3. UNIQUE 3-STEP "HOW SMARTDINE WORKS" */}
-      <section className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="rounded-3xl bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-slate-900/90 border border-slate-800 p-8 sm:p-10 shadow-2xl backdrop-blur-xl">
-          
-          <div className="text-center max-w-2xl mx-auto space-y-2 mb-10">
-            <span className="text-xs font-extrabold uppercase tracking-widest text-orange-400 bg-orange-500/10 px-3 py-1 rounded-full border border-orange-500/20">
-              Effortless Dining Experience
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-white">
-              How SmartDine Works in 3 Quick Steps
-            </h2>
+      {/* FEATURE 4: 💬 LIVE DINING GUEST REVIEWS CAROUSEL */}
+      <section className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 py-10">
+        <div className="rounded-3xl bg-gradient-to-br from-slate-900/90 to-slate-900/95 border border-slate-800 p-6 sm:p-8 space-y-6 shadow-2xl relative overflow-hidden">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-amber-400/20 text-amber-400 border border-amber-400/30">
+                <Quote className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-lg text-white">What Diners Are Saying</h3>
+                <p className="text-xs text-slate-400">Verified dining guest feedback</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-amber-400 font-bold text-sm bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20">
+              <Star className="w-4 h-4 fill-current" />
+              <span>4.9 / 5.0</span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* Step 1 */}
-            <div className="p-6 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-4 relative group hover:border-orange-500/40 transition">
-              <div className="w-12 h-12 rounded-2xl bg-orange-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400 font-black text-lg">
-                <QrCode className="w-6 h-6" />
-              </div>
-              <h3 className="font-extrabold text-lg text-white">1. Scan Table QR</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Scan the standee QR code placed at your dining table with any mobile camera to view the live digital menu instantly.
-              </p>
+          <div className="py-2 space-y-3">
+            <p className="text-base text-slate-200 italic leading-relaxed">
+              "{reviews[reviewIndex].text}"
+            </p>
+            <div className="flex items-center justify-between text-xs pt-2">
+              <span className="font-bold text-white flex items-center gap-1.5">
+                <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500" />
+                {reviews[reviewIndex].name}
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full bg-slate-800 text-amber-300 font-semibold">
+                {reviews[reviewIndex].table}
+              </span>
             </div>
-
-            {/* Step 2 */}
-            <div className="p-6 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-4 relative group hover:border-amber-500/40 transition">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-black text-lg">
-                <UtensilsCrossed className="w-6 h-6" />
-              </div>
-              <h3 className="font-extrabold text-lg text-white">2. Select & Customize</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Explore mouth-watering signature dishes with photos, customize spice levels, and send directly to the live kitchen station.
-              </p>
-            </div>
-
-            {/* Step 3 */}
-            <div className="p-6 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-4 relative group hover:border-emerald-500/40 transition">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 font-black text-lg">
-                <ChefHat className="w-6 h-6" />
-              </div>
-              <h3 className="font-extrabold text-lg text-white">3. Track & Savor</h3>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Watch real-time live cooking updates as chefs prepare your food, served freshly sizzling right to your table number!
-              </p>
-            </div>
-
           </div>
 
+          {/* Dots Indicator */}
+          <div className="flex justify-center gap-1.5 pt-2">
+            {reviews.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setReviewIndex(i)}
+                className={`h-2 rounded-full transition-all ${
+                  reviewIndex === i ? 'w-6 bg-amber-400' : 'w-2 bg-slate-700'
+                }`}
+              />
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* 4. DISH PREVIEW POPUP MODAL */}
+      {/* FEATURE 2: 🛎️ FLOATING CALL WAITER BUTTON & MODAL */}
+      <div className="fixed bottom-20 sm:bottom-6 right-6 z-40">
+        <button
+          onClick={() => setIsWaiterModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black text-xs shadow-glow-lg border-2 border-white/20 transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
+        >
+          <Bell className="w-4 h-4 animate-bounce" />
+          <span>Call Waiter</span>
+        </button>
+      </div>
+
+      {/* Call Waiter Modal */}
+      {isWaiterModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-5 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
+                  <Bell className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-white">Table Service Assistance</h3>
+                  <p className="text-[11px] text-slate-400">Table {currentTable || '01'}</p>
+                </div>
+              </div>
+              <button onClick={() => setIsWaiterModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {waiterRequestSent ? (
+              <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-center space-y-2">
+                <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-400 animate-bounce" />
+                <h4 className="font-bold text-sm">Request Sent to Captain!</h4>
+                <p className="text-xs text-slate-300">Staff is arriving at Table {currentTable || '01'} with {waiterRequestSent}.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  onClick={() => handleCallWaiter('Drinking Water')}
+                  className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left space-y-1 transition active:scale-95 cursor-pointer"
+                >
+                  <Droplets className="w-5 h-5 text-blue-400" />
+                  <div className="font-extrabold text-xs text-white">Water</div>
+                  <div className="text-[10px] text-slate-400">Regular / Chilled</div>
+                </button>
+
+                <button
+                  onClick={() => handleCallWaiter('Extra Cutlery & Napkins')}
+                  className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left space-y-1 transition active:scale-95 cursor-pointer"
+                >
+                  <FileText className="w-5 h-5 text-amber-400" />
+                  <div className="font-extrabold text-xs text-white">Napkins</div>
+                  <div className="text-[10px] text-slate-400">Tissues & Spoons</div>
+                </button>
+
+                <button
+                  onClick={() => handleCallWaiter('Bill / Check Request')}
+                  className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left space-y-1 transition active:scale-95 cursor-pointer"
+                >
+                  <Receipt className="w-5 h-5 text-emerald-400" />
+                  <div className="font-extrabold text-xs text-white">Ask for Bill</div>
+                  <div className="text-[10px] text-slate-400">Cash / UPI / Card</div>
+                </button>
+
+                <button
+                  onClick={() => handleCallWaiter('Captain Table Assistance')}
+                  className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left space-y-1 transition active:scale-95 cursor-pointer"
+                >
+                  <HelpCircle className="w-5 h-5 text-purple-400" />
+                  <div className="font-extrabold text-xs text-white">Call Captain</div>
+                  <div className="text-[10px] text-slate-400">General Support</div>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* DISH PREVIEW POPUP MODAL */}
       {previewDish && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            
-            {/* Modal Image */}
             <div className="relative h-60 w-full overflow-hidden bg-slate-950">
               <img
                 src={previewDish.imageUrl}
@@ -450,7 +645,7 @@ export default function Home() {
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
               <button
                 onClick={() => setPreviewDish(null)}
-                className="absolute top-4 right-4 p-2 rounded-full bg-black/60 text-white hover:bg-black transition"
+                className="absolute top-4 right-4 p-2 rounded-full bg-black/60 text-white hover:bg-black transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -468,7 +663,6 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Modal Content */}
             <div className="p-6 space-y-4">
               <div>
                 <h3 className="text-xl font-extrabold text-white">{previewDish.name}</h3>
@@ -485,7 +679,7 @@ export default function Home() {
               <div className="pt-2 flex items-center gap-3">
                 <button
                   onClick={() => setPreviewDish(null)}
-                  className="flex-1 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition"
+                  className="flex-1 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition cursor-pointer"
                 >
                   Close
                 </button>
@@ -494,14 +688,13 @@ export default function Home() {
                     setPreviewDish(null);
                     navigate('/login?mode=login');
                   }}
-                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-extrabold shadow-glow transition flex items-center justify-center gap-1.5"
+                  className="flex-1 py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-extrabold shadow-glow transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <span>Sign In to Order</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
-
           </div>
         </div>
       )}

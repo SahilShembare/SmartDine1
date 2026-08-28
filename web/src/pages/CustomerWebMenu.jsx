@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useTableOrder } from '../context/TableOrderContext';
 import { useAuth } from '../context/AuthContext';
+import { getAiRecommendation } from '../utils/aiRecommender';
+import confetti from 'canvas-confetti';
 import { 
   Search, 
   Flame, 
@@ -18,7 +20,9 @@ import {
   Info,
   LogIn,
   Lock,
-  UserCheck
+  UserCheck,
+  Bot,
+  Zap
 } from 'lucide-react';
 
 export default function CustomerWebMenu() {
@@ -43,6 +47,9 @@ export default function CustomerWebMenu() {
   const [selectedFood, setSelectedFood] = useState(null);
   const [qty, setQty] = useState(1);
   const [notes, setNotes] = useState('');
+
+  // AI Recommendation State
+  const [aiRecommendation, setAiRecommendation] = useState(null);
   const [tableModalOpen, setTableModalOpen] = useState(false);
   const [manualTableInput, setManualTableInput] = useState('');
 
@@ -63,6 +70,13 @@ export default function CustomerWebMenu() {
     return matchesCategory && matchesSearch && matchesVeg;
   });
 
+  const triggerAiRecommendation = (addedDish) => {
+    const rec = getAiRecommendation(addedDish, menuItems, cart);
+    if (rec) {
+      setAiRecommendation(rec);
+    }
+  };
+
   const handleOpenFoodModal = (item) => {
     setSelectedFood(item);
     setQty(1);
@@ -72,7 +86,24 @@ export default function CustomerWebMenu() {
   const handleAddAndClose = () => {
     if (selectedFood) {
       addToCart(selectedFood, qty, notes);
+      triggerAiRecommendation(selectedFood);
       setSelectedFood(null);
+    }
+  };
+
+  const handleQuickAdd = (e, dish) => {
+    e.stopPropagation();
+    addToCart(dish, 1);
+    triggerAiRecommendation(dish);
+  };
+
+  const handleAcceptAiRecommendation = () => {
+    if (aiRecommendation?.dish) {
+      addToCart(aiRecommendation.dish, 1);
+      try {
+        confetti({ particleCount: 40, spread: 60, origin: { y: 0.8 } });
+      } catch {}
+      setAiRecommendation(null);
     }
   };
 
@@ -299,8 +330,8 @@ export default function CustomerWebMenu() {
                     
                     {/* Add button on card */}
                     <button
-                      onClick={() => handleOpenFoodModal(dish)}
-                      className="absolute bottom-1 right-1 px-2.5 py-1 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-1"
+                      onClick={(e) => handleQuickAdd(e, dish)}
+                      className="absolute bottom-1 right-1 px-2.5 py-1 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-1 cursor-pointer"
                     >
                       <Plus className="w-3 h-3" />
                       {inCart ? `${inCart.quantity}` : 'ADD'}
@@ -313,6 +344,48 @@ export default function CustomerWebMenu() {
           })}
         </div>
       </main>
+
+      {/* FLOATING SMART AI CHEF RECOMMENDATION BANNER */}
+      {aiRecommendation && (
+        <div className="fixed bottom-20 left-4 right-4 max-w-lg mx-auto z-40 animate-in slide-in-from-bottom duration-300">
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/90 border border-amber-500/50 shadow-[0_8px_30px_rgba(245,158,11,0.25)] backdrop-blur-xl flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <img
+                src={aiRecommendation.dish.imageUrl}
+                alt={aiRecommendation.dish.name}
+                className="w-12 h-12 rounded-xl object-cover border border-amber-400/40 shrink-0"
+              />
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 flex items-center gap-1">
+                    <Sparkles className="w-2.5 h-2.5" />
+                    AI Chef Pairing
+                  </span>
+                  <span className="text-[11px] font-extrabold text-amber-300">₹{aiRecommendation.dish.price}</span>
+                </div>
+                <h4 className="font-bold text-xs text-white line-clamp-1">{aiRecommendation.dish.name}</h4>
+                <p className="text-[10px] text-slate-300 line-clamp-1">{aiRecommendation.reason}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleAcceptAiRecommendation}
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs shadow-md transition active:scale-95 whitespace-nowrap cursor-pointer flex items-center gap-1"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Add Pair</span>
+              </button>
+              <button
+                onClick={() => setAiRecommendation(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Bottom Cart Bar */}
       {cartItemCount > 0 && (
