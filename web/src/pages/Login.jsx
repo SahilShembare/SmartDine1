@@ -26,7 +26,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { loginWithEmail, registerWithEmail, resetPasswordWithOtp } = useAuth();
+  const { loginWithEmail, registerWithEmail, sendRealResetEmail, resetPasswordWithOtp } = useAuth();
   const { currentTable, setTableSession } = useTableOrder();
   
   // URL params
@@ -133,6 +133,27 @@ export default function Login() {
       navigate(from);
     } catch (err) {
       setError(err.message || 'Failed to complete registration.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Send Real Email Password Reset via Firebase Mail Service
+  const handleSendRealEmailReset = async (e) => {
+    e?.preventDefault?.();
+    setError('');
+    setSuccessMsg('');
+    if (!forgotIdentifier.trim() || !forgotIdentifier.includes('@')) {
+      setError('Please enter a valid email address (e.g. name@gmail.com) to receive real inbox email.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await sendRealResetEmail(forgotIdentifier.trim());
+      setSuccessMsg(`📧 Real password reset link has been dispatched to ${forgotIdentifier}! Please check your Inbox / Spam folder.`);
+    } catch (err) {
+      setError(err.message || 'Failed to send real reset email. Make sure the email is registered in Firebase.');
     } finally {
       setLoading(false);
     }
@@ -387,14 +408,27 @@ export default function Login() {
                     </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    <span>Send Reset OTP</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="space-y-2 pt-1">
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>Send 6-Digit OTP Code</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={handleSendRealEmailReset}
+                      className="w-full py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white font-bold text-xs transition flex items-center justify-center gap-2"
+                    >
+                      <Mail className="w-4 h-4 text-orange-400" />
+                      <span>Send Real Reset Link to Email Inbox (Gmail)</span>
+                    </button>
+                  </div>
                 </form>
               ) : (
                 /* Forgot Step 2: Enter 6-Digit OTP & Set New Password */

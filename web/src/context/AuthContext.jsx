@@ -5,7 +5,8 @@ import {
   signOut, 
   onAuthStateChanged,
   createUserWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 
 const AuthContext = createContext();
@@ -89,6 +90,15 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const sendRealResetEmail = async (emailAddress) => {
+    if (isFirebaseConfigured) {
+      await sendPasswordResetEmail(auth, emailAddress);
+      return { success: true, message: 'Password reset link sent to your real email!' };
+    } else {
+      return { success: true, message: 'Simulated email sent' };
+    }
+  };
+
   const resetPasswordWithOtp = async (identifier, newPassword) => {
     // In live or simulated auth, this marks password reset completion
     return { success: true, message: 'Password reset successfully' };
@@ -120,6 +130,7 @@ export function AuthProvider({ children }) {
       loading,
       loginWithEmail,
       registerWithEmail,
+      sendRealResetEmail,
       resetPasswordWithOtp,
       logout,
       demoLogin,
