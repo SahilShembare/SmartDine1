@@ -281,14 +281,15 @@ export default function Login() {
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 py-12 overflow-hidden bg-slate-950 font-sans">
       
-      {/* Background Ambience */}
-      <div className="absolute inset-0 z-0 opacity-40">
+      {/* Background Image: Exact same warm cafe interior as Home */}
+      <div className="absolute inset-0 z-0">
         <img 
           src="/restaurant-bg.jpg" 
-          alt="Restaurant Background" 
-          className="w-full h-full object-cover filter blur-sm scale-105"
+          alt="SmartDine Restaurant Interior" 
+          className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/90 to-slate-950"></div>
+        {/* Cinematic dark overlay for crystal-clear readability */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/60 to-slate-950/95"></div>
       </div>
 
       <div className="relative z-10 w-full max-w-md">
