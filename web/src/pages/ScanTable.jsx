@@ -251,41 +251,6 @@ export default function ScanTable() {
                   <span>{scanError}</span>
                 </div>
               )}
-
-              {/* Divider */}
-              <div className="px-6 pb-2">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-px bg-slate-800"></div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Or select manually</span>
-                  <div className="flex-1 h-px bg-slate-800"></div>
-                </div>
-              </div>
-
-              {/* Manual Table Selection */}
-              <div className="p-4 pt-2 space-y-3">
-                <button
-                  onClick={() => setShowManual(!showManual)}
-                  className="w-full py-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white font-bold text-xs border border-slate-700 transition cursor-pointer flex items-center justify-center gap-2"
-                >
-                  <Smartphone className="w-4 h-4 text-amber-400" />
-                  <span>{showManual ? 'Hide Table List' : 'Choose Table Manually'}</span>
-                </button>
-
-                {showManual && (
-                  <div className="grid grid-cols-5 gap-2 max-h-[240px] overflow-y-auto pr-1">
-                    {ALL_TABLES.map((table) => (
-                      <button
-                        key={table.id}
-                        onClick={() => handleManualSelect(table.id)}
-                        className="py-3 rounded-xl bg-slate-800 hover:bg-amber-400/20 hover:border-amber-400/50 text-white text-xs font-black border border-slate-700 transition cursor-pointer flex flex-col items-center gap-0.5"
-                      >
-                        <span className="text-base">{table.id}</span>
-                        <span className="text-[9px] text-slate-400 font-medium">Table</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
             </>
           )}
         </div>
