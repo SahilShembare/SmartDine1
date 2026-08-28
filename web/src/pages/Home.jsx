@@ -41,11 +41,11 @@ export default function Home() {
       <div className="w-full max-w-lg bg-slate-900/95 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 relative overflow-hidden">
         
         {/* Glow ambient background */}
-        <div className="absolute -top-12 -right-12 w-48 h-48 bg-orange-500/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center mx-auto shadow-glow">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center mx-auto shadow-glow">
             <UtensilsCrossed className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
@@ -70,15 +70,15 @@ export default function Home() {
               onClick={() => setSelectedRole('customer')}
               className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 relative cursor-pointer ${
                 selectedRole === 'customer'
-                  ? 'bg-gradient-to-b from-orange-950/60 to-slate-900 border-orange-500 text-white shadow-glow ring-2 ring-orange-500/20'
+                  ? 'bg-gradient-to-b from-emerald-950/60 to-slate-900 border-emerald-500 text-white shadow-glow ring-2 ring-emerald-500/20'
                   : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
               }`}
             >
               {selectedRole === 'customer' && (
-                <CheckCircle2 className="w-4 h-4 text-orange-400 absolute top-2 right-2" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 absolute top-2 right-2" />
               )}
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition ${
-                selectedRole === 'customer' ? 'bg-orange-500 text-white shadow' : 'bg-slate-800 text-slate-400'
+                selectedRole === 'customer' ? 'bg-emerald-500 text-white shadow' : 'bg-slate-800 text-slate-400'
               }`}>
                 <User className="w-5 h-5" />
               </div>
@@ -94,15 +94,15 @@ export default function Home() {
               onClick={() => setSelectedRole('kitchen')}
               className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 relative cursor-pointer ${
                 selectedRole === 'kitchen'
-                  ? 'bg-gradient-to-b from-amber-950/60 to-slate-900 border-amber-500 text-white shadow-lg ring-2 ring-amber-500/20'
+                  ? 'bg-gradient-to-b from-teal-950/60 to-slate-900 border-teal-500 text-white shadow-lg ring-2 ring-teal-500/20'
                   : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
               }`}
             >
               {selectedRole === 'kitchen' && (
-                <CheckCircle2 className="w-4 h-4 text-amber-400 absolute top-2 right-2" />
+                <CheckCircle2 className="w-4 h-4 text-teal-400 absolute top-2 right-2" />
               )}
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition ${
-                selectedRole === 'kitchen' ? 'bg-amber-500 text-white shadow' : 'bg-slate-800 text-slate-400'
+                selectedRole === 'kitchen' ? 'bg-teal-500 text-white shadow' : 'bg-slate-800 text-slate-400'
               }`}>
                 <ChefHat className="w-5 h-5" />
               </div>
@@ -118,15 +118,15 @@ export default function Home() {
               onClick={() => setSelectedRole('admin')}
               className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center justify-center gap-2 relative cursor-pointer ${
                 selectedRole === 'admin'
-                  ? 'bg-gradient-to-b from-purple-950/60 to-slate-900 border-purple-500 text-white shadow-lg ring-2 ring-purple-500/20'
+                  ? 'bg-gradient-to-b from-emerald-950/60 to-slate-900 border-emerald-400 text-white shadow-lg ring-2 ring-emerald-400/20'
                   : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
               }`}
             >
               {selectedRole === 'admin' && (
-                <CheckCircle2 className="w-4 h-4 text-purple-400 absolute top-2 right-2" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 absolute top-2 right-2" />
               )}
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition ${
-                selectedRole === 'admin' ? 'bg-purple-500 text-white shadow' : 'bg-slate-800 text-slate-400'
+                selectedRole === 'admin' ? 'bg-emerald-600 text-white shadow' : 'bg-slate-800 text-slate-400'
               }`}>
                 <LayoutDashboard className="w-5 h-5" />
               </div>
@@ -152,7 +152,7 @@ export default function Home() {
             <div className="space-y-2">
               <button
                 onClick={() => navigate('/login?role=customer&mode=login')}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
               >
                 <LogIn className="w-4 h-4" />
                 <span>Customer Sign In (Login)</span>
@@ -161,9 +161,9 @@ export default function Home() {
 
               <button
                 onClick={() => navigate('/login?role=customer&mode=register')}
-                className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-orange-500/40 text-orange-300 font-extrabold text-xs transition active:scale-95 flex items-center justify-center gap-2 shadow-sm"
+                className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-emerald-500/40 text-emerald-300 font-extrabold text-xs transition active:scale-95 flex items-center justify-center gap-2 shadow-sm"
               >
-                <Sparkles className="w-4 h-4 text-orange-400" />
+                <Sparkles className="w-4 h-4 text-emerald-400" />
                 <span>Create New Account (Mobile OTP)</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
@@ -171,7 +171,7 @@ export default function Home() {
           ) : (
             <button
               onClick={handleProceedToLogin}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2"
             >
               <LogIn className="w-4 h-4" />
               <span>
@@ -186,7 +186,7 @@ export default function Home() {
               onClick={handleInstantDemoLogin}
               className="w-full py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 font-semibold text-xs transition flex items-center justify-center gap-1.5"
             >
-              <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
               <span>Fast 1-Click {selectedRole === 'kitchen' ? 'Kitchen' : 'Admin'} Demo Access</span>
             </button>
           )}

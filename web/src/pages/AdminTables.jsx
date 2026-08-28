@@ -158,7 +158,7 @@ export default function AdminTables() {
           <div>
             <h1 className="text-2xl lg:text-3xl font-extrabold text-white tracking-tight flex items-center gap-2">
               Table & QR Code Manager
-              <span className="p-1 rounded-lg bg-orange-500/10 text-orange-400 border border-orange-500/30">
+              <span className="p-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                 <QrCode className="w-5 h-5" />
               </span>
             </h1>
@@ -172,13 +172,13 @@ export default function AdminTables() {
               onClick={handlePrintAll}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition"
             >
-              <Printer className="w-4 h-4 text-orange-400" />
+              <Printer className="w-4 h-4 text-emerald-400" />
               <span>Print All Standees</span>
             </button>
 
             <button
               onClick={handleOpenAdd}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-semibold text-xs shadow-glow transition"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs shadow-glow transition"
             >
               <Plus className="w-4 h-4" />
               <span>Add Table</span>
@@ -190,7 +190,7 @@ export default function AdminTables() {
         <div className="no-print p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-400">
           <div>
             <span className="text-slate-200 font-semibold">QR Code Target Domain: </span>
-            <code className="text-orange-400 font-mono bg-slate-800 px-2 py-0.5 rounded">{baseUrl}/menu?table=XX</code>
+            <code className="text-emerald-400 font-mono bg-slate-800 px-2 py-0.5 rounded">{baseUrl}/menu?table=XX</code>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-slate-400">Custom Domain:</span>
@@ -198,7 +198,7 @@ export default function AdminTables() {
               type="text"
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-orange-500 w-56 font-mono"
+              className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500 w-56 font-mono"
             />
           </div>
         </div>
@@ -210,13 +210,13 @@ export default function AdminTables() {
             return (
               <div
                 key={table.id}
-                className="qr-card-print rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden flex flex-col justify-between transition-all duration-200 hover:border-orange-500/50 shadow-lg"
+                className="qr-card-print rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden flex flex-col justify-between transition-all duration-200 hover:border-emerald-500/50 shadow-lg"
               >
                 
                 {/* Standee Header */}
-                <div className="p-4 bg-gradient-to-r from-slate-900 via-orange-950/20 to-slate-900 border-b border-slate-800 flex items-center justify-between">
+                <div className="p-4 bg-gradient-to-r from-slate-900 via-emerald-950/20 to-slate-900 border-b border-slate-800 flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white shadow">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow">
                       <UtensilsCrossed className="w-4 h-4" />
                     </div>
                     <div>
@@ -225,21 +225,21 @@ export default function AdminTables() {
                     </div>
                   </div>
 
-                  <div className="px-3 py-1 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-400 font-extrabold text-sm tracking-wider">
+                  <div className="px-3 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-extrabold text-sm tracking-wider">
                     TABLE {table.tableNumber}
                   </div>
                 </div>
 
                 {/* QR Code Display Card */}
                 <div className="p-6 flex flex-col items-center justify-center text-center space-y-4">
-                  <div className="p-4 bg-white rounded-2xl shadow-xl inline-block border-2 border-orange-500/30">
+                  <div className="p-4 bg-white rounded-2xl shadow-xl inline-block border-2 border-emerald-500/30">
                     <QRCodeSVG
                       value={qrTarget}
                       size={160}
                       level="H"
                       includeMargin={false}
                       imageSettings={{
-                        src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f97316'><path d='M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z'/></svg>",
+                        src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2310b981'><path d='M11 9H9V2H7v7H5V2H3v7c0 2.12 1.66 3.84 3.75 3.97V22h2.5v-9.03C11.34 12.84 13 11.12 13 9V2h-2v7zm5-3v8h2.5v8H21V2c-2.76 0-5 2.24-5 4z'/></svg>",
                         height: 28,
                         width: 28,
                         excavate: true,
@@ -356,7 +356,7 @@ export default function AdminTables() {
                   value={formData.tableNumber}
                   onChange={(e) => setFormData({ ...formData, tableNumber: e.target.value })}
                   placeholder="01"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-orange-500"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -369,7 +369,7 @@ export default function AdminTables() {
                     value={formData.capacity}
                     onChange={(e) => setFormData({ ...formData, capacity: e.target.value })}
                     placeholder="4"
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-orange-500"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500"
                   />
                 </div>
                 <div>
@@ -379,7 +379,7 @@ export default function AdminTables() {
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                     placeholder="e.g. Garden Courtyard"
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-orange-500"
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
@@ -389,7 +389,7 @@ export default function AdminTables() {
                   type="checkbox"
                   checked={formData.active}
                   onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                  className="rounded text-orange-500 focus:ring-0"
+                  className="rounded text-emerald-500 focus:ring-0"
                 />
                 <span className="text-xs font-medium text-slate-200">Table Active for Ordering</span>
               </label>
@@ -404,7 +404,7 @@ export default function AdminTables() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white font-semibold text-xs shadow-glow"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold text-xs shadow-glow"
                 >
                   {editingTable ? 'Save Table' : 'Create Table & Generate QR'}
                 </button>

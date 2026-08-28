@@ -68,10 +68,10 @@ export default function CustomerWebTrack() {
   if (!order) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500 mb-4"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500 mb-4"></div>
         <h3 className="text-lg font-bold text-white">Loading Order #{orderId}...</h3>
         <p className="text-xs text-slate-400 mt-1">Connecting to kitchen live updates</p>
-        <Link to="/menu" className="mt-6 text-xs text-orange-400 font-semibold underline">
+        <Link to="/menu" className="mt-6 text-xs text-emerald-400 font-semibold underline">
           Back to Menu
         </Link>
       </div>
@@ -93,7 +93,7 @@ export default function CustomerWebTrack() {
           </Link>
 
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-400 font-extrabold text-xs">
+            <span className="px-3 py-1 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-extrabold text-xs">
               TABLE {order.tableNumber}
             </span>
           </div>
@@ -103,10 +103,10 @@ export default function CustomerWebTrack() {
       <div className="max-w-2xl mx-auto p-4 space-y-6">
         
         {/* Status Card Hero */}
-        <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-orange-950/30 to-slate-900 border border-slate-800 p-6 text-center space-y-3 relative overflow-hidden shadow-2xl">
-          <div className="absolute -top-12 -right-12 w-32 h-32 bg-orange-500/10 rounded-full blur-2xl"></div>
+        <div className="rounded-3xl bg-gradient-to-br from-slate-900 via-emerald-950/30 to-slate-900 border border-slate-800 p-6 text-center space-y-3 relative overflow-hidden shadow-2xl">
+          <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl"></div>
 
-          <div className="inline-flex p-3 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/40 shadow-glow">
+          <div className="inline-flex p-3 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-glow">
             <ChefHat className="w-8 h-8 animate-pulse" />
           </div>
 
@@ -115,7 +115,7 @@ export default function CustomerWebTrack() {
             <h1 className="text-2xl font-extrabold text-white mt-0.5">
               {order.status === 'pending' ? 'Order Sent to Kitchen 🎉' :
                order.status === 'accepted' ? 'Order Accepted by Chef 👨‍🍳' :
-               order.status === 'preparing' ? 'Your Food is Sizzling! 🔥' :
+               order.status === 'preparing' ? 'Your Food is Freshly Sizzling! 🔥' :
                order.status === 'ready' ? 'Ready to Serve to Table! 🛎️' :
                order.status === 'completed' ? 'Order Completed! Enjoy Your Meal 🍽️' :
                'Order Cancelled'}
@@ -129,7 +129,7 @@ export default function CustomerWebTrack() {
         {/* Live Stepper Tracker */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-lg">
           <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-orange-400" />
+            <Sparkles className="w-4 h-4 text-emerald-400" />
             Live Kitchen Progression
           </h3>
 
@@ -146,9 +146,9 @@ export default function CustomerWebTrack() {
                   {/* Icon Circle */}
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border transition-all ${
                     state === 'completed' 
-                      ? 'bg-emerald-500 border-emerald-400 text-white shadow-md' :
+                      ? 'bg-emerald-600 border-emerald-400 text-white shadow-md' :
                     state === 'active'
-                      ? 'bg-orange-500 border-orange-400 text-white shadow-glow animate-pulse' :
+                      ? 'bg-emerald-500 border-emerald-300 text-white shadow-glow animate-pulse' :
                       'bg-slate-900 border-slate-800 text-slate-600'
                   }`}>
                     <StepIcon className="w-4 h-4" />
@@ -157,7 +157,7 @@ export default function CustomerWebTrack() {
                   {/* Label & Desc */}
                   <div className="pt-0.5">
                     <h4 className={`text-sm font-bold ${
-                      state === 'active' ? 'text-orange-400' :
+                      state === 'active' ? 'text-emerald-400' :
                       state === 'completed' ? 'text-slate-200' :
                       'text-slate-500'
                     }`}>
@@ -175,17 +175,17 @@ export default function CustomerWebTrack() {
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-lg">
           <div className="flex items-center justify-between">
             <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
-              <Receipt className="w-4 h-4 text-orange-400" />
+              <Receipt className="w-4 h-4 text-emerald-400" />
               Order Items ({order.items?.length || 0})
             </h3>
-            <span className="text-xs font-bold text-orange-400">Total: ₹{order.total?.toFixed(0)}</span>
+            <span className="text-xs font-bold text-emerald-400">Total: ₹{order.total?.toFixed(0)}</span>
           </div>
 
           <div className="divide-y divide-slate-800/60">
             {order.items?.map((item, i) => (
               <div key={i} className="py-2.5 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-orange-400">{item.quantity}x</span>
+                  <span className="font-bold text-emerald-400">{item.quantity}x</span>
                   <span className="font-semibold text-slate-200">{item.name}</span>
                 </div>
                 <span className="text-slate-400">₹{(item.price * item.quantity).toFixed(0)}</span>
@@ -204,7 +204,7 @@ export default function CustomerWebTrack() {
           to={`/menu?table=${order.tableNumber}`}
           className="w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-sm transition flex items-center justify-center gap-2"
         >
-          <UtensilsCrossed className="w-4 h-4 text-orange-400" />
+          <UtensilsCrossed className="w-4 h-4 text-emerald-400" />
           <span>Order More Items for Table {order.tableNumber}</span>
         </Link>
 
