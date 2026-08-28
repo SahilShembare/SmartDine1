@@ -4,13 +4,14 @@
 
 @layer base {
   body {
-    background-color: #06110c;
+    background-color: #0c0806;
     background-image: 
-      radial-gradient(at 10% 15%, rgba(16, 185, 129, 0.22) 0px, transparent 50%),
-      radial-gradient(at 90% 15%, rgba(255, 255, 255, 0.09) 0px, transparent 45%),
-      radial-gradient(at 50% 75%, rgba(5, 150, 105, 0.18) 0px, transparent 55%),
-      radial-gradient(at 85% 85%, rgba(236, 253, 245, 0.08) 0px, transparent 50%);
+      linear-gradient(to bottom, rgba(10, 8, 6, 0.85), rgba(10, 8, 6, 0.90)),
+      url('/restaurant-bg.jpg');
+    background-size: cover;
+    background-position: center;
     background-attachment: fixed;
+    background-repeat: no-repeat;
     @apply text-slate-100 min-h-screen antialiased;
   }
 }
@@ -22,7 +23,7 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(6, 17, 12, 0.8);
+  background: rgba(12, 8, 6, 0.8);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -36,14 +37,14 @@
 
 /* Glassmorphism styles */
 .glass-panel {
-  background: rgba(15, 28, 22, 0.75);
+  background: rgba(18, 14, 11, 0.75);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .glass-card {
-  background: rgba(10, 22, 16, 0.65);
+  background: rgba(14, 10, 8, 0.65);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.06);
