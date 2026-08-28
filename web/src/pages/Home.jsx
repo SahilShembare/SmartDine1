@@ -123,7 +123,7 @@ export default function Home() {
     if (activeFilter === 'veg') return item.isVeg === true;
     if (activeFilter === 'non-veg') return item.isVeg === false;
     return true;
-  }).slice(0, 6);
+  }).slice(0, 5);
 
   return (
     <div className="relative min-h-screen bg-transparent text-slate-100">
@@ -341,14 +341,9 @@ export default function Home() {
                 </div>
 
                 {/* Rating overlay at bottom left */}
-                <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2 py-0.5 rounded-lg bg-black/60 backdrop-blur-sm text-amber-300 text-xs font-bold border border-white/10">
+                <div className="absolute bottom-3 left-3 flex items-center gap-1 px-2.5 py-1 rounded-xl bg-black/70 backdrop-blur-sm text-amber-300 text-xs font-bold border border-white/10 shadow-md">
                   <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  <span>4.9</span>
-                </div>
-
-                {/* Price Pill at bottom right */}
-                <div className="absolute bottom-3 right-3 px-3 py-1 rounded-xl bg-orange-500 text-white font-extrabold text-sm shadow-md">
-                  ₹{dish.price}
+                  <span>4.9 • Chef Special</span>
                 </div>
               </div>
 
@@ -461,7 +456,10 @@ export default function Home() {
               </button>
 
               <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-                <span className="text-2xl font-extrabold text-white drop-shadow">₹{previewDish.price}</span>
+                <span className="text-sm font-extrabold text-amber-300 drop-shadow flex items-center gap-1">
+                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  <span>4.9 Customer Rating</span>
+                </span>
                 <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
                   previewDish.isVeg !== false ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-red-500/20 text-red-300 border-red-500/30'
                 }`}>
