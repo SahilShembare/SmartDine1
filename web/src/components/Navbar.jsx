@@ -37,9 +37,8 @@ export default function Navbar() {
             className="w-10 h-10 rounded-full object-cover border-2 border-amber-400/60 shadow-[0_0_15px_rgba(251,191,36,0.35)] group-hover:scale-105 transition-transform duration-200"
           />
           <div>
-            <span className="font-black text-xl tracking-tight text-white font-sans drop-shadow-sm flex items-center gap-1.5">
-              <span>Smart Dine</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+            <span className="font-black text-xl tracking-tight text-white font-sans drop-shadow-sm">
+              Smart Dine
             </span>
           </div>
         </Link>
