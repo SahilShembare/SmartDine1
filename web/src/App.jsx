@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { TableOrderProvider } from './context/TableOrderContext';
 import Navbar from './components/Navbar';
+import MobileNav from './components/MobileNav';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Pages
@@ -24,7 +25,7 @@ export default function App() {
         <TableOrderProvider>
           <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
             <Navbar />
-            <div className="flex-1">
+            <div className="flex-1 pb-16 sm:pb-0">
               <Routes>
                 {/* Public & Customer Ordering Routes */}
                 <Route path="/" element={<Home />} />
@@ -79,6 +80,9 @@ export default function App() {
                 <Route path="*" element={<Home />} />
               </Routes>
             </div>
+            
+            {/* Native Mobile Bottom Navigation Bar */}
+            <MobileNav />
           </div>
         </TableOrderProvider>
       </AuthProvider>

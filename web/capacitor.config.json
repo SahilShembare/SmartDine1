@@ -1,0 +1,10 @@
+{
+  "appId": "com.smartdine.restaurant",
+  "appName": "SmartDine",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://smartdine12.netlify.app",
+    "cleartext": true
+  }
+}

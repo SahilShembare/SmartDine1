@@ -21,9 +21,42 @@ export default function Home() {
   const navigate = useNavigate();
   const { menuItems } = useTableOrder();
   
+  // PWA Install prompt state
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showInstallSuccess, setShowInstallSuccess] = useState(false);
+  const [showIosGuide, setShowIosGuide] = useState(false);
+
   // Filter top dishes (bestsellers / popular or top 6)
   const [activeFilter, setActiveFilter] = useState('all'); // all, veg, non-veg
   const [previewDish, setPreviewDish] = useState(null);
+
+  React.useEffect(() => {
+    const handlePrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handlePrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handlePrompt);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        setShowInstallSuccess(true);
+        setTimeout(() => setShowInstallSuccess(false), 4000);
+      }
+      setDeferredPrompt(null);
+    } else {
+      const isIos = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIos) {
+        setShowIosGuide(true);
+      } else {
+        alert('To install SmartDine App on your device, open your browser menu (⋮) and tap "Install App" or "Add to Home Screen" 📲');
+      }
+    }
+  };
 
   const topDishes = (menuItems && menuItems.length > 0 ? menuItems : [
     {
@@ -154,8 +187,19 @@ export default function Home() {
 
           </div>
 
+          {/* 1-Click Install Mobile App Button */}
+          <div className="pt-2">
+            <button
+              onClick={handleInstallApp}
+              className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/15 hover:bg-white/25 border border-white/30 text-white text-xs font-extrabold shadow-lg backdrop-blur-md transition-all active:scale-95 cursor-pointer"
+            >
+              <span className="text-base">📲</span>
+              <span>Install SmartDine Mobile App</span>
+            </button>
+          </div>
+
           {/* Feature Badge Highlights */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-md mx-auto pt-6 text-[11px] sm:text-xs text-slate-300 font-semibold">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-md mx-auto pt-4 text-[11px] sm:text-xs text-slate-300 font-semibold">
             <div className="p-2.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-emerald-400" />
               <span>~15 Min Fast Prep</span>
@@ -165,6 +209,35 @@ export default function Home() {
               <span>100% Contactless</span>
             </div>
           </div>
+
+          {/* iOS Guide Modal */}
+          {showIosGuide && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl animate-in zoom-in-95">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-2xl">
+                  📲
+                </div>
+                <h3 className="text-lg font-extrabold text-white">Install on iPhone / iPad</h3>
+                <ol className="text-xs text-slate-300 text-left space-y-2 bg-slate-950/60 p-4 rounded-2xl border border-slate-800">
+                  <li className="flex items-center gap-2">
+                    <span className="font-bold text-amber-400">1.</span> Tap the <strong>Share</strong> button (box with arrow) in Safari.
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="font-bold text-amber-400">2.</span> Scroll down and tap <strong>"Add to Home Screen"</strong>.
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <span className="font-bold text-amber-400">3.</span> Tap <strong>Add</strong> to use SmartDine like a native app!
+                  </li>
+                </ol>
+                <button
+                  onClick={() => setShowIosGuide(false)}
+                  className="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition"
+                >
+                  Got It!
+                </button>
+              </div>
+            </div>
+          )}
 
         </div>
 
