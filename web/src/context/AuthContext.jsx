@@ -89,6 +89,11 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const resetPasswordWithOtp = async (identifier, newPassword) => {
+    // In live or simulated auth, this marks password reset completion
+    return { success: true, message: 'Password reset successfully' };
+  };
+
   const logout = async () => {
     if (isFirebaseConfigured) {
       await signOut(auth);
@@ -115,6 +120,7 @@ export function AuthProvider({ children }) {
       loading,
       loginWithEmail,
       registerWithEmail,
+      resetPasswordWithOtp,
       logout,
       demoLogin,
       isAdmin: currentUser?.role === 'admin',

@@ -107,21 +107,21 @@ export default function CustomerWebMenu() {
             </p>
           </div>
 
-          <div className="space-y-3 pt-2">
-            <button
-              onClick={() => demoLogin('customer')}
+          <div className="space-y-2.5 pt-2">
+            <Link
+              to={`/login?table=${currentTable || '01'}&role=customer&mode=login`}
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition flex items-center justify-center gap-2"
             >
-              <Sparkles className="w-4 h-4" />
-              <span>Continue as Table {currentTable || '01'} Diner</span>
-            </button>
+              <LogIn className="w-4 h-4" />
+              <span>Sign In to Order (Table {currentTable || '01'})</span>
+            </Link>
 
             <Link
-              to={`/login?table=${currentTable || '01'}`}
-              className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs transition flex items-center justify-center gap-2"
+              to={`/login?table=${currentTable || '01'}&role=customer&mode=register`}
+              className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-orange-500/30 text-orange-300 font-bold text-xs transition flex items-center justify-center gap-2"
             >
-              <LogIn className="w-4 h-4 text-orange-400" />
-              <span>Sign In with Email / Password</span>
+              <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+              <span>Create Account (Mobile OTP)</span>
             </Link>
           </div>
 

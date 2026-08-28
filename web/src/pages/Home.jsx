@@ -181,13 +181,15 @@ export default function Home() {
             </button>
           )}
 
-          <button
-            onClick={handleInstantDemoLogin}
-            className="w-full py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 font-semibold text-xs transition flex items-center justify-center gap-1.5"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-orange-400" />
-            <span>Fast 1-Click {selectedRole === 'customer' ? 'Customer' : selectedRole === 'kitchen' ? 'Kitchen' : 'Admin'} Demo Access</span>
-          </button>
+          {selectedRole !== 'customer' && (
+            <button
+              onClick={handleInstantDemoLogin}
+              className="w-full py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 font-semibold text-xs transition flex items-center justify-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+              <span>Fast 1-Click {selectedRole === 'kitchen' ? 'Kitchen' : 'Admin'} Demo Access</span>
+            </button>
+          )}
         </div>
 
       </div>
