@@ -10,7 +10,8 @@
     "build": "npm --prefix web run build",
     "build:web": "npm --prefix web run build",
     "mobile:install": "npm --prefix mobile install",
-    "web:install": "npm --prefix web install"
+    "web:install": "npm --prefix web install",
+    "postinstall": "npm --prefix web install"
   },
   "keywords": [
     "restaurant",
