@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { useTableOrder } from '../context/TableOrderContext';
 import { 
@@ -193,6 +194,7 @@ export default function Login() {
     setLoading(true);
     try {
       await registerWithEmail(regName.trim(), regEmail.trim(), regPassword.trim(), 'customer');
+      toast.success(`🎉 Welcome to Smart Dine, ${regName.trim()}! Account created successfully.`);
       navigate(from);
     } catch (err) {
       setError(err.message || 'Failed to complete registration.');
@@ -216,6 +218,8 @@ export default function Login() {
       }
 
       await loginWithEmail(finalEmail, password);
+      const userName = finalEmail.includes('kitchen') ? 'Kitchen Staff' : finalEmail.includes('admin') ? 'Admin' : 'Customer';
+      toast.success(`✅ Login Successful! Welcome back, ${userName}.`);
       navigate(from);
     } catch (err) {
       setError(err.message || 'Invalid login credentials. Please check your email/mobile and password.');
