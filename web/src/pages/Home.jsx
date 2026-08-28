@@ -155,11 +155,7 @@ export default function Home() {
           </div>
 
           {/* Feature Badge Highlights */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 max-w-lg mx-auto pt-6 text-[11px] sm:text-xs text-slate-300 font-semibold">
-            <div className="p-2.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>No App Download</span>
-            </div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 max-w-md mx-auto pt-6 text-[11px] sm:text-xs text-slate-300 font-semibold">
             <div className="p-2.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-emerald-400" />
               <span>~15 Min Fast Prep</span>
@@ -340,7 +336,7 @@ export default function Home() {
               </div>
               <h3 className="font-extrabold text-lg text-white">1. Scan Table QR</h3>
               <p className="text-xs text-slate-400 leading-relaxed">
-                Scan the standee QR code placed at your dining table with any mobile camera. No registration or app download required!
+                Scan the standee QR code placed at your dining table with any mobile camera to view the live digital menu instantly.
               </p>
             </div>
 
