@@ -161,6 +161,12 @@ export default function CustomerWebMenu() {
     );
   }
 
+  // If logged in but no table selected and no table in URL, redirect to scan
+  if (!currentTable && !searchParams.get('table')) {
+    navigate('/scan', { replace: true });
+    return null;
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 pb-28">
       
