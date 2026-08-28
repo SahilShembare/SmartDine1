@@ -8,14 +8,14 @@ export default function Home() {
   return (
     <div className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-center items-center overflow-hidden bg-slate-950 px-4">
       
-      {/* Background Image: Professional Luxury Restaurant Interior with Warm Ambient Lighting */}
+      {/* Background Image: Professional Luxury Restaurant Dining Hall Interior */}
       <div className="absolute inset-0 z-0">
         <img
-          src="https://images.unsplash.com/photo-1544025162-d76694265947?w=1920&auto=format&fit=crop&q=85"
-          alt="Professional Luxury Restaurant Dining Ambiance"
+          src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&auto=format&fit=crop&q=85"
+          alt="Professional Luxury Restaurant Interior"
           className="w-full h-full object-cover object-center scale-105 transition-transform duration-1000"
         />
-        {/* Cinematic dark overlay for crystal-clear readability */}
+        {/* Cinematic dark overlay for crystal-clear text contrast */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/55 to-black/80"></div>
       </div>
 
