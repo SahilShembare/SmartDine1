@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTableOrder } from '../context/TableOrderContext';
+import SmartDineLogo from './SmartDineLogo';
 import { 
   UtensilsCrossed, 
   ShoppingBag, 
@@ -29,18 +30,9 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 bg-slate-950/85 backdrop-blur-xl border-b border-emerald-500/25 shadow-[0_4px_30px_rgba(0,0,0,0.6)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
-        {/* Brand Logo (🍽️ Smart Dine) */}
-        <Link to="/" className="flex items-center gap-2.5 group">
-          <img
-            src="/logo.png"
-            alt="Smart Dine Logo"
-            className="w-10 h-10 rounded-full object-cover border-2 border-amber-400/60 shadow-[0_0_15px_rgba(251,191,36,0.35)] group-hover:scale-105 transition-transform duration-200"
-          />
-          <div>
-            <span className="font-black text-xl tracking-tight text-white font-sans drop-shadow-sm">
-              Smart Dine
-            </span>
-          </div>
+        {/* Brand Logo */}
+        <Link to="/" className="group">
+          <SmartDineLogo size="md" />
         </Link>
 
         {/* Center Table Indicator for customer */}

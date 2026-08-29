@@ -31,8 +31,31 @@ export function TableOrderProvider({ children }) {
   });
 
   // Orders and Menu real-time data
-  const [menuItems, setMenuItems] = useState(() => localStore.getMenuItems());
-  const [categories, setCategories] = useState(() => localStore.getCategories());
+  const [menuItems, setMenuItems] = useState(() => {
+    try {
+      const v13Loaded = localStorage.getItem('smartdine_menu_v13_restored_full_menu');
+      if (!v13Loaded) {
+        localStorage.setItem('smartdine_menu_v13_restored_full_menu', 'true');
+        localStore.resetToDemoData();
+        return localStore.getMenuItems();
+      }
+      return localStore.getMenuItems();
+    } catch {
+      return localStore.getMenuItems();
+    }
+  });
+  const [categories, setCategories] = useState(() => {
+    try {
+      const v13Loaded = localStorage.getItem('smartdine_menu_v13_restored_full_menu');
+      if (!v13Loaded) {
+        localStore.resetToDemoData();
+        return localStore.getCategories();
+      }
+      return localStore.getCategories();
+    } catch {
+      return localStore.getCategories();
+    }
+  });
   const [tables, setTables] = useState(() => localStore.getTables());
   const [orders, setOrders] = useState(() => localStore.getOrders());
   const [latestPlacedOrderId, setLatestPlacedOrderId] = useState(() => {
@@ -271,6 +294,18 @@ export function TableOrderProvider({ children }) {
     }
   };
 
+  const reloadLatestMenu = () => {
+    try {
+      localStore.resetToDemoData();
+      setMenuItems(localStore.getMenuItems());
+      setCategories(localStore.getCategories());
+      setTables(localStore.getTables());
+      setOrders(localStore.getOrders());
+    } catch (e) {
+      console.warn('Reload menu error', e);
+    }
+  };
+
   return (
     <TableOrderContext.Provider value={{
       currentTable,
@@ -296,6 +331,7 @@ export function TableOrderProvider({ children }) {
       placeOrder,
       updateOrderStatus,
       refreshOrders,
+      reloadLatestMenu,
       latestPlacedOrderId,
       lastSyncTime
     }}>

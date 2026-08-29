@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useTableOrder } from '../context/TableOrderContext';
+import SmartDineLogo from '../components/SmartDineLogo';
 import confetti from 'canvas-confetti';
 import { 
   LogIn, 
@@ -212,18 +213,14 @@ export default function Home() {
             <span>Live Kitchen Active • Instant Contactless Table Orders</span>
           </div>
 
-          {/* Official Round Brand Logo */}
+          {/* Official Brand Logo */}
           <div className="flex justify-center">
-            <img
-              src="/logo.png"
-              alt="Smart Dine Official Logo"
-              className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-amber-400/80 shadow-[0_0_35px_rgba(251,191,36,0.45)] animate-in zoom-in-95 duration-500 hover:scale-105 transition-transform"
-            />
+            <SmartDineLogo size="hero" showIcon={true} showText={false} />
           </div>
 
           {/* Main Heading */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)] font-sans">
-            Welcome To Smart Dine
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white tracking-tight drop-shadow-[0_4px_16px_rgba(0,0,0,0.9)]" style={{ fontFamily: "'Poppins', sans-serif" }}>
+            Welcome to Smart Dine
           </h1>
 
           {/* Subtitle */}

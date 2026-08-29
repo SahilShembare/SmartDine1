@@ -22,7 +22,8 @@ import {
   Lock,
   UserCheck,
   Bot,
-  Zap
+  Zap,
+  RotateCw
 } from 'lucide-react';
 
 export default function CustomerWebMenu() {
@@ -38,7 +39,8 @@ export default function CustomerWebMenu() {
     cart, 
     addToCart, 
     cartItemCount, 
-    cartTotal 
+    cartTotal,
+    reloadLatestMenu
   } = useTableOrder();
 
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -115,57 +117,7 @@ export default function CustomerWebMenu() {
     }
   };
 
-  if (!currentUser) {
-    return (
-      <div className="min-h-[calc(100vh-4rem)] bg-slate-950 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-8 text-center space-y-6 shadow-2xl relative overflow-hidden">
-          
-          <div className="absolute top-0 right-0 w-36 h-36 bg-orange-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-          {/* Table QR Badge */}
-          <div className="w-16 h-16 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center mx-auto shadow-glow">
-            <QrCode className="w-8 h-8" />
-          </div>
-
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>QR Verified: Table {currentTable || '01'}</span>
-            </div>
-            <h2 className="text-2xl font-extrabold text-white">Welcome to Smart Dine</h2>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-              Table <strong>{currentTable || '01'}</strong> has been detected. Sign in to browse the digital menu and send orders directly to the chef.
-            </p>
-          </div>
-
-          <div className="space-y-2.5 pt-2">
-            <Link
-              to={`/login?table=${currentTable || '01'}&role=customer&mode=login`}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-sm shadow-glow transition flex items-center justify-center gap-2"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>Sign In to Order (Table {currentTable || '01'})</span>
-            </Link>
-
-            <Link
-              to={`/login?table=${currentTable || '01'}&role=customer&mode=register`}
-              className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-orange-500/30 text-orange-300 font-bold text-xs transition flex items-center justify-center gap-2"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-orange-400" />
-              <span>Create Account (Mobile OTP)</span>
-            </Link>
-          </div>
-
-        </div>
-      </div>
-    );
-  }
-
-  // If logged in but no table selected and no table in URL, redirect to scan
-  if (!currentTable && !searchParams.get('table')) {
-    navigate('/scan', { replace: true });
-    return null;
-  }
 
   return (
     <div className="min-h-screen bg-slate-950 pb-28">
@@ -181,33 +133,46 @@ export default function CustomerWebMenu() {
                 <UtensilsCrossed className="w-4 h-4" />
               </div>
               <div>
-                <h1 className="text-lg font-extrabold text-white">Smart Dine Digital Menu</h1>
-                <p className="text-xs text-slate-400">Scan Table QR • Order • Enjoy</p>
+                <h1 className="text-lg sm:text-xl font-extrabold text-white">
+                  Welcome to Table {currentTable || '01'}
+                </h1>
               </div>
             </div>
 
-            {currentTable ? (
-              <div className="flex items-center gap-2">
-                <div className="px-3 py-1 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-400 font-extrabold text-xs flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  Table {currentTable}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  reloadLatestMenu();
+                }}
+                title="Reload Latest Menu & Images"
+                className="p-2 rounded-xl bg-slate-900 border border-slate-800 hover:border-orange-500/40 text-slate-300 hover:text-orange-400 text-xs transition cursor-pointer flex items-center gap-1"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+              </button>
+
+              {currentTable ? (
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-400 font-extrabold text-xs flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    Table {currentTable}
+                  </div>
+                  <button
+                    onClick={() => setTableModalOpen(true)}
+                    className="text-[11px] text-slate-400 hover:text-orange-300 underline cursor-pointer"
+                  >
+                    Change
+                  </button>
                 </div>
+              ) : (
                 <button
                   onClick={() => setTableModalOpen(true)}
-                  className="text-[11px] text-slate-400 hover:text-orange-300 underline"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-400 text-xs font-bold hover:bg-orange-500/30 transition cursor-pointer"
                 >
-                  Change
+                  <QrCode className="w-3.5 h-3.5" />
+                  Select Table
                 </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setTableModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-400 text-xs font-bold hover:bg-orange-500/30 transition"
-              >
-                <QrCode className="w-3.5 h-3.5" />
-                Select Table
-              </button>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Search bar */}
@@ -278,77 +243,96 @@ export default function CustomerWebMenu() {
 
       {/* Food Cards Grid */}
       <main className="max-w-4xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {filteredDishes.map((dish) => {
-            const inCart = cart.find(i => i.id === dish.id);
-            return (
-              <div
-                key={dish.id}
-                className="rounded-2xl border border-slate-800/90 bg-slate-900/80 backdrop-blur-sm overflow-hidden flex flex-col justify-between hover:border-slate-700 transition"
-              >
-                <div className="flex gap-3 p-3.5">
-                  
-                  {/* Left Info */}
-                  <div className="flex-1 space-y-1.5">
+        {filteredDishes.length === 0 ? (
+          <div className="text-center py-16 px-4 bg-slate-900/60 border border-slate-800 rounded-3xl space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto text-orange-400">
+              <UtensilsCrossed className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-white">No Dishes in Menu</h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+              The menu is currently empty. You can add new dishes from the Admin Panel.
+            </p>
+            <Link
+              to="/admin/menu"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 text-xs font-bold border border-orange-500/30 transition"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Go to Admin Menu</span>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {filteredDishes.map((dish) => {
+              const inCart = cart.find(i => i.id === dish.id);
+              return (
+                <div
+                  key={dish.id}
+                  className="rounded-2xl border border-slate-800/90 bg-slate-900/80 backdrop-blur-sm overflow-hidden flex flex-col justify-between hover:border-slate-700 transition"
+                >
+                  <div className="flex gap-3 p-3.5">
                     
-                    <div className="flex items-center gap-2">
-                      {/* Veg indicator */}
-                      <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
-                        dish.isVeg ? 'border-emerald-500' : 'border-red-500'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${dish.isVeg ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                      </span>
-
-                      {dish.popular && (
-                        <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-extrabold flex items-center gap-1">
-                          <Flame className="w-2.5 h-2.5" />
-                          Bestseller
+                    {/* Left Info */}
+                    <div className="flex-1 space-y-1.5">
+                      
+                      <div className="flex items-center gap-2">
+                        {/* Veg indicator */}
+                        <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                          dish.isVeg ? 'border-emerald-500' : 'border-red-500'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${dish.isVeg ? 'bg-emerald-500' : 'bg-red-500'}`} />
                         </span>
-                      )}
+
+                        {dish.popular && (
+                          <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 text-[10px] font-extrabold flex items-center gap-1">
+                            <Flame className="w-2.5 h-2.5" />
+                            Bestseller
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 
+                        onClick={() => handleOpenFoodModal(dish)}
+                        className="font-bold text-sm text-slate-100 cursor-pointer hover:text-orange-400 transition leading-snug"
+                      >
+                        {dish.name}
+                      </h3>
+
+                      <div className="font-extrabold text-sm text-white">
+                        ₹{dish.price}
+                      </div>
+
+                      <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                        {dish.description}
+                      </p>
                     </div>
 
-                    <h3 
-                      onClick={() => handleOpenFoodModal(dish)}
-                      className="font-bold text-sm text-slate-100 cursor-pointer hover:text-orange-400 transition leading-snug"
-                    >
-                      {dish.name}
-                    </h3>
-
-                    <div className="font-extrabold text-sm text-white">
-                      ₹{dish.price}
+                    {/* Right Image & Add Button */}
+                    <div className="relative w-24 h-24 shrink-0 rounded-xl overflow-hidden bg-slate-800">
+                      <img
+                        src={dish.imageUrl}
+                        alt={dish.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80';
+                        }}
+                      />
+                      
+                      {/* Add button on card */}
+                      <button
+                        onClick={(e) => handleQuickAdd(e, dish)}
+                        className="absolute bottom-1 right-1 px-2.5 py-1 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" />
+                        {inCart ? `${inCart.quantity}` : 'ADD'}
+                      </button>
                     </div>
 
-                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">
-                      {dish.description}
-                    </p>
                   </div>
-
-                  {/* Right Image & Add Button */}
-                  <div className="relative w-24 h-24 shrink-0 rounded-xl overflow-hidden bg-slate-800">
-                    <img
-                      src={dish.imageUrl}
-                      alt={dish.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80';
-                      }}
-                    />
-                    
-                    {/* Add button on card */}
-                    <button
-                      onClick={(e) => handleQuickAdd(e, dish)}
-                      className="absolute bottom-1 right-1 px-2.5 py-1 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center gap-1 cursor-pointer"
-                    >
-                      <Plus className="w-3 h-3" />
-                      {inCart ? `${inCart.quantity}` : 'ADD'}
-                    </button>
-                  </div>
-
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </main>
 
       {/* FLOATING SMART AI CHEF RECOMMENDATION BANNER */}

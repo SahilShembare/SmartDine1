@@ -140,6 +140,20 @@ export default function AdminMenu() {
     }
   };
 
+  const handleClearAll = async () => {
+    if (confirm('⚠️ Are you sure you want to delete ALL menu items? This will remove all dishes.')) {
+      if (isFirebaseConfigured) {
+        for (const item of menuItems) {
+          try {
+            await deleteDoc(doc(db, 'menuItems', item.id));
+          } catch {}
+        }
+      }
+      setMenuItems([]);
+      localStore.saveMenuItems([]);
+    }
+  };
+
   return (
     <div className="flex min-h-[calc(100vh-4rem)] bg-slate-950">
       <Sidebar mode="admin" />
@@ -157,13 +171,25 @@ export default function AdminMenu() {
             </p>
           </div>
 
-          <button
-            onClick={handleOpenAdd}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-semibold text-sm shadow-glow transition active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New Dish</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {menuItems.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-xs font-semibold transition"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear All Dishes</span>
+              </button>
+            )}
+
+            <button
+              onClick={handleOpenAdd}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-semibold text-sm shadow-glow transition active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Dish</span>
+            </button>
+          </div>
         </div>
 
         {/* Filter Controls */}

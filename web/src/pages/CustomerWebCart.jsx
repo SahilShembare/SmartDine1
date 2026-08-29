@@ -80,27 +80,7 @@ export default function CustomerWebCart() {
     }
   };
 
-  if (!currentUser) {
-    return (
-      <div className="min-h-[calc(100vh-4rem)] bg-slate-950 flex flex-col items-center justify-center p-4 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center mb-4 shadow-glow">
-          <User className="w-8 h-8" />
-        </div>
-        <h2 className="text-xl font-extrabold text-white">Login Required to View Cart</h2>
-        <p className="text-xs text-slate-400 max-w-xs mt-1 mb-6">
-          Please sign in to your account to review cart items, view discounts, and place your table order.
-        </p>
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-          <Link
-            to="/login"
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white font-extrabold text-xs shadow-glow transition"
-          >
-            Sign In / Register
-          </Link>
-        </div>
-      </div>
-    );
-  }
+
 
   if (cart.length === 0) {
     return (
