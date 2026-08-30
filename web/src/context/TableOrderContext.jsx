@@ -31,33 +31,27 @@ export function TableOrderProvider({ children }) {
   });
 
   // Orders and Menu real-time data
-  const [menuItems, setMenuItems] = useState(() => {
-    try {
-      const v13Loaded = localStorage.getItem('smartdine_menu_v13_restored_full_menu');
-      if (!v13Loaded) {
-        localStorage.setItem('smartdine_menu_v13_restored_full_menu', 'true');
-        localStore.resetToDemoData();
-        return localStore.getMenuItems();
-      }
-      return localStore.getMenuItems();
-    } catch {
-      return localStore.getMenuItems();
-    }
-  });
-  const [categories, setCategories] = useState(() => {
-    try {
-      const v13Loaded = localStorage.getItem('smartdine_menu_v13_restored_full_menu');
-      if (!v13Loaded) {
-        localStore.resetToDemoData();
-        return localStore.getCategories();
-      }
-      return localStore.getCategories();
-    } catch {
-      return localStore.getCategories();
-    }
-  });
+  const [menuItems, setMenuItems] = useState(() => localStore.getMenuItems());
+  const [categories, setCategories] = useState(() => localStore.getCategories());
   const [tables, setTables] = useState(() => localStore.getTables());
-  const [orders, setOrders] = useState(() => localStore.getOrders());
+  
+  const [orders, setOrders] = useState(() => {
+    try {
+      const realOrdersPurged = localStorage.getItem('smartdine_real_production_mode_v1');
+      if (!realOrdersPurged) {
+        localStorage.setItem('smartdine_real_production_mode_v1', 'true');
+        // Filter out any leftover seed dummy demo orders
+        const raw = localStore.getOrders();
+        const cleanRealOrders = raw.filter(o => !['ORD-9821', 'ORD-9822', 'ORD-9823', 'ORD-9824'].includes(o.id));
+        localStore.saveOrders(cleanRealOrders);
+        return cleanRealOrders;
+      }
+      return localStore.getOrders();
+    } catch {
+      return localStore.getOrders();
+    }
+  });
+
   const [latestPlacedOrderId, setLatestPlacedOrderId] = useState(() => {
     return localStorage.getItem('smartdine_last_order_id') || null;
   });
@@ -268,6 +262,210 @@ export function TableOrderProvider({ children }) {
     return orderId;
   };
 
+  // Check if an order has already been paid / cleared
+  const isOrderPaid = (order) => {
+    if (!order) return false;
+    const pStatus = String(order.paymentStatus || '').trim().toLowerCase();
+    
+    // Explicitly un-paid or pending collection states
+    if (
+      pStatus === 'unpaid' || 
+      pStatus === 'pending' || 
+      pStatus.includes('requested') || 
+      pStatus.includes('awaiting')
+    ) {
+      return false;
+    }
+
+    // Explicitly paid states
+    if (pStatus === 'paid' || pStatus === 'cash paid' || pStatus === 'online paid') {
+      return true;
+    }
+
+    if (order.paidAt && order.transactionId && !order.transactionId.startsWith('PENDING')) {
+      return true;
+    }
+    return false;
+  };
+
+  // Get active UNPAID dining orders for a table (multiple orders in same session)
+  const getTableActiveOrders = (tableNum = currentTable) => {
+    if (!tableNum) return [];
+    const formatted = String(tableNum).padStart(2, '0');
+    return orders.filter(o => 
+      String(o.tableNumber).padStart(2, '0') === formatted && 
+      !isOrderPaid(o) &&
+      o.status !== 'cancelled'
+    );
+  };
+
+  // Get previously paid / cleared orders for this table session
+  const getTablePaidOrders = (tableNum = currentTable) => {
+    if (!tableNum) return [];
+    const formatted = String(tableNum).padStart(2, '0');
+    return orders.filter(o => 
+      String(o.tableNumber).padStart(2, '0') === formatted && 
+      isOrderPaid(o) &&
+      o.status !== 'cancelled'
+    );
+  };
+
+  // Consolidate all orders in the current dining session into ONE single final bill
+  const getCombinedTableBill = (tableNum = currentTable, discountAmount = 0) => {
+    const activeOrders = getTableActiveOrders(tableNum);
+    const clearedOrders = getTablePaidOrders(tableNum);
+    
+    // Consolidate all ordered items across multiple UNPAID orders
+    const itemMap = new Map();
+    activeOrders.forEach(order => {
+      if (Array.isArray(order.items)) {
+        order.items.forEach(item => {
+          const key = item.itemId || item.name;
+          if (itemMap.has(key)) {
+            const existing = itemMap.get(key);
+            existing.quantity += (item.quantity || 1);
+            existing.totalPrice += (item.price * (item.quantity || 1));
+          } else {
+            itemMap.set(key, {
+              itemId: item.itemId || item.id,
+              name: item.name,
+              price: item.price,
+              isVeg: item.isVeg !== false,
+              quantity: item.quantity || 1,
+              totalPrice: item.price * (item.quantity || 1),
+              imageUrl: item.imageUrl || ''
+            });
+          }
+        });
+      }
+    });
+
+    const consolidatedItems = Array.from(itemMap.values());
+    const subtotal = consolidatedItems.reduce((sum, item) => sum + item.totalPrice, 0);
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+    const tax = Math.round(discountedSubtotal * 0.05 * 100) / 100; // 5% GST
+    const total = Math.round((discountedSubtotal + tax) * 100) / 100;
+
+    // Check overall table bill status
+    const isCashRequested = activeOrders.some(o => 
+      String(o.paymentStatus || '').toLowerCase().includes('cash') || 
+      String(o.paymentMethod || '').toLowerCase().includes('cash')
+    );
+    const isBillRequested = activeOrders.some(o => 
+      String(o.paymentStatus || '').toLowerCase().includes('requested')
+    ) || isCashRequested;
+    const isPaid = activeOrders.length === 0;
+
+    const totalClearedAmount = clearedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+
+    return {
+      tableNumber: tableNum,
+      activeOrders,
+      clearedOrders,
+      clearedOrderCount: clearedOrders.length,
+      totalClearedAmount,
+      orderCount: activeOrders.length,
+      orderIds: activeOrders.map(o => o.id),
+      consolidatedItems,
+      subtotal,
+      discountAmount,
+      tax,
+      total,
+      billStatus: isPaid ? 'Paid' : isCashRequested ? 'Cash Payment Requested' : isBillRequested ? 'Bill Requested' : 'Pending'
+    };
+  };
+
+  // Customer requests the final combined bill
+  const requestTableBill = async (tableNum = currentTable) => {
+    if (!tableNum) throw new Error('No active table found');
+    const formatted = String(tableNum).padStart(2, '0');
+
+    if (isFirebaseConfigured) {
+      try {
+        const q = query(
+          collection(db, 'orders'), 
+          where('tableNumber', '==', formatted)
+        );
+        const snap = await getDocs(q);
+        snap.docs.forEach(async (d) => {
+          const data = d.data();
+          if (data.paymentStatus !== 'Paid') {
+            await addDoc(collection(db, 'orders'), {}); // trigger listener or localStore update
+          }
+        });
+      } catch (err) {
+        console.warn('Firebase bill request warning:', err);
+      }
+    }
+
+    localStore.updateOrdersForTable(formatted, {
+      paymentStatus: 'Bill Requested',
+      billRequestedAt: new Date().toISOString()
+    });
+
+    const updated = localStore.getOrders();
+    setOrders([...updated]);
+  };
+
+  // Pay Combined Table Bill (Online UPI / Card / NetBanking / Cash)
+  const payTableBill = async (tableNum = currentTable, {
+    paymentMethod = 'UPI',
+    transactionId = `TXN-${Date.now().toString().slice(-6)}`,
+    discountAmount = 0,
+    couponCode = null
+  }) => {
+    if (!tableNum) throw new Error('No active table found');
+    const formatted = String(tableNum).padStart(2, '0');
+
+    const paidPayload = {
+      paymentStatus: 'Paid',
+      status: 'completed',
+      paymentMethod,
+      transactionId,
+      discountAmount,
+      couponCode,
+      paidAt: new Date().toISOString()
+    };
+
+    localStore.updateOrdersForTable(formatted, paidPayload);
+    const updated = localStore.getOrders();
+    setOrders([...updated]);
+    clearCart();
+
+    return {
+      tableNumber: formatted,
+      transactionId,
+      paymentMethod,
+      paidAt: paidPayload.paidAt,
+      status: 'Paid'
+    };
+  };
+
+  // Customer requests cash payment (Admin / Cashier needs to collect cash at counter or table)
+  const requestCashPaymentForTable = async (tableNum = currentTable) => {
+    if (!tableNum) throw new Error('No active table found');
+    const formatted = String(tableNum).padStart(2, '0');
+
+    localStore.updateOrdersForTable(formatted, {
+      paymentStatus: 'Cash Payment Requested',
+      paymentMethod: 'Cash (Awaiting Collection)',
+      billRequestedAt: new Date().toISOString()
+    });
+
+    const updated = localStore.getOrders();
+    setOrders([...updated]);
+    return { tableNumber: formatted, status: 'Cash Payment Requested' };
+  };
+
+  // Admin marks table bill as paid (e.g. Received Cash at Counter / Handed to Captain)
+  const markTableAsPaidByAdmin = (tableNum, paymentMethod = 'Cash (Collected by Cashier)') => {
+    const formatted = String(tableNum).padStart(2, '0');
+    return payTableBill(formatted, {
+      paymentMethod,
+      transactionId: `CASH-${Date.now().toString().slice(-6)}`
+    });
+  };
+
   const updateOrderStatus = (orderId, newStatus) => {
     if (!isFirebaseConfigured) {
       localStore.updateOrderStatus(orderId, newStatus);
@@ -296,7 +494,6 @@ export function TableOrderProvider({ children }) {
 
   const reloadLatestMenu = () => {
     try {
-      localStore.resetToDemoData();
       setMenuItems(localStore.getMenuItems());
       setCategories(localStore.getCategories());
       setTables(localStore.getTables());
@@ -329,6 +526,12 @@ export function TableOrderProvider({ children }) {
       orders,
       setOrders,
       placeOrder,
+      getTableActiveOrders,
+      getCombinedTableBill,
+      requestTableBill,
+      requestCashPaymentForTable,
+      payTableBill,
+      markTableAsPaidByAdmin,
       updateOrderStatus,
       refreshOrders,
       reloadLatestMenu,
@@ -343,3 +546,4 @@ export function TableOrderProvider({ children }) {
 export function useTableOrder() {
   return useContext(TableOrderContext);
 }
+

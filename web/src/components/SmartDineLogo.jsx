@@ -1,15 +1,10 @@
 import React from 'react';
 
 /**
- * SmartDineLogo - Consistent brand logo component
- * SMART (Dark Green) + DINE (Orange)
- * Font: Poppins ExtraBold, UPPERCASE, slightly increased letter spacing
- * 
- * @param {string} size - 'sm' | 'md' | 'lg' | 'xl' | 'hero'
- * @param {boolean} showIcon - Show the circular logo image
- * @param {string} className - Additional classes
+ * SmartDineLogo - Indian Restaurant Theme
+ * SMART (Golden Yellow #F4B942 or Cream #FFF8ED) + DINE (Warm Orange #E8752A)
  */
-export default function SmartDineLogo({ size = 'md', showIcon = true, showText = true, className = '' }) {
+export default function SmartDineLogo({ size = 'md', showIcon = true, showText = true, className = '', light = false }) {
   const sizeConfig = {
     xs: { text: 'text-sm', icon: 'w-6 h-6', iconBorder: 'border', gap: 'gap-1.5' },
     sm: { text: 'text-base', icon: 'w-7 h-7', iconBorder: 'border', gap: 'gap-2' },
@@ -26,18 +21,18 @@ export default function SmartDineLogo({ size = 'md', showIcon = true, showText =
       {showIcon && (
         <img
           src="/logo.png"
-          alt="SMART DINE - QR Based Restaurant Ordering"
-          className={`${config.icon} rounded-full object-cover ${config.iconBorder} border-amber-400/60 shadow-[0_0_15px_rgba(251,191,36,0.3)] hover:scale-105 transition-transform duration-200`}
+          alt="SMART DINE - Premium Restaurant Dining"
+          className={`${config.icon} rounded-full object-cover ${config.iconBorder} border-[#F4B942] shadow-[0_0_12px_rgba(244,185,66,0.4)] hover:scale-105 transition-transform duration-200`}
         />
       )}
       {showText && (
         <span
-          className={`${config.text} font-extrabold uppercase tracking-[0.06em] drop-shadow-sm`}
-          style={{ fontFamily: "'Poppins', 'Montserrat', sans-serif" }}
+          className={`${config.text} font-black uppercase tracking-[0.08em] drop-shadow-sm`}
+          style={{ fontFamily: "'Outfit', 'Poppins', sans-serif" }}
         >
-          <span className="text-emerald-500">SMART</span>
+          <span className="text-[#F4B942]">SMART</span>
           {' '}
-          <span className="text-amber-400">DINE</span>
+          <span className="text-[#E8752A]">DINE</span>
         </span>
       )}
     </div>

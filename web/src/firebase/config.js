@@ -46,7 +46,7 @@ function setLocalData(key, data) {
   }
 }
 
-// In-Memory & LocalStorage Real-time Store
+// In-Memory & LocalStorage Real-time Store (100% Real Live Production Mode)
 export const localStore = {
   getCategories: () => getLocalData('categories', DEMO_CATEGORIES),
   saveCategories: (categories) => setLocalData('categories', categories),
@@ -57,18 +57,19 @@ export const localStore = {
   getTables: () => getLocalData('tables', DEMO_TABLES),
   saveTables: (tables) => setLocalData('tables', tables),
   
-  getOrders: () => getLocalData('orders', DEMO_ORDERS),
+  // Real orders start empty unless real customer orders have been placed
+  getOrders: () => getLocalData('orders', []),
   saveOrders: (orders) => setLocalData('orders', orders),
 
-  resetToDemoData: () => {
+  resetToRealData: () => {
     setLocalData('categories', DEMO_CATEGORIES);
     setLocalData('menuItems', DEMO_MENU_ITEMS);
     setLocalData('tables', DEMO_TABLES);
-    setLocalData('orders', DEMO_ORDERS);
+    setLocalData('orders', []);
   },
 
   addOrder: (orderData) => {
-    const orders = getLocalData('orders', DEMO_ORDERS);
+    const orders = getLocalData('orders', []);
     const newOrder = {
       id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
       createdAt: new Date().toISOString(),
@@ -83,7 +84,7 @@ export const localStore = {
   },
 
   updateOrderStatus: (orderId, newStatus) => {
-    const orders = getLocalData('orders', DEMO_ORDERS);
+    const orders = getLocalData('orders', []);
     const index = orders.findIndex(o => o.id === orderId);
     if (index !== -1) {
       orders[index].status = newStatus;
@@ -92,5 +93,34 @@ export const localStore = {
       return orders[index];
     }
     return null;
+  },
+
+  updateOrderData: (orderId, updates) => {
+    const orders = getLocalData('orders', []);
+    const index = orders.findIndex(o => o.id === orderId);
+    if (index !== -1) {
+      orders[index] = { ...orders[index], ...updates, updatedAt: new Date().toISOString() };
+      setLocalData('orders', orders);
+      return orders[index];
+    }
+    return null;
+  },
+
+  updateOrdersForTable: (tableNumber, updates) => {
+    const orders = getLocalData('orders', []);
+    let changed = false;
+    const formatted = String(tableNumber).padStart(2, '0');
+    const updatedOrders = orders.map(o => {
+      if (String(o.tableNumber).padStart(2, '0') === formatted && o.paymentStatus !== 'Paid') {
+        changed = true;
+        return { ...o, ...updates, updatedAt: new Date().toISOString() };
+      }
+      return o;
+    });
+    if (changed) {
+      setLocalData('orders', updatedOrders);
+    }
+    return updatedOrders;
   }
 };
+

@@ -2,270 +2,365 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Html5Qrcode } from 'html5-qrcode';
 import toast from 'react-hot-toast';
+import confetti from 'canvas-confetti';
 import { useTableOrder } from '../context/TableOrderContext';
 import { useAuth } from '../context/AuthContext';
 import { 
   QrCode, 
   Camera, 
-  ScanLine, 
-  ChefHat, 
   Sparkles, 
   ArrowRight,
   CheckCircle2,
   AlertCircle,
-  Smartphone,
-  UtensilsCrossed
+  Image as ImageIcon,
+  ShieldCheck,
+  Zap,
+  Play,
+  Square
 } from 'lucide-react';
-
-// Generate 25 unique tables
-const ALL_TABLES = Array.from({ length: 25 }, (_, i) => {
-  const num = String(i + 1).padStart(2, '0');
-  return { id: num, label: `Table ${num}` };
-});
 
 export default function ScanTable() {
   const navigate = useNavigate();
-  const { setTableSession, currentTable } = useTableOrder();
-  const { currentUser } = useAuth();
-  const [scanning, setScanning] = useState(false);
-  const [scanResult, setScanResult] = useState(null);
+  const { setTableSession } = useTableOrder();
+  
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraLoading, setCameraLoading] = useState(false);
   const [scanError, setScanError] = useState('');
-  const [manualTable, setManualTable] = useState('');
-  const [showManual, setShowManual] = useState(false);
-  const scannerRef = useRef(null);
+  
   const html5QrRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const isStartingRef = useRef(false);
 
-  // If already have a table, offer to continue
-  useEffect(() => {
-    if (currentTable) {
-      setScanResult(currentTable);
+  // Helper to extract table number from any QR text / url / json
+  const parseTableNumber = (text) => {
+    if (!text) return null;
+    const clean = String(text).trim();
+
+    // 1. URL search param e.g. ?table=05 or &table=5
+    const urlMatch = clean.match(/[?&]table=(\d{1,2})/i);
+    if (urlMatch) return urlMatch[1];
+
+    // 2. URL path e.g. /table/05 or /menu/05 or smartdine://table/5
+    const pathMatch = clean.match(/(?:table|menu)\/(\d{1,2})/i);
+    if (pathMatch) return pathMatch[1];
+
+    // 3. Text label e.g. "Table 05" or "Table 5" or "T-05" or "T05"
+    const labelMatch = clean.match(/(?:table|t)[\s-]*(\d{1,2})/i);
+    if (labelMatch) return labelMatch[1];
+
+    // 4. Pure digits e.g. "05" or "5"
+    const digitMatch = clean.match(/^(\d{1,2})$/);
+    if (digitMatch) return digitMatch[1];
+
+    // 5. JSON string e.g. {"table": 5}
+    try {
+      const parsed = JSON.parse(clean);
+      if (parsed.table) return String(parsed.table);
+    } catch {}
+
+    return null;
+  };
+
+  // Connect table and redirect directly to menu
+  const handleConnectTable = (tableNum) => {
+    const tableId = parseTableNumber(tableNum);
+    if (!tableId) {
+      toast.error('Invalid table code. Please scan a valid Smart Dine table QR.');
+      return;
     }
-  }, [currentTable]);
 
-  // Start Camera QR Scanner
-  const startScanner = async () => {
+    const formatted = String(tableId).padStart(2, '0');
+    
+    // Stop camera safely
+    stopCamera();
+
+    // Set table in context & localStorage
+    setTableSession(formatted);
+
+    // Confetti celebration
+    try {
+      confetti({
+        particleCount: 50,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
+    } catch {}
+
+    toast.success(`🍽️ Table ${formatted} Connected! Opening menu...`, {
+      duration: 2500,
+      icon: '✨'
+    });
+
+    setTimeout(() => {
+      navigate(`/menu?table=${formatted}`, { replace: true });
+    }, 300);
+  };
+
+  // Start Camera
+  const startCamera = async () => {
+    if (isStartingRef.current) return;
+    isStartingRef.current = true;
+    setCameraLoading(true);
     setScanError('');
-    setScanResult(null);
-    setScanning(true);
 
     try {
+      // If already running, stop first
+      if (html5QrRef.current) {
+        try {
+          await html5QrRef.current.stop();
+        } catch {}
+        html5QrRef.current = null;
+      }
+
+      // Small delay to ensure DOM element is ready and measured
+      await new Promise(r => setTimeout(r, 150));
+
+      const elem = document.getElementById('qr-reader');
+      if (!elem) {
+        throw new Error('Camera display container not found.');
+      }
+
       const html5QrCode = new Html5Qrcode('qr-reader');
       html5QrRef.current = html5QrCode;
 
+      const config = {
+        fps: 15,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          const minDim = Math.min(viewfinderWidth, viewfinderHeight);
+          const size = Math.floor(minDim * 0.75);
+          return { width: size, height: size };
+        },
+        aspectRatio: 1.0
+      };
+
       await html5QrCode.start(
         { facingMode: 'environment' },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
+        config,
         (decodedText) => {
-          // Parse table number from QR URL
-          const match = decodedText.match(/[?&]table=(\d{1,2})/i);
-          if (match) {
-            const tableNum = match[1].padStart(2, '0');
-            const tableExists = ALL_TABLES.find(t => t.id === tableNum);
-            if (tableExists) {
-              html5QrCode.stop().catch(() => {});
-              setScanResult(tableNum);
-              setScanning(false);
-              toast.success(`✅ Table ${tableNum} scanned successfully!`);
-            } else {
-              setScanError(`Table ${tableNum} not found. Please scan a valid table QR.`);
-            }
+          const table = parseTableNumber(decodedText);
+          if (table) {
+            handleConnectTable(table);
           } else {
-            setScanError('Invalid QR code. Please scan a Smart Dine table QR.');
+            setScanError(`Scanned code "${decodedText.slice(0, 30)}" is not a valid table QR.`);
           }
         },
-        () => {} // Ignore scan failures (no QR in frame)
+        () => {} // frame without QR
       );
+
+      setIsCameraActive(true);
+      setCameraLoading(false);
+      isStartingRef.current = false;
     } catch (err) {
-      setScanning(false);
-      setScanError('Camera access denied or not available. Please use manual table selection.');
+      console.warn('Camera start error:', err);
+      setIsCameraActive(false);
+      setCameraLoading(false);
+      isStartingRef.current = false;
+      setScanError(
+        'Camera not available or access denied. Please click "Open Scanner" or allow camera permissions.'
+      );
     }
   };
 
-  // Stop Scanner
-  const stopScanner = () => {
+  // Stop Camera
+  const stopCamera = async () => {
     if (html5QrRef.current) {
-      html5QrRef.current.stop().catch(() => {});
+      try {
+        await html5QrRef.current.stop();
+      } catch {}
+      html5QrRef.current = null;
     }
-    setScanning(false);
+    setIsCameraActive(false);
+    setCameraLoading(false);
+    isStartingRef.current = false;
   };
 
-  // Cleanup on unmount
+  // Upload QR Image
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const tempScanner = new Html5Qrcode('qr-reader-file-temp');
+      const decodedText = await tempScanner.scanFile(file, true);
+      const table = parseTableNumber(decodedText);
+
+      if (table) {
+        handleConnectTable(table);
+      } else {
+        toast.error(`QR Code detected, but no table info found.`);
+      }
+    } catch (err) {
+      toast.error('No readable QR code found in this photo.');
+    } finally {
+      e.target.value = '';
+    }
+  };
+
+  // Lifecycle: Clean up camera on unmount
   useEffect(() => {
     return () => {
-      if (html5QrRef.current) {
-        html5QrRef.current.stop().catch(() => {});
-      }
+      stopCamera();
     };
   }, []);
 
-  // Handle manual table selection
-  const handleManualSelect = (tableId) => {
-    setScanResult(tableId);
-    setShowManual(false);
-    toast.success(`✅ Table ${tableId} selected!`);
-  };
-
-  // Proceed to menu with selected table
-  const proceedToMenu = () => {
-    if (scanResult) {
-      setTableSession(scanResult);
-      toast.success(`🍽️ Welcome to Table ${scanResult}! Browse the menu & order.`);
-      navigate(`/menu?table=${scanResult}`);
-    }
-  };
-
   return (
-    <div className="min-h-screen relative flex flex-col items-center justify-center p-4 py-8 overflow-hidden bg-slate-950 font-sans">
+    <div className="min-h-screen bg-[#FFF8ED] text-[#24140D] relative flex flex-col items-center justify-center p-4 py-8 overflow-hidden font-sans">
       
-      {/* Background */}
-      <div className="absolute inset-0 z-0">
-        <img 
-          src="/restaurant-bg.jpg" 
-          alt="Smart Dine Restaurant" 
-          className="w-full h-full object-cover object-center scale-105"
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/60 to-slate-950/95"></div>
-      </div>
+      {/* Hidden file scanner element */}
+      <div id="qr-reader-file-temp" className="hidden"></div>
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        onChange={handleFileUpload} 
+        accept="image/*" 
+        className="hidden" 
+      />
 
-      <div className="relative z-10 w-full max-w-md space-y-6">
+      <div className="relative z-10 w-full max-w-md space-y-5">
         
-        {/* Header */}
-        <div className="text-center space-y-3">
-          <div className="flex justify-center">
-            <img
-              src="/logo.png"
-              alt="Smart Dine Logo"
-              className="w-16 h-16 rounded-full object-cover border-2 border-amber-400/60 shadow-[0_0_20px_rgba(251,191,36,0.35)]"
-            />
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            Scan Your Table QR
-          </h1>
-          <p className="text-sm text-slate-400">
-            {currentUser?.displayName ? `Welcome, ${currentUser.displayName}! ` : ''}
-            Scan the QR code on your table to start ordering
-          </p>
-        </div>
-
-        {/* QR Scanner Card */}
-        <div className="bg-slate-900/90 backdrop-blur-xl rounded-3xl border border-slate-800 shadow-2xl overflow-hidden">
-          
-          {/* Scanner Result - Table Found */}
-          {scanResult ? (
-            <div className="p-6 space-y-5">
-              <div className="flex flex-col items-center space-y-4">
-                <div className="w-20 h-20 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.3)]">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-400" />
-                </div>
-                <div className="text-center">
-                  <h2 className="text-xl font-black text-white">Table {scanResult}</h2>
-                  <p className="text-sm text-emerald-400 font-semibold mt-1">QR Verified • Ready to Order</p>
-                </div>
-              </div>
-
-              {/* Table Info Strip */}
-              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-800/80 border border-slate-700">
-                <div className="flex items-center gap-2">
-                  <QrCode className="w-5 h-5 text-amber-400" />
-                  <span className="text-sm font-bold text-white">Table {scanResult}</span>
-                </div>
-                <span className="text-xs text-emerald-400 font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30">
-                  ● Active
-                </span>
-              </div>
-
-              {/* Proceed Button */}
-              <button
-                onClick={proceedToMenu}
-                className="w-full py-3.5 rounded-2xl bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-slate-950 font-black text-sm shadow-[0_0_25px_rgba(251,191,36,0.35)] transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <UtensilsCrossed className="w-4 h-4" />
-                <span>View Menu & Start Ordering</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
-              {/* Scan Different Table */}
-              <button
-                onClick={() => { setScanResult(null); setScanError(''); }}
-                className="w-full text-center text-xs text-slate-400 hover:text-white font-semibold cursor-pointer transition"
-              >
-                Scan a different table
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* Camera Scanner View */}
-              <div className="relative">
-                <div 
-                  id="qr-reader" 
-                  ref={scannerRef}
-                  className={`w-full ${scanning ? 'min-h-[300px]' : 'h-0 overflow-hidden'}`}
-                ></div>
-
-                {!scanning && (
-                  <div className="p-8 flex flex-col items-center space-y-5">
-                    {/* Scanner Icon Animation */}
-                    <div className="relative w-28 h-28 flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-3xl bg-emerald-500/10 border-2 border-dashed border-emerald-500/40 animate-pulse"></div>
-                      <div className="relative z-10 w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
-                        <QrCode className="w-8 h-8 text-emerald-400" />
-                      </div>
-                      {/* Scanning line animation */}
-                      <div className="absolute top-2 left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-bounce"></div>
-                    </div>
-
-                    <div className="text-center space-y-1">
-                      <h3 className="text-lg font-bold text-white">Ready to Scan</h3>
-                      <p className="text-xs text-slate-400">
-                        Point your camera at the QR code on your dining table
-                      </p>
-                    </div>
-
-                    {/* Start Scanner Button */}
-                    <button
-                      onClick={startScanner}
-                      className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white font-black text-sm shadow-[0_0_25px_rgba(16,185,129,0.35)] transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Camera className="w-5 h-5" />
-                      <span>Open Camera & Scan QR</span>
-                    </button>
-                  </div>
-                )}
-
-                {scanning && (
-                  <div className="p-4">
-                    <button
-                      onClick={stopScanner}
-                      className="w-full py-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold text-xs border border-red-500/40 transition cursor-pointer"
-                    >
-                      Stop Scanner
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Error Message */}
-              {scanError && (
-                <div className="mx-4 mb-4 flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold">
-                  <AlertCircle className="w-4 h-4 shrink-0" />
-                  <span>{scanError}</span>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Footer Info */}
+        {/* Top Header */}
         <div className="text-center space-y-2">
-          <p className="text-[11px] text-slate-500 font-medium">
-            Each table has a unique QR code • 25 tables available
+          <div className="flex justify-center">
+            <Link to="/" className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-[#F4B942] shadow-sm hover:border-[#E8752A] transition group">
+              <img 
+                src="/logo.png" 
+                alt="Smart Dine Logo" 
+                className="w-7 h-7 rounded-full object-cover border border-[#F4B942] shadow-sm group-hover:scale-105 transition-transform"
+              />
+              <span className="font-black text-base text-[#24140D] tracking-tight">Smart Dine</span>
+            </Link>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-black text-[#24140D] tracking-tight">
+            Scan Your Dining Table QR
+          </h1>
+          <p className="text-xs sm:text-sm text-[#6B5B50] max-w-sm mx-auto">
+            Point your camera at the QR code standee on your table to open digital menu.
           </p>
-          <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-600">
-            <Sparkles className="w-3 h-3 text-amber-400/60" />
-            <span>Smart Dine — Smart Choice, Great Experience!</span>
+        </div>
+
+        {/* Main QR Scanner Card */}
+        <div className="rounded-3xl bg-white border border-[#F4B942]/40 shadow-xl overflow-hidden p-4 sm:p-6 space-y-4">
+          
+          {/* Camera Viewport Frame */}
+          <div className="relative rounded-2xl overflow-hidden bg-slate-950 border border-slate-800 min-h-[320px] flex items-center justify-center shadow-inner">
+            
+            {/* Real QR Reader DOM Node */}
+            <div 
+              id="qr-reader" 
+              className="w-full min-h-[320px] bg-black flex items-center justify-center overflow-hidden"
+            ></div>
+
+            {/* Laser HUD Overlay when streaming */}
+            {isCameraActive && (
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                
+                {/* Glowing Bounding Box */}
+                <div className="relative w-56 h-56 border-2 border-[#F4B942]/80 rounded-2xl shadow-[0_0_30px_rgba(244,185,66,0.35)]">
+                  {/* Top-Left Corner */}
+                  <div className="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-[#E8752A] rounded-tl-lg"></div>
+                  {/* Top-Right Corner */}
+                  <div className="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-[#E8752A] rounded-tr-lg"></div>
+                  {/* Bottom-Left Corner */}
+                  <div className="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-[#E8752A] rounded-bl-lg"></div>
+                  {/* Bottom-Right Corner */}
+                  <div className="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-[#E8752A] rounded-br-lg"></div>
+
+                  {/* Center Crosshair */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-8 h-8 border border-[#F4B942] rounded-full flex items-center justify-center animate-pulse">
+                      <div className="w-2 h-2 bg-[#E8752A] rounded-full"></div>
+                    </div>
+                  </div>
+
+                  {/* Animated Laser Scanning Beam */}
+                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#F4B942] to-transparent shadow-[0_0_15px_#F4B942] animate-bounce"></div>
+                </div>
+
+                {/* HUD Status Pill */}
+                <div className="absolute bottom-3 px-3.5 py-1 rounded-full bg-black/80 border border-[#F4B942]/40 text-[11px] font-bold text-[#F4B942] flex items-center gap-1.5 backdrop-blur-md">
+                  <span className="w-2 h-2 rounded-full bg-[#E8752A] animate-ping"></span>
+                  <span>Align camera with table QR</span>
+                </div>
+              </div>
+            )}
+
+            {/* Camera Offline / Click to Launch overlay */}
+            {!isCameraActive && !cameraLoading && (
+              <div 
+                onClick={() => startCamera()}
+                className="absolute inset-0 bg-[#24140D]/95 flex flex-col items-center justify-center p-6 text-center space-y-3 cursor-pointer group hover:bg-[#3B2115] transition duration-200"
+              >
+                <div className="w-24 h-24 rounded-3xl bg-[#FFF8ED]/10 border-2 border-dashed border-[#F4B942] flex items-center justify-center text-[#F4B942] group-hover:scale-110 transition-transform shadow-[0_0_25px_rgba(244,185,66,0.25)]">
+                  <Camera className="w-12 h-12 stroke-[1.5]" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black text-white group-hover:text-[#F4B942] transition">
+                    Tap to Scan Table QR
+                  </h3>
+                  <p className="text-xs text-[#FFF8ED]/80 max-w-xs mx-auto">
+                    Tap anywhere inside this viewfinder to scan your dining table standee QR.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Loading Indicator */}
+            {cameraLoading && (
+              <div className="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center space-y-3">
+                <div className="w-10 h-10 border-3 border-[#F4B942] border-t-transparent rounded-full animate-spin"></div>
+                <p className="text-xs text-[#F4B942] font-bold">Opening camera stream...</p>
+              </div>
+            )}
+          </div>
+
+          {/* Error message */}
+          {scanError && (
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-[#D32F2F] text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-[#D32F2F]" />
+              <span>{scanError}</span>
+            </div>
+          )}
+
+          {/* Control Action Buttons */}
+          <div className="pt-1">
+            {isCameraActive ? (
+              <button
+                type="button"
+                onClick={stopCamera}
+                className="w-full py-3 px-4 rounded-2xl bg-red-50 hover:bg-red-100 border border-red-200 text-[#D32F2F] text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                <Square className="w-4 h-4 fill-current" />
+                <span>Stop Camera Scanner</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-3.5 px-4 rounded-2xl bg-[#FFF8ED] hover:bg-[#E8752A] hover:text-white border border-[#F4B942] text-[#3B2115] text-xs font-black transition flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+              >
+                <ImageIcon className="w-4 h-4 text-[#E8752A]" />
+                <span>Upload Table QR Photo</span>
+              </button>
+            )}
+          </div>
+
+        </div>
+
+        {/* Info Badges */}
+        <div className="grid grid-cols-2 gap-3 text-[11px] text-[#6B5B50] font-semibold">
+          <div className="p-3 rounded-2xl bg-white border border-[#F4B942]/30 flex items-center gap-2 shadow-sm">
+            <ShieldCheck className="w-4 h-4 text-[#2E7D32] shrink-0" />
+            <span>Instant table auto-connect</span>
+          </div>
+          <div className="p-3 rounded-2xl bg-white border border-[#F4B942]/30 flex items-center gap-2 shadow-sm">
+            <Zap className="w-4 h-4 text-[#E8752A] shrink-0" />
+            <span>Direct digital royal ordering</span>
           </div>
         </div>
+
       </div>
+
     </div>
   );
 }
