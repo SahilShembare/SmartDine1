@@ -1,14 +1,8 @@
-# Node & dependencies
-node_modules
-**/node_modules
-
 # Other apps & emulators
 mobile
-firebase
 .expo
 
-# Version control & configs
-.git
-.vercel
+# Version control & logs
 *.log
+
 
