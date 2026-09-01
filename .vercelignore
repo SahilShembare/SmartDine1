@@ -7,13 +7,8 @@ mobile
 firebase
 .expo
 
-# Build artifacts
-dist
-**/dist
-build
-**/build
-
 # Version control & configs
 .git
 .vercel
 *.log
+
