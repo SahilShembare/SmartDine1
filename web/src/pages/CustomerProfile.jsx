@@ -53,7 +53,8 @@ export default function CustomerProfile() {
     menuItems, 
     addToCart, 
     currentTable, 
-    cart 
+    cart,
+    customerFeedbacks = [] 
   } = useTableOrder();
 
   const avatarInputRef = React.useRef(null);
@@ -294,6 +295,7 @@ export default function CustomerProfile() {
   const navTabs = [
     { id: 'orders', label: 'My Orders', icon: ShoppingBag, count: myOrders.length },
     { id: 'favorites', label: 'Favorites', icon: Heart, count: favoriteDishes.length },
+    { id: 'feedback', label: 'My Feedback', icon: Star, count: customerFeedbacks.length },
     { id: 'offers', label: 'Offers & Coupons', icon: Gift, count: coupons.length },
     { id: 'rewards', label: 'Reward Points', icon: Crown, count: rewardPoints },
     { id: 'notifications', label: 'Notifications', icon: Bell, count: notifications.filter(n => !n.read).length },
@@ -678,6 +680,138 @@ export default function CustomerProfile() {
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* MY FEEDBACK & RATINGS TAB */}
+            {activeTab === 'feedback' && (
+              <div className="space-y-4">
+                <div className="bg-white border border-[#F4B942]/40 rounded-3xl p-5 sm:p-6 shadow-[0_2px_12px_rgba(36,20,13,0.06)] space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg sm:text-xl font-black text-[#24140D] flex items-center gap-2">
+                        <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                        <span>My Feedback & Dish Ratings</span>
+                      </h2>
+                      <p className="text-xs text-[#6B5B50] mt-0.5">
+                        Your reviews and ratings that continuously train SmartDine AI to personalize your menu.
+                      </p>
+                    </div>
+                    <span className="text-xs font-black text-[#E8752A] bg-[#FFF8ED] px-3 py-1 rounded-xl border border-[#F4B942]/40">
+                      {customerFeedbacks.length} Reviews
+                    </span>
+                  </div>
+
+                  {customerFeedbacks.length === 0 ? (
+                    <div className="text-center py-12 px-4 bg-[#FFF8ED]/50 rounded-2xl border border-dashed border-[#F4B942]/60 space-y-3">
+                      <div className="w-14 h-14 rounded-2xl bg-white border border-[#F4B942] flex items-center justify-center mx-auto text-amber-500 shadow-sm">
+                        <Star className="w-7 h-7 fill-amber-400 text-amber-400" />
+                      </div>
+                      <h3 className="text-base font-bold text-[#24140D]">No Feedback Submitted Yet</h3>
+                      <p className="text-xs text-[#6B5B50] max-w-sm mx-auto">
+                        Rate your meals after completing an order to train our AI to recommend your favorite taste profiles.
+                      </p>
+                      <Link
+                        to="/menu"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#E8752A] text-white text-xs font-black shadow-md hover:bg-[#3B2115] transition"
+                      >
+                        <UtensilsCrossed className="w-4 h-4" />
+                        <span>Order Delicacies</span>
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-3.5">
+                      {customerFeedbacks.map((fb) => (
+                        <div
+                          key={fb.id}
+                          className="p-4 sm:p-5 rounded-2xl bg-white border border-[#6B5B50]/15 hover:border-[#E8752A]/50 shadow-sm transition space-y-3"
+                        >
+                          <div className="flex items-start justify-between gap-3 flex-wrap">
+                            <div>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-mono font-black text-xs text-[#24140D]">
+                                  Order #{fb.orderId}
+                                </span>
+                                {fb.tableNumber && (
+                                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-[#3B2115] text-[#F4B942] border border-[#F4B942]/40">
+                                    Table {fb.tableNumber}
+                                  </span>
+                                )}
+                                <div className="flex items-center gap-0.5 text-amber-500">
+                                  {[1, 2, 3, 4, 5].map((s) => (
+                                    <Star
+                                      key={s}
+                                      className={`w-3.5 h-3.5 ${
+                                        s <= fb.overallRating
+                                          ? 'fill-amber-400 text-amber-400'
+                                          : 'text-slate-200'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+
+                              <p className="text-[11px] text-[#6B5B50] mt-1">{fb.date}</p>
+                            </div>
+
+                            {fb.aiAnalysis && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                AI: {fb.aiAnalysis.sentiment} ({fb.aiAnalysis.serviceStatus})
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Individual Item Ratings */}
+                          {fb.itemRatings && Object.keys(fb.itemRatings).length > 0 && (
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              {Object.entries(fb.itemRatings).map(([dishName, rating]) => (
+                                <span
+                                  key={dishName}
+                                  className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-[#FFF8ED] text-[#3B2115] border border-[#F4B942]/40 flex items-center gap-1"
+                                >
+                                  <span>{dishName}:</span>
+                                  <span className="text-amber-500 font-black">⭐ {rating}</span>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Selected Feedback Tags */}
+                          {fb.selectedTags && fb.selectedTags.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {fb.selectedTags.map((tag, i) => (
+                                <span
+                                  key={i}
+                                  className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Customer written text */}
+                          {fb.writtenText && (
+                            <p className="text-xs text-slate-700 italic bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                              "{fb.writtenText}"
+                            </p>
+                          )}
+
+                          {/* Restaurant Response */}
+                          {fb.restaurantResponse && (
+                            <div className="p-3 rounded-xl bg-gradient-to-r from-orange-50/70 to-amber-50/70 border border-orange-200/80 text-xs">
+                              <p className="font-bold text-[#E8752A] flex items-center gap-1">
+                                <Sparkles className="w-3.5 h-3.5" />
+                                <span>SmartDine Restaurant Response:</span>
+                              </p>
+                              <p className="text-slate-700 mt-1 leading-relaxed">{fb.restaurantResponse}</p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 

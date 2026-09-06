@@ -20,12 +20,14 @@ import {
   CheckCircle2,
   Clock,
   Banknote,
-  ChevronDown
+  ChevronDown,
+  Percent,
+  Tag
 } from 'lucide-react';
 
 export default function Navbar() {
   const { currentUser, logout } = useAuth();
-  const { currentTable, orders, getCombinedTableBill } = useTableOrder();
+  const { currentTable, orders, getCombinedTableBill, cartItemCount = 0 } = useTableOrder();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -56,12 +58,46 @@ export default function Navbar() {
             <Link to={isAdminPage ? "/admin" : "/"} className="group flex items-center gap-2">
               <SmartDineLogo size="md" />
             </Link>
-            {isAdminPage && (
+            {isAdminPage ? (
               <div className="hidden md:flex items-center gap-2 pl-3 border-l border-[#F4B942]/30">
                 <span className="text-xs font-black text-[#FFF8ED] uppercase tracking-wider">
                   Royal Palace Operations
                 </span>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" title="System Live" />
+              </div>
+            ) : (
+              /* Desktop Central Navigation Links for Customer Pages */
+              <div className="hidden md:flex items-center gap-1 pl-4 border-l border-[#F4B942]/20">
+                <Link
+                  to="/"
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    isHomePage ? 'bg-[#24140D] text-[#F4B942]' : 'text-[#FFF8ED]/80 hover:text-white hover:bg-[#24140D]/60'
+                  }`}
+                >
+                  <HomeIcon className="w-3.5 h-3.5 text-[#F4B942]" />
+                  <span>Home</span>
+                </Link>
+
+                <Link
+                  to="/menu"
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    location.pathname === '/menu' ? 'bg-[#24140D] text-[#F4B942]' : 'text-[#FFF8ED]/80 hover:text-white hover:bg-[#24140D]/60'
+                  }`}
+                >
+                  <UtensilsCrossed className="w-3.5 h-3.5 text-[#F4B942]" />
+                  <span>Menu</span>
+                </Link>
+
+                <Link
+                  to="/cart"
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    location.pathname === '/cart' ? 'bg-[#24140D] text-[#F4B942]' : 'text-[#FFF8ED]/80 hover:text-white hover:bg-[#24140D]/60'
+                  }`}
+                >
+                  <Tag className="w-3.5 h-3.5 text-[#F4B942]" />
+                  <span>Vouchers & Offers</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-[#E8752A] text-white text-[10px] font-black">50% OFF</span>
+                </Link>
               </div>
             )}
           </div>
@@ -69,14 +105,39 @@ export default function Navbar() {
           {/* Top Bar Action Navigation */}
           <div className="flex items-center gap-2 sm:gap-3">
             
-            {/* Home Button (Only on Customer Pages) */}
-            {!isHomePage && !isAdminPage && (
+            {/* Desktop Cart Button with Item Counter */}
+            {!isAdminPage && (
               <Link
-                to="/"
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#FFF8ED]/90 hover:text-white hover:bg-[#24140D] transition"
+                to="/cart"
+                className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#E8752A] to-[#F4B942] hover:brightness-110 text-white text-xs font-black shadow-md shadow-orange-900/30 transition active:scale-95"
+                title="View Dining Cart & Discounts"
               >
-                <HomeIcon className="w-3.5 h-3.5 text-[#F4B942]" />
-                <span>Home</span>
+                <div className="relative">
+                  <ShoppingBag className="w-4 h-4 text-white" />
+                  {cartItemCount > 0 && (
+                    <span className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-[#3B2115] text-[#F4B942] text-[9px] font-black flex items-center justify-center ring-1 ring-white">
+                      {cartItemCount}
+                    </span>
+                  )}
+                </div>
+                <span className="font-extrabold">Cart</span>
+                {cartItemCount > 0 && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-[#3B2115]/40 text-white text-[10px]">
+                    {cartItemCount}
+                  </span>
+                )}
+              </Link>
+            )}
+
+            {/* Quick Admin Portal Switcher Button */}
+            {!isAdminPage && (
+              <Link
+                to="/admin"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#24140D] hover:bg-[#24140D]/80 border border-[#F4B942]/40 text-[#FFF8ED] text-xs font-bold transition shadow-sm"
+                title="Switch to Admin Management Dashboard"
+              >
+                <LayoutDashboard className="w-3.5 h-3.5 text-[#F4B942]" />
+                <span className="hidden sm:inline">Admin Portal</span>
               </Link>
             )}
 

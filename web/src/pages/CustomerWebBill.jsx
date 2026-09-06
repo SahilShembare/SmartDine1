@@ -32,6 +32,8 @@ import {
   FileDown,
   X
 } from 'lucide-react';
+import { openRazorpayPayment } from '../utils/razorpay';
+import CustomerFeedbackModal from '../components/CustomerFeedbackModal';
 
 export default function CustomerWebBill() {
   const navigate = useNavigate();
@@ -53,8 +55,8 @@ export default function CustomerWebBill() {
   const [discountAmount, setDiscountAmount] = useState(0);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
 
-  // Payment method: 'upi' | 'card' | 'netbanking' | 'cash'
-  const [paymentMode, setPaymentMode] = useState('upi');
+  // Payment method: 'razorpay' | 'upi' | 'card' | 'netbanking' | 'cash'
+  const [paymentMode, setPaymentMode] = useState('razorpay');
 
   // UPI sub-options
   const [upiMethod, setUpiMethod] = useState('qr'); // 'qr' | 'app' | 'id'
@@ -75,6 +77,7 @@ export default function CustomerWebBill() {
   const [isPaying, setIsPaying] = useState(false);
   const [cashRequested, setCashRequested] = useState(false);
   const [paymentSuccessData, setPaymentSuccessData] = useState(null);
+  const [showBillFeedback, setShowBillFeedback] = useState(true);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [invoiceNumber] = useState(() => `INV-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`);
 
@@ -178,7 +181,34 @@ export default function CustomerWebBill() {
       return;
     }
 
-    // 2. ONLINE PAYMENT FLOW (UPI / Card / NetBanking)
+    // 2. RAZORPAY ONLINE GATEWAY PAYMENT FLOW
+    if (paymentMode === 'razorpay') {
+      setIsPaying(true);
+      openRazorpayPayment({
+        amount: billData.total,
+        name: 'SmartDine Restaurant',
+        description: `Table ${formattedTable} Final Bill Settlement`,
+        orderId: `SD-BILL-${formattedTable}-${Date.now()}`,
+        customer: {
+          name: currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || `Table ${formattedTable} Guest`,
+          contact: currentUser?.phoneNumber || localStorage.getItem('smartdine_guest_phone') || '',
+          email: currentUser?.email || 'guest@smartdine.com'
+        },
+        onSuccess: async (rzpResponse) => {
+          await executeBillPaymentSuccess({
+            paymentLabel: `Razorpay Online (${rzpResponse.razorpay_payment_id})`,
+            transactionId: rzpResponse.razorpay_payment_id
+          });
+        },
+        onFailure: (errMsg) => {
+          setIsPaying(false);
+          toast.error(errMsg || 'Razorpay payment was cancelled or failed.');
+        }
+      });
+      return;
+    }
+
+    // 3. OTHER ONLINE PAYMENT FLOWS (UPI / Card / NetBanking)
     if (paymentMode === 'card') {
       if (!cardNumber || cardNumber.replace(/\s/g, '').length < 15) {
         toast.error('Enter valid 16-digit Card Number');
@@ -200,17 +230,21 @@ export default function CustomerWebBill() {
     }
 
     setIsPaying(true);
+    const paymentLabel = 
+      paymentMode === 'upi' ? `Online UPI (${upiMethod === 'qr' ? 'Table Dynamic QR' : upiMethod === 'id' ? upiId : selectedUpiApp})` :
+      paymentMode === 'card' ? `Online Card (ending ${cardNumber.slice(-4)})` :
+      `Online Net Banking (${selectedBank})`;
+
+    const txnId = `TXN-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    await executeBillPaymentSuccess({ paymentLabel, transactionId: txnId });
+  };
+
+  const executeBillPaymentSuccess = async ({ paymentLabel, transactionId }) => {
     try {
-      const paymentLabel = 
-        paymentMode === 'upi' ? `Online UPI (${upiMethod === 'qr' ? 'Table Dynamic QR' : upiMethod === 'id' ? upiId : selectedUpiApp})` :
-        paymentMode === 'card' ? `Online Card (ending ${cardNumber.slice(-4)})` :
-        `Online Net Banking (${selectedBank})`;
-
-      const txnId = `TXN-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
-
       await payTableBill(formattedTable, {
         paymentMethod: paymentLabel,
-        transactionId: txnId,
+        transactionId: transactionId,
         discountAmount: discountAmount,
         couponCode: appliedCoupon?.code || null
       });
@@ -221,7 +255,7 @@ export default function CustomerWebBill() {
 
       setPaymentSuccessData({
         invoiceNumber,
-        transactionId: txnId,
+        transactionId: transactionId,
         tableNumber: formattedTable,
         paymentMethod: paymentLabel,
         amount: billData.total,
@@ -793,6 +827,16 @@ export default function CustomerWebBill() {
           </div>
 
           <div className="flex flex-col gap-2.5">
+            {/* Post-Payment Feedback Button */}
+            <button
+              type="button"
+              onClick={() => setShowBillFeedback(true)}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#F4B942] to-[#E8752A] hover:opacity-95 text-[#24140D] font-black text-xs shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4 text-[#3B2115]" />
+              <span>⭐ Rate Food & Dining Experience</span>
+            </button>
+
             <Link
               to={`/menu?table=${formattedTable}`}
               className="w-full py-3.5 rounded-2xl bg-[#E8752A] hover:bg-[#3B2115] text-white font-black text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
@@ -823,6 +867,17 @@ export default function CustomerWebBill() {
           </div>
 
         </div>
+
+        {/* Post-Payment Feedback Modal */}
+        <CustomerFeedbackModal
+          isOpen={showBillFeedback}
+          orderId={paymentSuccessData.invoiceNumber || 'SD1024'}
+          tableNumber={formattedTable}
+          orderItems={paymentSuccessData.items || []}
+          amount={paymentSuccessData.amount}
+          onComplete={() => setShowBillFeedback(false)}
+          onSkip={() => setShowBillFeedback(false)}
+        />
       </div>
     );
   }
@@ -959,13 +1014,13 @@ export default function CustomerWebBill() {
                 </span>
               </div>
 
-              {/* 4 Mode Pills */}
+              {/* 4 Mode Pills with Razorpay Featured */}
               <div className="grid grid-cols-4 gap-1.5">
                 {[
-                  { id: 'upi', label: 'UPI / QR', icon: Smartphone },
-                  { id: 'card', label: 'Card', icon: CreditCard },
-                  { id: 'netbanking', label: 'Banking', icon: Building2 },
-                  { id: 'cash', label: 'Cash', icon: Banknote },
+                  { id: 'razorpay', label: 'Razorpay', icon: ShieldCheck, badge: 'FAST' },
+                  { id: 'upi', label: 'Direct QR', icon: Smartphone },
+                  { id: 'card', label: 'Cards', icon: CreditCard },
+                  { id: 'cash', label: 'Cash / Bill', icon: Banknote },
                 ].map((mode) => {
                   const Icon = mode.icon;
                   return (
@@ -973,13 +1028,18 @@ export default function CustomerWebBill() {
                       key={mode.id}
                       type="button"
                       onClick={() => setPaymentMode(mode.id)}
-                      className={`py-2 px-1.5 rounded-xl border text-center transition flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                      className={`py-2 px-1.5 rounded-xl border text-center transition flex flex-col items-center justify-center gap-0.5 cursor-pointer relative overflow-hidden ${
                         paymentMode === mode.id
-                          ? 'bg-[#3B2115] border-[#F4B942] text-[#F4B942] shadow-sm'
+                          ? 'bg-[#0C2340] border-[#2B84EA] text-white shadow-sm'
                           : 'bg-[#FFF8ED] border-[#6B5B50]/20 text-[#24140D] hover:bg-white'
                       }`}
                     >
-                      <Icon className="w-4 h-4" />
+                      {mode.badge && (
+                        <span className="absolute top-0 right-0 bg-[#2B84EA] text-[7px] font-black text-white px-1 py-0.2 rounded-bl">
+                          {mode.badge}
+                        </span>
+                      )}
+                      <Icon className={`w-4 h-4 ${paymentMode === mode.id ? 'text-[#2B84EA]' : 'text-[#E8752A]'}`} />
                       <span className="text-[10px] font-black">{mode.label}</span>
                     </button>
                   );
@@ -987,6 +1047,45 @@ export default function CustomerWebBill() {
               </div>
 
               {/* Mode Sub-View */}
+
+              {/* 0. RAZORPAY */}
+              {paymentMode === 'razorpay' && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#0C2340]/5 via-blue-50/50 to-indigo-50/40 border border-blue-200/80 space-y-2.5 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-md bg-[#0C2340] text-[#2B84EA] font-black text-xs flex items-center justify-center shadow">
+                        R
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900">Razorpay Payment Gateway</h4>
+                        <p className="text-[10px] text-slate-500">Instant UPI, Cards & NetBanking</p>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      Auto-Verified
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-semibold text-slate-700">
+                    <div className="p-1.5 rounded-xl bg-white border border-blue-100 shadow-sm flex flex-col items-center gap-0.5">
+                      <Smartphone className="w-3.5 h-3.5 text-blue-600" />
+                      <span>UPI & QR</span>
+                    </div>
+                    <div className="p-1.5 rounded-xl bg-white border border-blue-100 shadow-sm flex flex-col items-center gap-0.5">
+                      <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>All Cards</span>
+                    </div>
+                    <div className="p-1.5 rounded-xl bg-white border border-blue-100 shadow-sm flex flex-col items-center gap-0.5">
+                      <Building2 className="w-3.5 h-3.5 text-purple-600" />
+                      <span>NetBanking</span>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-600 bg-white/90 p-2 rounded-xl border border-blue-100/60 leading-relaxed">
+                    Click <strong>Pay Bill via Razorpay</strong> below to settle Table #{formattedTable}. Upon verification, your table bill will be automatically cleared.
+                  </p>
+                </div>
+              )}
 
               {/* 1. UPI */}
               {paymentMode === 'upi' && (
@@ -1135,21 +1234,52 @@ export default function CustomerWebBill() {
                     <button onClick={removeCoupon} className="text-red-600 underline text-[11px] cursor-pointer">Remove</button>
                   </div>
                 ) : (
-                  <form onSubmit={handleApplyCoupon} className="flex gap-1.5">
-                    <input
-                      type="text"
-                      placeholder="Coupon (ROYAL50, FEAST100)"
-                      value={couponCode}
-                      onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                      className="flex-1 px-3 py-1.5 rounded-xl bg-[#FFF8ED] border border-[#F4B942]/60 text-xs font-bold text-[#24140D] focus:outline-none"
-                    />
-                    <button
-                      type="submit"
-                      className="px-3 py-1.5 rounded-xl bg-[#3B2115] hover:bg-[#E8752A] text-white text-xs font-bold transition cursor-pointer"
-                    >
-                      Apply
-                    </button>
-                  </form>
+                  <div>
+                    <form onSubmit={handleApplyCoupon} className="flex gap-1.5">
+                      <input
+                        type="text"
+                        placeholder="Enter coupon (ROYAL50, FEAST100)"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        className="flex-1 px-3 py-1.5 rounded-xl bg-[#FFF8ED] border border-[#F4B942]/60 text-xs font-bold text-[#24140D] focus:outline-none"
+                      />
+                      <button
+                        type="submit"
+                        className="px-3.5 py-1.5 rounded-xl bg-[#3B2115] hover:bg-[#E8752A] text-white text-xs font-bold transition cursor-pointer"
+                      >
+                        Apply
+                      </button>
+                    </form>
+
+                    {/* Quick Available Vouchers Chips */}
+                    <div className="flex items-center gap-1.5 flex-wrap pt-2">
+                      <span className="text-[10px] font-bold text-[#6B5B50]">Vouchers:</span>
+                      {[
+                        { code: 'ROYAL50', label: '50% OFF' },
+                        { code: 'FEAST100', label: '₹100 FLAT' },
+                        { code: 'WELCOME20', label: '20% OFF' },
+                        { code: 'THALI30', label: '30% OFF' }
+                      ].map(v => (
+                        <button
+                          key={v.code}
+                          type="button"
+                          onClick={() => {
+                            setCouponCode(v.code);
+                            const disc = v.code === 'ROYAL50' ? Math.min(billData.subtotal * 0.5, 150)
+                              : v.code === 'FEAST100' ? 100
+                              : v.code === 'THALI30' ? Math.min(billData.subtotal * 0.3, 120)
+                              : Math.min(billData.subtotal * 0.2, 80);
+                            setDiscountAmount(disc);
+                            setAppliedCoupon({ code: v.code, discount: disc, desc: `${v.label} Discount` });
+                            toast.success(`Coupon ${v.code} applied! Saved ₹${disc.toFixed(0)}`, { icon: '🎁' });
+                          }}
+                          className="px-2 py-0.5 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#E8752A] text-[10px] font-bold transition cursor-pointer"
+                        >
+                          {v.code} ({v.label})
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -1160,10 +1290,22 @@ export default function CustomerWebBill() {
               <button
                 onClick={handlePayNow}
                 disabled={isPaying || billData.total <= 0}
-                className="w-full py-3.5 rounded-2xl bg-[#E8752A] hover:bg-[#3B2115] text-white font-black text-sm sm:text-base shadow-[0_4px_20px_rgba(232,117,42,0.35)] transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className={`w-full py-3.5 rounded-2xl text-white font-black text-sm sm:text-base shadow-md transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
+                  paymentMode === 'razorpay'
+                    ? 'bg-[#0C2340] hover:bg-[#1a3a60] shadow-blue-900/20'
+                    : 'bg-[#E8752A] hover:bg-[#3B2115] shadow-[0_4px_20px_rgba(232,117,42,0.35)]'
+                }`}
               >
-                <Lock className="w-4 h-4 text-[#F4B942]" />
-                <span>{isPaying ? 'Processing Payment...' : `Pay Now (₹${billData.total.toFixed(0)})`}</span>
+                <Lock className={`w-4 h-4 ${paymentMode === 'razorpay' ? 'text-[#2B84EA]' : 'text-[#F4B942]'}`} />
+                <span>
+                  {isPaying 
+                    ? 'Processing Payment...' 
+                    : paymentMode === 'razorpay' 
+                    ? `Pay Bill via Razorpay (₹${billData.total.toFixed(0)})` 
+                    : paymentMode === 'cash' 
+                    ? `Request Cash Collection (₹${billData.total.toFixed(0)})` 
+                    : `Pay Bill (₹${billData.total.toFixed(0)})`}
+                </span>
               </button>
 
               <div className="flex items-center justify-between text-[10px] text-[#6B5B50] px-1">

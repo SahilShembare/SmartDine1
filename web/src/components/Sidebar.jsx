@@ -39,6 +39,7 @@ export default function Sidebar({ mode = 'admin' }) {
 
   const adminLinks = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/admin/ai', label: '🧠 SmartDine AI', icon: Sparkles, badge: 'AI Live', badgeColor: 'bg-gradient-to-r from-orange-500 to-amber-500' },
     { to: '/admin/orders', label: 'Live Orders', icon: Flame, badge: activeOrdersCount > 0 ? activeOrdersCount : null, badgeColor: 'bg-orange-500' },
     { to: '/admin/tables', label: 'Table Management', icon: QrCode },
     { to: '/admin/menu', label: 'Menu Management', icon: UtensilsCrossed },

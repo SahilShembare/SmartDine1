@@ -56,6 +56,80 @@ export function TableOrderProvider({ children }) {
     return localStorage.getItem('smartdine_last_order_id') || null;
   });
 
+  // Customer Feedbacks (Initial seed + localStorage)
+  const [customerFeedbacks, setCustomerFeedbacks] = useState(() => {
+    try {
+      const saved = localStorage.getItem('smartdine_customer_feedbacks');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [
+      {
+        id: 'fb-101',
+        orderId: 'SD1024',
+        tableNumber: '04',
+        overallRating: 5,
+        itemRatings: { 'Paneer Pizza': 5, 'Cold Coffee': 5 },
+        selectedTags: ['😋 Taste', '🍽️ Food Quality', '⚡ Fast Service'],
+        writtenText: 'Paneer Pizza was loaded with toppings and had a fresh crunchy crust. Chilled cold coffee was perfect!',
+        aiAnalysis: {
+          sentiment: 'Positive',
+          sentimentIcon: '😊',
+          avgFoodScore: '5.0',
+          serviceStatus: '⚡ Exceptional Speed',
+          praisePoints: ['Taste', 'Food Quality', 'Fast Service'],
+          complaintPoints: [],
+          aiSummary: 'Customer gave 5⭐ rating. Praised: Taste, Food Quality, Fast Service. Delightful dining experience.'
+        },
+        date: 'Today, 2:15 PM',
+        restaurantResponse: 'Thank you! Our Chef has noted your love for the Paneer Pizza. We look forward to serving you again!'
+      },
+      {
+        id: 'fb-102',
+        orderId: 'SD1018',
+        tableNumber: '02',
+        overallRating: 4,
+        itemRatings: { 'Butter Chicken': 5, 'Garlic Naan': 4 },
+        selectedTags: ['😋 Taste', '🍽️ Food Quality'],
+        writtenText: 'Rich creamy gravy with tender chicken. Naan was hot and buttery.',
+        aiAnalysis: {
+          sentiment: 'Positive',
+          sentimentIcon: '😊',
+          avgFoodScore: '4.5',
+          serviceStatus: 'Normal',
+          praisePoints: ['Taste', 'Food Quality'],
+          complaintPoints: [],
+          aiSummary: 'Customer gave 4⭐ rating. Praised: Taste, Food Quality.'
+        },
+        date: 'Yesterday, 8:45 PM',
+        restaurantResponse: 'Thank you for dining with us! Glad you enjoyed our Royal Butter Chicken.'
+      }
+    ];
+  });
+
+  // Save feedbacks
+  useEffect(() => {
+    localStorage.setItem('smartdine_customer_feedbacks', JSON.stringify(customerFeedbacks));
+  }, [customerFeedbacks]);
+
+  // Submit Feedback Handler
+  const submitOrderFeedback = async (feedbackData) => {
+    const newFeedback = {
+      id: `fb-${Date.now()}`,
+      orderId: feedbackData.orderId,
+      tableNumber: feedbackData.tableNumber || currentTable || '01',
+      overallRating: feedbackData.overallRating || 5,
+      itemRatings: feedbackData.itemRatings || {},
+      selectedTags: feedbackData.selectedTags || [],
+      writtenText: feedbackData.writtenText || '',
+      aiAnalysis: feedbackData.aiAnalysis || null,
+      date: feedbackData.date || new Date().toLocaleString(),
+      restaurantResponse: 'Thank you for your valuable feedback! Our head chef and floor team appreciate your support.'
+    };
+
+    setCustomerFeedbacks(prev => [newFeedback, ...prev]);
+    return newFeedback;
+  };
+
   // Save cart to local storage
   useEffect(() => {
     localStorage.setItem('smartdine_cart', JSON.stringify(cart));
@@ -219,11 +293,16 @@ export function TableOrderProvider({ children }) {
   // Place order
   const placeOrder = async ({ customerName, customerPhone, customerId = null, notes = '', paymentMethod = 'Pay at Counter' }) => {
     if (cart.length === 0) throw new Error('Cart is empty');
-    if (!currentTable) throw new Error('No table selected. Please scan table QR.');
+    
+    const effectiveTable = currentTable || localStorage.getItem('smartdine_active_table') || '1';
+    if (!currentTable) {
+      setCurrentTable(effectiveTable);
+      try { localStorage.setItem('smartdine_active_table', effectiveTable); } catch {}
+    }
 
     const orderData = {
-      tableNumber: currentTable,
-      customerName: customerName || `Table ${currentTable} Guest`,
+      tableNumber: effectiveTable,
+      customerName: customerName || `Table ${effectiveTable} Guest`,
       customerPhone: customerPhone || '',
       customerId: customerId,
       items: cart.map(item => ({
@@ -536,7 +615,9 @@ export function TableOrderProvider({ children }) {
       refreshOrders,
       reloadLatestMenu,
       latestPlacedOrderId,
-      lastSyncTime
+      lastSyncTime,
+      customerFeedbacks,
+      submitOrderFeedback
     }}>
       {children}
     </TableOrderContext.Provider>

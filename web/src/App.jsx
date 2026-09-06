@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { TableOrderProvider } from './context/TableOrderContext';
@@ -19,6 +19,7 @@ import ScanTable from './pages/ScanTable';
 
 // Admin SaaS Pages
 import AdminDashboard from './pages/AdminDashboard';
+import AdminAICommandCenter from './pages/AdminAICommandCenter';
 import AdminOrders from './pages/AdminOrders';
 import AdminTables from './pages/AdminTables';
 import AdminMenu from './pages/AdminMenu';
@@ -33,37 +34,31 @@ import AdminSettings from './pages/AdminSettings';
 // Kitchen Monitor
 import KitchenDashboard from './pages/KitchenDashboard';
 
-export default function App() {
+function AppContent() {
+  const location = useLocation();
+  const isAdminDashboard = location.pathname.startsWith('/admin') || location.pathname.startsWith('/kitchen');
+
   return (
-    <Router>
-      <AuthProvider>
-        <TableOrderProvider>
-          <div className="min-h-screen bg-[#FFF8ED] text-[#24140D] flex flex-col font-sans">
-            <Navbar />
-            <Toaster 
-              position="top-center"
-              toastOptions={{
-                duration: 3000,
-                style: {
-                  background: '#FFFFFF',
-                  color: '#24140D',
-                  border: '1.5px solid #F4B942',
-                  borderRadius: '16px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  padding: '12px 20px',
-                  boxShadow: '0 10px 30px rgba(59, 33, 21, 0.12)',
-                },
-                success: {
-                  iconTheme: { primary: '#2E7D32', secondary: '#FFFFFF' },
-                },
-                error: {
-                  iconTheme: { primary: '#D32F2F', secondary: '#FFFFFF' },
-                },
-              }}
-            />
-            <div className="flex-1 pb-16 sm:pb-0">
-              <Routes>
+    <div className={`min-h-screen ${isAdminDashboard ? 'bg-slate-950/10 text-slate-900' : 'bg-[#FFF8ED] text-[#24140D]'} flex flex-col font-sans`}>
+      {!isAdminDashboard && <Navbar />}
+      <Toaster 
+        position="top-center"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            background: '#FFFFFF',
+            color: '#1E293B',
+            border: '1px solid #E2E8F0',
+            borderRadius: '12px',
+            fontSize: '14px',
+            fontWeight: '600',
+            padding: '12px 18px',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)',
+          },
+        }}
+      />
+      <div className={isAdminDashboard ? "flex-1" : "flex-1 pb-16 sm:pb-0"}>
+        <Routes>
                 {/* Public & Customer Dine-in Ordering Routes */}
                 <Route path="/" element={<Home />} />
                 <Route path="/menu" element={<CustomerWebMenu />} />
@@ -80,6 +75,14 @@ export default function App() {
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
                       <AdminDashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/admin/ai" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AdminAICommandCenter />
                     </ProtectedRoute>
                   } 
                 />
@@ -179,9 +182,18 @@ export default function App() {
               </Routes>
             </div>
             
-            {/* Native Mobile Bottom Navigation Bar */}
-            <MobileNav />
+            {/* Native Mobile Bottom Navigation Bar (Customer View only) */}
+            {!isAdminDashboard && <MobileNav />}
           </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <TableOrderProvider>
+          <AppContent />
         </TableOrderProvider>
       </AuthProvider>
     </Router>

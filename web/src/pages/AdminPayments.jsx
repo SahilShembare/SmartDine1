@@ -33,7 +33,7 @@ export default function AdminPayments() {
     if (!o) return false;
     const p = String(o.paymentStatus || '').trim().toLowerCase();
     if (p === 'unpaid' || p === 'pending' || p.includes('requested') || p.includes('awaiting')) return false;
-    return p === 'paid' || p === 'cash paid' || p === 'online paid' || !!o.paidAt;
+    return p === 'paid' || p === 'cash paid' || p === 'online paid' || p.includes('razorpay') || !!o.paidAt;
   };
 
   const paidOrders = orders.filter(o => isOrderPaid(o) && o.status !== 'cancelled');
@@ -54,6 +54,10 @@ export default function AdminPayments() {
     .filter(o => String(o.paymentMethod || '').toLowerCase().includes('card'))
     .reduce((sum, o) => sum + (o.total || 0), 0);
 
+  const razorpayCollected = paidOrders
+    .filter(o => String(o.paymentMethod || '').toLowerCase().includes('razorpay'))
+    .reduce((sum, o) => sum + (o.total || 0), 0);
+
   // Filtered Payments Table
   const filteredPayments = orders.filter(o => {
     const paid = isOrderPaid(o);
@@ -61,6 +65,7 @@ export default function AdminPayments() {
 
     if (paymentFilter === 'paid' && !paid) return false;
     if (paymentFilter === 'pending' && paid) return false;
+    if (paymentFilter === 'razorpay' && !method.includes('razorpay')) return false;
     if (paymentFilter === 'cash' && !method.includes('cash')) return false;
     if (paymentFilter === 'upi' && !method.includes('upi')) return false;
     if (paymentFilter === 'card' && !method.includes('card')) return false;
@@ -169,6 +174,7 @@ export default function AdminPayments() {
               { id: 'all', label: 'All Transactions' },
               { id: 'paid', label: '🟢 Paid & Cleared' },
               { id: 'pending', label: '🔴 Pending Collection' },
+              { id: 'razorpay', label: '⚡ Razorpay' },
               { id: 'cash', label: '💵 Cash' },
               { id: 'upi', label: '📱 UPI' },
               { id: 'card', label: '💳 Cards' },

@@ -1,53 +1,61 @@
-// Smart AI Chef Dish Recommendation & Pairing Engine
+// Smart AI Dish Similarity & Same-Dish Pairing Engine
+// Recommends companion dishes based directly on the customer's selected dish
 
 const PAIRING_RULES = [
   {
     triggers: ['chicken', 'butter chicken', 'murg', 'kadhai chicken', 'tikka masala'],
     recommendCategory: 'breads',
     recommendItemNames: ['Garlic Naan', 'Butter Naan', 'Tandoori Roti', 'Jeera Rice'],
-    reason: 'Chef Tip: Rich gravies pair exquisitely with warm Garlic Butter Naan!'
+    reasonGenerator: (dishName) => `Pairs naturally with your ${dishName} gravy!`
   },
   {
     triggers: ['paneer', 'paneer butter masala', 'shahi paneer', 'kadhai paneer', 'dal makhani'],
     recommendCategory: 'breads',
     recommendItemNames: ['Garlic Naan', 'Butter Roti', 'Jeera Rice', 'Mango Lassi'],
-    reason: 'Chef Tip: Creamy paneer & dal taste magical with tandoor baked naans!'
+    reasonGenerator: (dishName) => `Ideal staple accompaniment for your ${dishName}!`
   },
   {
     triggers: ['biryani', 'pulao', 'dum biryani', 'rice'],
     recommendCategory: 'desserts',
     recommendItemNames: ['Gulab Jamun', 'Royal Shahi Tukda', 'Raita', 'Cold Drink'],
-    reason: 'Chef Tip: Complete your aromatic Dum Biryani with a sweet hot Gulab Jamun!'
+    reasonGenerator: (dishName) => `Sweet indulgence to complete your ${dishName}!`
   },
   {
     triggers: ['tikka', 'kebab', 'starter', 'crispy', 'tandoori', 'manchurian'],
     recommendCategory: 'beverages',
     recommendItemNames: ['Mango Lassi', 'Cold Drink', 'Butter Naan', 'Mint Mojito'],
-    reason: 'Chef Tip: Sizzling starters go best with a chilled refreshing beverage!'
+    reasonGenerator: (dishName) => `Refreshing beverage to accompany your ${dishName}!`
   },
   {
     triggers: ['naan', 'roti', 'paratha'],
     recommendCategory: 'curries',
     recommendItemNames: ['Butter Chicken Special', 'Paneer Butter Masala', 'Dal Makhani Bukhara'],
-    reason: 'Chef Tip: Pick our bestselling signature curry for your freshly baked breads!'
+    reasonGenerator: (dishName) => `Signature rich gravy to enjoy with your freshly baked breads!`
+  },
+  {
+    triggers: ['pizza', 'burger', 'sandwich'],
+    recommendCategory: 'beverages',
+    recommendItemNames: ['Cold Coffee', 'French Fries', 'Mint Mojito', 'Garlic Bread'],
+    reasonGenerator: (dishName) => `Popular side & beverage match for your ${dishName}!`
   }
 ];
 
 export function getAiRecommendation(addedItem, allMenuItems = [], currentCart = []) {
   if (!addedItem) return null;
   const itemNameLower = (addedItem.name || '').toLowerCase();
+  const itemCategoryLower = (addedItem.category || '').toLowerCase();
   const cartIds = new Set(currentCart.map(c => c.id));
 
-  // Find best matching rule
+  // 1. Check for specific dish pairing rule
   const matchedRule = PAIRING_RULES.find(rule => 
     rule.triggers.some(t => itemNameLower.includes(t))
   );
 
   let candidate = null;
-  let reason = 'Chef Recommended Pairing for your selection';
+  let reason = `Recommended to match your ${addedItem.name}`;
 
   if (matchedRule) {
-    reason = matchedRule.reason;
+    reason = matchedRule.reasonGenerator(addedItem.name);
     // Look for matching dish in menu that is NOT already in cart
     candidate = allMenuItems.find(item => 
       !cartIds.has(item.id) &&
@@ -55,14 +63,42 @@ export function getAiRecommendation(addedItem, allMenuItems = [], currentCart = 
     );
   }
 
-  // Fallback to any popular dish not in cart
+  // 2. Same-Dish / Same-Category Alternative (if not already paired)
+  if (!candidate) {
+    candidate = allMenuItems.find(item => 
+      !cartIds.has(item.id) && 
+      item.id !== addedItem.id &&
+      (item.category || '').toLowerCase() === itemCategoryLower
+    );
+    if (candidate) {
+      reason = `Similar delicacy from the same ${addedItem.category || 'dish'} category`;
+    }
+  }
+
+  // 3. Same Core Ingredient Matching (e.g. paneer with paneer, chicken with chicken)
+  if (!candidate) {
+    const keywords = ['paneer', 'chicken', 'cheese', 'mushroom', 'tikka', 'biryani', 'masala', 'dal'];
+    const matchedKw = keywords.find(kw => itemNameLower.includes(kw));
+    if (matchedKw) {
+      candidate = allMenuItems.find(item => 
+        !cartIds.has(item.id) && 
+        item.id !== addedItem.id &&
+        item.name.toLowerCase().includes(matchedKw)
+      );
+      if (candidate) {
+        reason = `Made with similar ingredients to your ${addedItem.name}`;
+      }
+    }
+  }
+
+  // 4. Fallback to any top-rated dish not in cart
   if (!candidate) {
     candidate = allMenuItems.find(item => !cartIds.has(item.id) && item.popular && item.id !== addedItem.id);
   }
 
-  // Final fallback to any dish
+  // 5. Final fallback to any dish not in cart
   if (!candidate && allMenuItems.length > 0) {
-    candidate = allMenuItems.find(item => item.id !== addedItem.id);
+    candidate = allMenuItems.find(item => !cartIds.has(item.id) && item.id !== addedItem.id);
   }
 
   if (!candidate) return null;
@@ -70,6 +106,6 @@ export function getAiRecommendation(addedItem, allMenuItems = [], currentCart = 
   return {
     dish: candidate,
     reason: reason,
-    aiBadge: '🤖 AI Chef Pairing'
+    aiBadge: '🎯 Similar Dish Pairing'
   };
 }

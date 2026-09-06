@@ -1,9 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useTableOrder } from '../context/TableOrderContext';
 import { useAuth } from '../context/AuthContext';
 import { getAiRecommendation } from '../utils/aiRecommender';
+import { 
+  getTimeContext, 
+  getCustomerProfile, 
+  saveCustomerProfile, 
+  TASTE_PREFERENCE_CHIPS, 
+  getPersonalizedRecommendations,
+  getSimilarDishes 
+} from '../services/customerAiService';
 import confetti from 'canvas-confetti';
 import { 
   Search, 
@@ -25,7 +33,10 @@ import {
   Heart,
   Receipt,
   User,
-  Edit3
+  Edit3,
+  HelpCircle,
+  SlidersHorizontal,
+  ArrowRight
 } from 'lucide-react';
 import CustomerProfileModal from '../components/CustomerProfileModal';
 
@@ -83,6 +94,37 @@ export default function CustomerWebMenu() {
 
   // AI Recommendation State
   const [aiRecommendation, setAiRecommendation] = useState(null);
+  const [customerProfile, setCustomerProfile] = useState(() => getCustomerProfile());
+  const [showTasteChips, setShowTasteChips] = useState(() => customerProfile.isNewUser || (customerProfile.preferences && customerProfile.preferences.length === 0));
+  const [whyModalItem, setWhyModalItem] = useState(null);
+  const [showAllRecs, setShowAllRecs] = useState(false);
+
+  // Time-of-day Context
+  const timeContext = useMemo(() => getTimeContext(), []);
+
+  // Multi-signal AI Recommendations
+  const personalizedRecs = useMemo(() => {
+    return getPersonalizedRecommendations({
+      menuItems,
+      cart,
+      customerProfile,
+      limit: showAllRecs ? 8 : 4
+    });
+  }, [menuItems, cart, customerProfile, showAllRecs]);
+
+  // Handle Toggle Taste Chip
+  const handleTogglePreference = (chipId) => {
+    const prev = customerProfile.preferences || [];
+    let updated;
+    if (prev.includes(chipId)) {
+      updated = prev.filter(p => p !== chipId);
+    } else {
+      updated = [...prev, chipId];
+    }
+    const updatedProfile = { ...customerProfile, preferences: updated, isNewUser: false };
+    setCustomerProfile(updatedProfile);
+    saveCustomerProfile(updatedProfile);
+  };
 
   // Extract table parameter from QR scan URL e.g. /menu?table=01
   useEffect(() => {
@@ -176,6 +218,26 @@ export default function CustomerWebMenu() {
       <section className="bg-white/95 backdrop-blur-xl border-b border-[#F4B942]/30 px-4 pt-5 pb-4 sticky top-16 z-30 shadow-[0_2px_12px_rgba(59,33,21,0.06)]">
         <div className="max-w-4xl mx-auto space-y-3">
           
+          {/* Top Offers & Vouchers Marquee / Quick Bar */}
+          <Link
+            to="/cart"
+            className="block py-2 px-3 sm:px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white shadow-md hover:brightness-105 transition active:scale-98 group"
+          >
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 font-black flex-wrap">
+                <span className="p-1 rounded-lg bg-white/20">🎟️</span>
+                <span className="hidden sm:inline">ROYAL OFFERS:</span>
+                <span className="bg-white text-[#3B2115] px-2 py-0.5 rounded-full font-mono text-[11px] font-black">ROYAL50</span>
+                <span>50% OFF</span>
+                <span className="hidden md:inline font-medium text-white/90">• Use FEAST100 for Flat ₹100 OFF</span>
+              </div>
+              <div className="flex items-center gap-1 font-bold text-[11px] bg-white/20 group-hover:bg-white/30 px-2 py-1 rounded-xl shrink-0">
+                <span>View All Vouchers</span>
+                <ArrowRight className="w-3 h-3" />
+              </div>
+            </div>
+          </Link>
+
           {/* Table Header Bar */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -374,8 +436,252 @@ export default function CustomerWebMenu() {
         </div>
       </section>
 
-      {/* Food Cards Grid */}
-      <main className="max-w-4xl mx-auto px-4 py-5">
+      {/* Main Content Area */}
+      <main className="max-w-4xl mx-auto px-4 py-5 space-y-6">
+
+        {/* ============================================================ */}
+        {/* 1. NEW CUSTOMER EXPERIENCE: TASTE PREFERENCES ONBOARDING     */}
+        {/* ============================================================ */}
+        {showTasteChips ? (
+          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-[#3B2115] via-[#24140D] to-[#3B2115] text-[#FFF8ED] border-2 border-[#F4B942] shadow-md relative overflow-hidden animate-in fade-in duration-200">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-base">👋</span>
+                  <h3 className="text-sm sm:text-base font-black text-white">Welcome to SmartDine!</h3>
+                  <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-[#E8752A] text-white">
+                    AI Personalization
+                  </span>
+                </div>
+                <p className="text-xs text-[#FFF8ED]/80 mt-1">
+                  Tell us what you like and our recommendation engine will curate the menu to your taste.
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowTasteChips(false)}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[#FFF8ED] text-xs transition cursor-pointer shrink-0"
+                title="Dismiss or skip"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Preference Chips */}
+            <div className="flex flex-wrap gap-2 mt-3.5">
+              {TASTE_PREFERENCE_CHIPS.map((chip) => {
+                const isSelected = customerProfile.preferences && customerProfile.preferences.includes(chip.id);
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    onClick={() => handleTogglePreference(chip.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer border ${
+                      isSelected
+                        ? 'bg-[#E8752A] text-white border-[#F4B942] shadow-sm scale-105'
+                        : 'bg-[#24140D]/80 text-[#FFF8ED]/90 border-[#F4B942]/40 hover:bg-[#24140D] hover:border-[#F4B942]'
+                    }`}
+                  >
+                    <span>{chip.label}</span>
+                    {isSelected && <Check className="w-3 h-3 inline ml-1" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+              <span className="text-[11px] text-[#F4B942]">
+                ✨ Suggestions update dynamically in real-time
+              </span>
+              <button
+                onClick={() => setShowTasteChips(false)}
+                className="px-4 py-1.5 rounded-xl bg-[#F4B942] hover:bg-[#e0a833] text-[#3B2115] font-black text-xs shadow-sm transition cursor-pointer"
+              >
+                Save & View My Menu
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between px-4 py-2 rounded-2xl bg-white border border-[#F4B942]/40 text-xs shadow-xs">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-[#E8752A]" />
+              <span className="font-bold text-[#24140D]">AI Recommendations Active:</span>
+              <span className="text-[#6B5B50] truncate max-w-xs">
+                {customerProfile.preferences && customerProfile.preferences.length > 0
+                  ? customerProfile.preferences.join(', ')
+                  : 'Time & Popularity Based'}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowTasteChips(true)}
+              className="text-[11px] font-bold text-[#E8752A] hover:underline cursor-pointer shrink-0"
+            >
+              Edit Preferences ⚙️
+            </button>
+          </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* 2. PERSONALIZED HOME SECTION: RECOMMENDED FOR YOU            */}
+        {/* ============================================================ */}
+        {personalizedRecs.length > 0 && (
+          <div className="bg-gradient-to-br from-white to-[#FFFDF9] border border-[#F4B942]/60 rounded-3xl p-4 sm:p-5 shadow-[0_4px_20px_rgba(59,33,21,0.06)] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#F4B942]/30 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base sm:text-lg font-black text-[#24140D] flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-[#E8752A]" />
+                    <span>Recommended For You</span>
+                  </h2>
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-orange-100 text-[#E8752A]">
+                    AI Picked
+                  </span>
+                </div>
+                <p className="text-xs text-[#6B5B50] font-medium mt-0.5 flex items-center gap-1.5">
+                  <span className="inline-block">{timeContext.badge}</span>
+                  <span>•</span>
+                  <span>Curated to your taste</span>
+                </p>
+              </div>
+
+              <button
+                onClick={() => setShowAllRecs(!showAllRecs)}
+                className="text-xs font-bold text-[#E8752A] hover:text-[#3B2115] flex items-center gap-1 cursor-pointer transition self-start sm:self-auto"
+              >
+                <span>{showAllRecs ? 'Show Less' : 'View More Recommendations'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Recommendations Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {personalizedRecs.map(({ item, primaryReason, whyFactors, score }) => {
+                const inCart = cart.find(c => c.id === item.id);
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => handleOpenFoodModal(item)}
+                    className="p-3 rounded-2xl bg-white border border-[#F4B942]/40 hover:border-[#E8752A] shadow-xs hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
+                  >
+                    <div>
+                      {/* Reason Badge */}
+                      <div className="mb-2">
+                        <span className="inline-block text-[10px] font-bold text-[#E8752A] bg-orange-50 border border-orange-200/60 px-2 py-0.5 rounded-md truncate max-w-full">
+                          {primaryReason}
+                        </span>
+                      </div>
+
+                      <div className="relative h-28 rounded-xl overflow-hidden mb-2 bg-[#FFF8ED]">
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                          onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=300'; }}
+                        />
+                        <div className="absolute top-2 right-2">
+                          <span className="px-1.5 py-0.5 rounded-md bg-black/60 text-amber-300 text-[10px] font-bold flex items-center gap-0.5">
+                            ⭐ {item.rating || '4.8'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <h4 className="text-xs font-black text-[#24140D] line-clamp-1 group-hover:text-[#E8752A] transition">
+                        {item.name}
+                      </h4>
+                      <p className="text-[11px] text-[#6B5B50] line-clamp-1 mt-0.5">
+                        {item.description || item.category}
+                      </p>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                      <div>
+                        <span className="text-xs font-black text-[#3B2115]">₹{item.price}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setWhyModalItem({ item, whyFactors, primaryReason, score });
+                          }}
+                          className="block text-[9px] font-bold text-slate-400 hover:text-[#E8752A] mt-0.5"
+                        >
+                          Why this?
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => handleQuickAdd(e, item)}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
+                          inCart
+                            ? 'bg-[#198754] text-white'
+                            : 'bg-[#E8752A] hover:bg-[#3B2115] text-white shadow-xs'
+                        }`}
+                      >
+                        {inCart ? (
+                          <>
+                            <Check className="w-3 h-3" />
+                            <span>Added</span>
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="w-3 h-3" />
+                            <span>Add</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Explainability "Why this?" Modal */}
+        {whyModalItem && (
+          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border-2 border-[#F4B942] animate-in zoom-in-95 duration-150 space-y-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-1.5 text-xs font-black text-[#24140D]">
+                  <Sparkles className="w-4 h-4 text-[#E8752A]" />
+                  <span>Why AI Recommended This</span>
+                </div>
+                <button
+                  onClick={() => setWhyModalItem(null)}
+                  className="p-1 text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div>
+                <p className="text-xs font-black text-slate-900">{whyModalItem.item.name}</p>
+                <p className="text-[11px] text-[#E8752A] font-bold mt-0.5">{whyModalItem.primaryReason}</p>
+              </div>
+
+              <div className="space-y-1.5 pt-1">
+                <p className="text-[10px] uppercase font-bold text-slate-400">Signals Evaluated:</p>
+                {whyModalItem.whyFactors.map((factor, i) => (
+                  <div key={i} className="p-2 rounded-xl bg-orange-50/60 border border-orange-200/50 text-[11px] text-slate-700 flex items-start gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                    <span>{factor}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => setWhyModalItem(null)}
+                  className="w-full py-2 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold"
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Regular Menu Filter Dishes */}
         {filteredDishes.length === 0 ? (
           <div className="text-center py-16 px-4 bg-white border border-[#F4B942]/30 rounded-3xl space-y-4 shadow-[0_2px_12px_rgba(36,20,13,0.06)]">
             <div className="w-16 h-16 rounded-2xl bg-[#FFF8ED] border border-[#F4B942] flex items-center justify-center mx-auto text-[#E8752A]">
@@ -548,7 +854,7 @@ export default function CustomerWebMenu() {
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#F4B942] text-[#3B2115] flex items-center gap-1 shadow-sm">
                     <Sparkles className="w-2.5 h-2.5" />
-                    Chef Recommends
+                    {aiRecommendation.aiBadge || 'Similar Dish Match'}
                   </span>
                   <span className="text-[11px] font-black text-[#3B2115]">₹{aiRecommendation.dish.price}</span>
                 </div>
@@ -699,6 +1005,40 @@ export default function CustomerWebMenu() {
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl bg-[#FFF8ED] border border-[#F4B942]/40 text-xs text-[#24140D] placeholder-[#6B5B50]/60 focus:outline-none focus:border-[#E8752A] focus:bg-white"
                 />
+              </div>
+
+              {/* Smart "You May Also Like" */}
+              <div className="pt-3 border-t border-[#F4B942]/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black text-[#24140D] flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#E8752A]" />
+                    <span>You May Also Like</span>
+                  </h4>
+                  <span className="text-[10px] text-[#6B5B50]">Similar flavor profile</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {getSimilarDishes({ currentItem: selectedFood, menuItems, limit: 3 }).map(dish => (
+                    <div
+                      key={dish.id}
+                      onClick={() => handleOpenFoodModal(dish)}
+                      className="p-2 rounded-xl bg-[#FFF8ED] border border-[#F4B942]/40 hover:border-[#E8752A] transition cursor-pointer flex flex-col justify-between group"
+                    >
+                      <div>
+                        <img
+                          src={dish.imageUrl}
+                          alt={dish.name}
+                          className="w-full h-14 object-cover rounded-lg mb-1 group-hover:scale-105 transition duration-200"
+                          onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=300'; }}
+                        />
+                        <p className="text-[11px] font-bold text-[#24140D] line-clamp-1 group-hover:text-[#E8752A] transition">{dish.name}</p>
+                      </div>
+                      <div className="flex items-center justify-between mt-1 pt-1 border-t border-[#F4B942]/30">
+                        <span className="text-[10px] font-black text-[#3B2115]">₹{dish.price}</span>
+                        <span className="text-[9px] font-bold text-[#E8752A]">View</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 

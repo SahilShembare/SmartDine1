@@ -117,3 +117,56 @@
     background: white !important;
   }
 }
+
+/* ========================================================================== */
+/* ADMIN DASHBOARD RESTAURANT BACKGROUND & GLASSMORPHISM THEME                */
+/* ========================================================================== */
+.admin-dashboard-container {
+  position: relative;
+  min-height: 100vh;
+  background-color: transparent !important;
+}
+
+.admin-dashboard-bg-layer {
+  position: fixed;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 0;
+  transition: background-image 0.6s ease-in-out;
+}
+
+.admin-dashboard-overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top right, rgba(232, 117, 42, 0.18), transparent 50%),
+              linear-gradient(180deg, rgba(15, 23, 42, 0.35) 0%, rgba(15, 23, 42, 0.55) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Enhanced Glassmorphic Translucency for Admin Panels */
+.admin-dashboard-container .bg-white {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(14px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+  border-color: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.10), 0 4px 12px -2px rgba(15, 23, 42, 0.05) !important;
+}
+
+.admin-dashboard-container aside {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border-right-color: rgba(226, 232, 240, 0.85) !important;
+}
+
+.admin-dashboard-container header {
+  background-color: rgba(255, 255, 255, 0.90) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border-bottom-color: rgba(226, 232, 240, 0.85) !important;
+}
+
