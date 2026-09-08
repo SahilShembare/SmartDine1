@@ -36,7 +36,8 @@ import {
   Edit3,
   HelpCircle,
   SlidersHorizontal,
-  ArrowRight
+  ArrowRight,
+  CheckCircle2
 } from 'lucide-react';
 import CustomerProfileModal from '../components/CustomerProfileModal';
 
@@ -212,46 +213,25 @@ export default function CustomerWebMenu() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF8ED] text-[#24140D] pb-32 font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 pb-32 font-sans">
       
       {/* Sticky Top Header / Table Status Banner */}
-      <section className="bg-white/95 backdrop-blur-xl border-b border-[#F4B942]/30 px-4 pt-5 pb-4 sticky top-16 z-30 shadow-[0_2px_12px_rgba(59,33,21,0.06)]">
+      <section className="bg-slate-950/95 backdrop-blur-xl border-b border-slate-800/80 px-4 pt-5 pb-4 sticky top-16 z-30 shadow-2xl">
         <div className="max-w-4xl mx-auto space-y-3">
-          
-          {/* Top Offers & Vouchers Marquee / Quick Bar */}
-          <Link
-            to="/cart"
-            className="block py-2 px-3 sm:px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white shadow-md hover:brightness-105 transition active:scale-98 group"
-          >
-            <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 font-black flex-wrap">
-                <span className="p-1 rounded-lg bg-white/20">🎟️</span>
-                <span className="hidden sm:inline">ROYAL OFFERS:</span>
-                <span className="bg-white text-[#3B2115] px-2 py-0.5 rounded-full font-mono text-[11px] font-black">ROYAL50</span>
-                <span>50% OFF</span>
-                <span className="hidden md:inline font-medium text-white/90">• Use FEAST100 for Flat ₹100 OFF</span>
-              </div>
-              <div className="flex items-center gap-1 font-bold text-[11px] bg-white/20 group-hover:bg-white/30 px-2 py-1 rounded-xl shrink-0">
-                <span>View All Vouchers</span>
-                <ArrowRight className="w-3 h-3" />
-              </div>
-            </div>
-          </Link>
-
           {/* Table Header Bar */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-2xl bg-[#FFF8ED] border border-[#F4B942] flex items-center justify-center text-[#E8752A] shadow-sm">
+              <div className="w-10 h-10 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-amber-400 shadow-sm">
                 <UtensilsCrossed className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-base sm:text-lg font-black text-[#24140D] flex items-center gap-2">
+                <h1 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
                   <span>SmartDine Indian Cuisine</span>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-[#FFF8ED] text-[#E8752A] border border-[#F4B942]/60">
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-900 text-amber-400 border border-amber-500/30">
                     Live Menu
                   </span>
                 </h1>
-                <p className="text-[11px] text-[#6B5B50] font-medium">
+                <p className="text-[11px] text-slate-400 font-medium">
                   {currentTable ? `Dining on Table ${currentTable}` : 'Select table to order'}
                 </p>
               </div>
@@ -263,7 +243,7 @@ export default function CustomerWebMenu() {
                   reloadLatestMenu();
                 }}
                 title="Reload Latest Menu & Dishes"
-                className="p-2 rounded-xl bg-[#FFF8ED] border border-[#F4B942]/40 hover:border-[#E8752A] text-[#6B5B50] hover:text-[#E8752A] text-xs transition cursor-pointer flex items-center gap-1 active:rotate-180"
+                className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-amber-400/40 text-slate-400 hover:text-amber-400 text-xs transition cursor-pointer flex items-center gap-1 active:rotate-180"
               >
                 <RotateCw className="w-3.5 h-3.5" />
               </button>
@@ -272,10 +252,10 @@ export default function CustomerWebMenu() {
               <button
                 type="button"
                 onClick={() => setIsProfileModalOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FFF8ED] hover:bg-white border border-[#F4B942]/60 text-[#3B2115] text-xs font-bold transition shadow-sm cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-amber-400/40 text-slate-200 text-xs font-bold transition shadow-sm cursor-pointer"
                 title="Customer Profile & Preferences"
               >
-                <div className="w-5 h-5 rounded-full bg-[#E8752A] text-white flex items-center justify-center text-[10px] font-black shadow-sm overflow-hidden">
+                <div className="w-5 h-5 rounded-full bg-gradient-to-r from-orange-600 to-amber-600 text-white flex items-center justify-center text-[10px] font-black shadow-sm overflow-hidden">
                   {avatarUrl ? (
                     <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
@@ -289,63 +269,78 @@ export default function CustomerWebMenu() {
 
               {currentTable ? (
                 <div className="flex items-center gap-2">
-                  <div className="px-3.5 py-1.5 rounded-xl bg-[#3B2115] text-[#FFF8ED] border border-[#F4B942]/60 font-black text-xs flex items-center gap-1.5 shadow-sm">
-                    <span className="w-2 h-2 rounded-full bg-[#F4B942] animate-pulse" />
+                  <div className="px-3.5 py-1.5 rounded-xl bg-slate-900 text-amber-400 border border-amber-500/30 font-black text-xs flex items-center gap-1.5 shadow-sm">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                     <span>Table <strong>{currentTable}</strong></span>
                   </div>
 
                   <Link
                     to={`/bill?table=${currentTable}`}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#E8752A] hover:bg-[#3B2115] text-white text-xs font-bold transition shadow-sm cursor-pointer"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold transition shadow-glow cursor-pointer"
                   >
                     <Receipt className="w-3.5 h-3.5" />
-                    <span>Pay Bill</span>
+                    <span className="hidden sm:inline">Pay Bill</span>
                   </Link>
                 </div>
               ) : (
                 <Link
                   to="/scan"
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#E8752A] hover:bg-[#3B2115] text-white text-xs font-bold transition cursor-pointer shadow-sm"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold transition cursor-pointer shadow-glow"
                 >
                   <QrCode className="w-3.5 h-3.5" />
                   <span>Scan Table QR</span>
                 </Link>
               )}
+
+              {/* Cart Button in Menu Header */}
+              <Link
+                to="/cart"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-black shadow-glow transition active:scale-95 cursor-pointer relative"
+                title="View Dining Cart"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span className="hidden xs:inline">Cart</span>
+                {cartItemCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-slate-950 text-amber-400 text-[10px] font-black ring-1 ring-amber-400/30">
+                    {cartItemCount}
+                  </span>
+                )}
+              </Link>
             </div>
           </div>
 
           {/* Search bar */}
           <div className="relative">
-            <Search className="w-4 h-4 text-[#6B5B50] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search dishes (e.g. Butter Chicken, Paneer Tikka, Thali, Biryani, Naan)..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-[#FFF8ED] border border-[#F4B942]/40 text-sm text-[#24140D] placeholder-[#6B5B50]/70 focus:outline-none focus:border-[#E8752A] focus:bg-white transition shadow-inner"
+              className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition shadow-inner"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6B5B50] hover:text-[#24140D] p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
 
-          {/* Category Carousel Pills: Default = White Card with Dark Brown text; Active = Warm Orange #E8752A with White text */}
+          {/* Category Carousel Pills */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none scroll-smooth">
             <button
               onClick={() => setSelectedCategory('all')}
               className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shadow-sm ${
                 selectedCategory === 'all'
-                  ? 'bg-[#E8752A] text-white shadow-[0_2px_10px_rgba(232,117,42,0.4)] font-black'
-                  : 'bg-white text-[#24140D] hover:text-[#E8752A] hover:border-[#E8752A]/40 border border-[#6B5B50]/20'
+                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow font-black border border-orange-400/40'
+                  : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800/80 border border-slate-800'
               }`}
             >
               <span>🍽️ All</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === 'all' ? 'bg-white/25 text-white' : 'bg-[#FFF8ED] text-[#6B5B50]'}`}>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === 'all' ? 'bg-white/25 text-white' : 'bg-slate-800 text-slate-400'}`}>
                 {menuItems.length}
               </span>
             </button>
@@ -359,16 +354,16 @@ export default function CustomerWebMenu() {
                   onClick={() => setSelectedCategory(cat.id)}
                   className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shadow-sm ${
                     selectedCategory === cat.id
-                      ? 'bg-[#E8752A] text-white shadow-[0_2px_10px_rgba(232,117,42,0.4)] font-black'
+                      ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow font-black border border-orange-400/40'
                       : isThaliCat
-                        ? 'bg-white text-[#24140D] border-1.5 border-[#F4B942] hover:bg-[#FFF8ED]'
-                        : 'bg-white text-[#24140D] hover:text-[#E8752A] hover:border-[#E8752A]/40 border border-[#6B5B50]/20'
+                        ? 'bg-slate-900/90 text-amber-300 border border-amber-500/40 hover:bg-slate-800'
+                        : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800/80 border border-slate-800'
                   }`}
                 >
-                  {isThaliCat && <Crown className="w-3 h-3 text-[#F4B942]" />}
+                  {isThaliCat && <Crown className="w-3 h-3 text-amber-400" />}
                   <span>{cat.name}</span>
                   {count > 0 && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === cat.id ? 'bg-white/25 text-white' : 'bg-[#FFF8ED] text-[#6B5B50]'}`}>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === cat.id ? 'bg-white/25 text-white' : 'bg-slate-800 text-slate-400'}`}>
                       {count}
                     </span>
                   )}
@@ -385,14 +380,14 @@ export default function CustomerWebMenu() {
                 onClick={() => setDietFilter(dietFilter === 'veg' ? 'all' : 'veg')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer ${
                   dietFilter === 'veg'
-                    ? 'bg-emerald-50 border-[#198754] text-[#198754] shadow-sm ring-1 ring-[#198754]'
-                    : 'bg-white border-[#6B5B50]/20 text-[#6B5B50] hover:text-[#24140D]'
+                    ? 'bg-emerald-950/80 border-emerald-500 text-emerald-400 shadow-sm ring-1 ring-emerald-500/50'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${
-                  dietFilter === 'veg' ? 'border-[#198754] bg-emerald-100' : 'border-[#198754]'
+                  dietFilter === 'veg' ? 'border-emerald-500 bg-emerald-950' : 'border-emerald-500'
                 }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${dietFilter === 'veg' ? 'bg-[#198754]' : 'bg-[#198754]'}`} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 </span>
                 <span>Veg</span>
               </button>
@@ -402,14 +397,14 @@ export default function CustomerWebMenu() {
                 onClick={() => setDietFilter(dietFilter === 'nonveg' ? 'all' : 'nonveg')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer ${
                   dietFilter === 'nonveg'
-                    ? 'bg-red-50 border-[#D32F2F] text-[#D32F2F] shadow-sm ring-1 ring-[#D32F2F]'
-                    : 'bg-white border-[#6B5B50]/20 text-[#6B5B50] hover:text-[#24140D]'
+                    ? 'bg-red-950/80 border-red-500 text-red-400 shadow-sm ring-1 ring-red-500/50'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${
-                  dietFilter === 'nonveg' ? 'border-[#D32F2F] bg-red-100' : 'border-[#D32F2F]'
+                  dietFilter === 'nonveg' ? 'border-red-500 bg-red-950' : 'border-red-500'
                 }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${dietFilter === 'nonveg' ? 'bg-[#D32F2F]' : 'bg-[#D32F2F]'}`} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                 </span>
                 <span>Non-Veg</span>
               </button>
@@ -419,17 +414,17 @@ export default function CustomerWebMenu() {
                 onClick={() => setDietFilter(dietFilter === 'favorites' ? 'all' : 'favorites')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer ${
                   dietFilter === 'favorites'
-                    ? 'bg-rose-50 border-rose-500 text-rose-600 shadow-sm ring-1 ring-rose-500'
-                    : 'bg-white border-[#6B5B50]/20 text-[#6B5B50] hover:text-[#24140D]'
+                    ? 'bg-rose-950/80 border-rose-500 text-rose-400 shadow-sm ring-1 ring-rose-500/50'
+                    : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
               >
-                <Heart className={`w-3.5 h-3.5 ${dietFilter === 'favorites' ? 'fill-rose-500 text-rose-500' : 'text-[#6B5B50]'}`} />
+                <Heart className={`w-3.5 h-3.5 ${dietFilter === 'favorites' ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
                 <span>Favorites {favorites.length > 0 && `(${favorites.length})`}</span>
               </button>
             </div>
 
-            <span className="text-[11px] font-medium text-[#6B5B50]">
-              Showing <strong className="text-[#3B2115] font-bold">{filteredDishes.length}</strong> delicacies
+            <span className="text-[11px] font-medium text-slate-400">
+              Showing <strong className="text-amber-400 font-bold">{filteredDishes.length}</strong> delicacies
             </span>
           </div>
 
@@ -443,24 +438,24 @@ export default function CustomerWebMenu() {
         {/* 1. NEW CUSTOMER EXPERIENCE: TASTE PREFERENCES ONBOARDING     */}
         {/* ============================================================ */}
         {showTasteChips ? (
-          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-[#3B2115] via-[#24140D] to-[#3B2115] text-[#FFF8ED] border-2 border-[#F4B942] shadow-md relative overflow-hidden animate-in fade-in duration-200">
+          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 text-white border border-amber-500/40 shadow-xl relative overflow-hidden animate-in fade-in duration-200">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-base">👋</span>
                   <h3 className="text-sm sm:text-base font-black text-white">Welcome to SmartDine!</h3>
-                  <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-[#E8752A] text-white">
+                  <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-orange-600 to-amber-600 text-white">
                     AI Personalization
                   </span>
                 </div>
-                <p className="text-xs text-[#FFF8ED]/80 mt-1">
+                <p className="text-xs text-slate-300 mt-1">
                   Tell us what you like and our recommendation engine will curate the menu to your taste.
                 </p>
               </div>
 
               <button
                 onClick={() => setShowTasteChips(false)}
-                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-[#FFF8ED] text-xs transition cursor-pointer shrink-0"
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-xs transition cursor-pointer shrink-0"
                 title="Dismiss or skip"
               >
                 <X className="w-4 h-4" />
@@ -478,8 +473,8 @@ export default function CustomerWebMenu() {
                     onClick={() => handleTogglePreference(chip.id)}
                     className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer border ${
                       isSelected
-                        ? 'bg-[#E8752A] text-white border-[#F4B942] shadow-sm scale-105'
-                        : 'bg-[#24140D]/80 text-[#FFF8ED]/90 border-[#F4B942]/40 hover:bg-[#24140D] hover:border-[#F4B942]'
+                        ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white border-amber-400 shadow-sm scale-105'
+                        : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:bg-slate-800 hover:border-slate-600'
                     }`}
                   >
                     <span>{chip.label}</span>
@@ -489,24 +484,24 @@ export default function CustomerWebMenu() {
               })}
             </div>
 
-            <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
-              <span className="text-[11px] text-[#F4B942]">
+            <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
+              <span className="text-[11px] text-amber-400 font-medium">
                 ✨ Suggestions update dynamically in real-time
               </span>
               <button
                 onClick={() => setShowTasteChips(false)}
-                className="px-4 py-1.5 rounded-xl bg-[#F4B942] hover:bg-[#e0a833] text-[#3B2115] font-black text-xs shadow-sm transition cursor-pointer"
+                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow transition cursor-pointer"
               >
                 Save & View My Menu
               </button>
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between px-4 py-2 rounded-2xl bg-white border border-[#F4B942]/40 text-xs shadow-xs">
+          <div className="flex items-center justify-between px-4 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs shadow-md">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-[#E8752A]" />
-              <span className="font-bold text-[#24140D]">AI Recommendations Active:</span>
-              <span className="text-[#6B5B50] truncate max-w-xs">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span className="font-bold text-white">AI Recommendations Active:</span>
+              <span className="text-slate-400 truncate max-w-xs">
                 {customerProfile.preferences && customerProfile.preferences.length > 0
                   ? customerProfile.preferences.join(', ')
                   : 'Time & Popularity Based'}
@@ -514,7 +509,7 @@ export default function CustomerWebMenu() {
             </div>
             <button
               onClick={() => setShowTasteChips(true)}
-              className="text-[11px] font-bold text-[#E8752A] hover:underline cursor-pointer shrink-0"
+              className="text-[11px] font-bold text-amber-400 hover:text-amber-300 hover:underline cursor-pointer shrink-0"
             >
               Edit Preferences ⚙️
             </button>
@@ -525,19 +520,19 @@ export default function CustomerWebMenu() {
         {/* 2. PERSONALIZED HOME SECTION: RECOMMENDED FOR YOU            */}
         {/* ============================================================ */}
         {personalizedRecs.length > 0 && (
-          <div className="bg-gradient-to-br from-white to-[#FFFDF9] border border-[#F4B942]/60 rounded-3xl p-4 sm:p-5 shadow-[0_4px_20px_rgba(59,33,21,0.06)] space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#F4B942]/30 pb-3">
+          <div className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base sm:text-lg font-black text-[#24140D] flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-[#E8752A]" />
+                  <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-400" />
                     <span>Recommended For You</span>
                   </h2>
-                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-orange-100 text-[#E8752A]">
+                  <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
                     AI Picked
                   </span>
                 </div>
-                <p className="text-xs text-[#6B5B50] font-medium mt-0.5 flex items-center gap-1.5">
+                <p className="text-xs text-slate-400 font-medium mt-0.5 flex items-center gap-1.5">
                   <span className="inline-block">{timeContext.badge}</span>
                   <span>•</span>
                   <span>Curated to your taste</span>
@@ -546,7 +541,7 @@ export default function CustomerWebMenu() {
 
               <button
                 onClick={() => setShowAllRecs(!showAllRecs)}
-                className="text-xs font-bold text-[#E8752A] hover:text-[#3B2115] flex items-center gap-1 cursor-pointer transition self-start sm:self-auto"
+                className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer transition self-start sm:self-auto"
               >
                 <span>{showAllRecs ? 'Show Less' : 'View More Recommendations'}</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -561,17 +556,17 @@ export default function CustomerWebMenu() {
                   <div
                     key={item.id}
                     onClick={() => handleOpenFoodModal(item)}
-                    className="p-3 rounded-2xl bg-white border border-[#F4B942]/40 hover:border-[#E8752A] shadow-xs hover:shadow-md transition cursor-pointer flex flex-col justify-between group"
+                    className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800/80 hover:border-orange-500/50 shadow-sm hover:shadow-[0_8px_30px_rgba(249,115,22,0.15)] transition cursor-pointer flex flex-col justify-between group"
                   >
                     <div>
                       {/* Reason Badge */}
                       <div className="mb-2">
-                        <span className="inline-block text-[10px] font-bold text-[#E8752A] bg-orange-50 border border-orange-200/60 px-2 py-0.5 rounded-md truncate max-w-full">
+                        <span className="inline-block text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md truncate max-w-full">
                           {primaryReason}
                         </span>
                       </div>
 
-                      <div className="relative h-28 rounded-xl overflow-hidden mb-2 bg-[#FFF8ED]">
+                      <div className="relative h-28 rounded-xl overflow-hidden mb-2 bg-slate-900">
                         <img
                           src={item.imageUrl}
                           alt={item.name}
@@ -579,30 +574,30 @@ export default function CustomerWebMenu() {
                           onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=300'; }}
                         />
                         <div className="absolute top-2 right-2">
-                          <span className="px-1.5 py-0.5 rounded-md bg-black/60 text-amber-300 text-[10px] font-bold flex items-center gap-0.5">
+                          <span className="px-1.5 py-0.5 rounded-md bg-black/70 text-amber-400 text-[10px] font-bold flex items-center gap-0.5 border border-amber-400/20">
                             ⭐ {item.rating || '4.8'}
                           </span>
                         </div>
                       </div>
 
-                      <h4 className="text-xs font-black text-[#24140D] line-clamp-1 group-hover:text-[#E8752A] transition">
+                      <h4 className="text-xs font-black text-white line-clamp-1 group-hover:text-amber-400 transition">
                         {item.name}
                       </h4>
-                      <p className="text-[11px] text-[#6B5B50] line-clamp-1 mt-0.5">
+                      <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
                         {item.description || item.category}
                       </p>
                     </div>
 
-                    <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                    <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
                       <div>
-                        <span className="text-xs font-black text-[#3B2115]">₹{item.price}</span>
+                        <span className="text-xs font-black text-amber-400">₹{item.price}</span>
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             setWhyModalItem({ item, whyFactors, primaryReason, score });
                           }}
-                          className="block text-[9px] font-bold text-slate-400 hover:text-[#E8752A] mt-0.5"
+                          className="block text-[9px] font-bold text-slate-400 hover:text-amber-400 mt-0.5"
                         >
                           Why this?
                         </button>
@@ -613,8 +608,8 @@ export default function CustomerWebMenu() {
                         onClick={(e) => handleQuickAdd(e, item)}
                         className={`px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
                           inCart
-                            ? 'bg-[#198754] text-white'
-                            : 'bg-[#E8752A] hover:bg-[#3B2115] text-white shadow-xs'
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white shadow-glow'
                         }`}
                       >
                         {inCart ? (
@@ -639,31 +634,31 @@ export default function CustomerWebMenu() {
 
         {/* Explainability "Why this?" Modal */}
         {whyModalItem && (
-          <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border-2 border-[#F4B942] animate-in zoom-in-95 duration-150 space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <div className="flex items-center gap-1.5 text-xs font-black text-[#24140D]">
-                  <Sparkles className="w-4 h-4 text-[#E8752A]" />
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-5 shadow-2xl animate-in zoom-in-95 duration-150 space-y-3 text-white">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <div className="flex items-center gap-1.5 text-xs font-black text-white">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
                   <span>Why AI Recommended This</span>
                 </div>
                 <button
                   onClick={() => setWhyModalItem(null)}
-                  className="p-1 text-slate-400 hover:text-slate-700"
+                  className="p-1 text-slate-400 hover:text-white"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               <div>
-                <p className="text-xs font-black text-slate-900">{whyModalItem.item.name}</p>
-                <p className="text-[11px] text-[#E8752A] font-bold mt-0.5">{whyModalItem.primaryReason}</p>
+                <p className="text-xs font-black text-white">{whyModalItem.item.name}</p>
+                <p className="text-[11px] text-amber-400 font-bold mt-0.5">{whyModalItem.primaryReason}</p>
               </div>
 
               <div className="space-y-1.5 pt-1">
                 <p className="text-[10px] uppercase font-bold text-slate-400">Signals Evaluated:</p>
                 {whyModalItem.whyFactors.map((factor, i) => (
-                  <div key={i} className="p-2 rounded-xl bg-orange-50/60 border border-orange-200/50 text-[11px] text-slate-700 flex items-start gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div key={i} className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-300 flex items-start gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
                     <span>{factor}</span>
                   </div>
                 ))}
@@ -672,7 +667,7 @@ export default function CustomerWebMenu() {
               <div className="pt-2">
                 <button
                   onClick={() => setWhyModalItem(null)}
-                  className="w-full py-2 bg-slate-900 hover:bg-black text-white rounded-xl text-xs font-bold"
+                  className="w-full py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white rounded-xl text-xs font-bold shadow-glow"
                 >
                   Got it
                 </button>
@@ -683,17 +678,17 @@ export default function CustomerWebMenu() {
 
         {/* Regular Menu Filter Dishes */}
         {filteredDishes.length === 0 ? (
-          <div className="text-center py-16 px-4 bg-white border border-[#F4B942]/30 rounded-3xl space-y-4 shadow-[0_2px_12px_rgba(36,20,13,0.06)]">
-            <div className="w-16 h-16 rounded-2xl bg-[#FFF8ED] border border-[#F4B942] flex items-center justify-center mx-auto text-[#E8752A]">
+          <div className="text-center py-16 px-4 bg-slate-900/90 border border-slate-800 rounded-3xl space-y-4 shadow-xl">
+            <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center mx-auto text-amber-400">
               <UtensilsCrossed className="w-8 h-8" />
             </div>
-            <h3 className="text-lg font-bold text-[#24140D]">No Dishes Found</h3>
-            <p className="text-xs text-[#6B5B50] max-w-sm mx-auto">
+            <h3 className="text-lg font-bold text-white">No Dishes Found</h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto">
               No menu items matched your selected filter or search term. Try resetting your search or filters.
             </p>
             <button
               onClick={() => { setSelectedCategory('all'); setSearch(''); setDietFilter('all'); }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#E8752A] hover:bg-[#3B2115] text-white text-xs font-bold transition cursor-pointer shadow-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold transition cursor-pointer shadow-glow"
             >
               <span>View All Menu Items</span>
             </button>
@@ -708,16 +703,16 @@ export default function CustomerWebMenu() {
               return (
                 <div
                   key={dish.id}
-                  className={`rounded-2xl bg-white transition-all duration-200 shadow-[0_2px_12px_rgba(36,20,13,0.06)] hover:shadow-[0_6px_20px_rgba(36,20,13,0.12)] flex flex-col justify-between group overflow-hidden ${
+                  className={`rounded-2xl bg-slate-900/90 transition-all duration-200 shadow-xl hover:shadow-[0_8px_30px_rgba(249,115,22,0.15)] flex flex-col justify-between group overflow-hidden ${
                     thali 
-                      ? 'border-2 border-[#F4B942] relative bg-gradient-to-b from-[#FFFDF9] to-white' 
-                      : 'border border-[#6B5B50]/15 hover:border-[#E8752A]/40'
+                      ? 'border-2 border-amber-500/60 relative bg-gradient-to-b from-slate-900 to-slate-950' 
+                      : 'border border-slate-800/80 hover:border-orange-500/50'
                   }`}
                 >
                   {/* Special Thali Crown Banner */}
                   {thali && (
-                    <div className="bg-[#F4B942] text-[#3B2115] text-[10px] font-black uppercase tracking-wider px-3 py-0.5 flex items-center justify-center gap-1 shadow-sm">
-                      <Crown className="w-3 h-3 text-[#3B2115]" />
+                    <div className="bg-gradient-to-r from-orange-600 to-amber-600 text-white text-[10px] font-black uppercase tracking-wider px-3 py-0.5 flex items-center justify-center gap-1 shadow-sm">
+                      <Crown className="w-3 h-3 text-amber-200" />
                       <span>Special Royal Thali</span>
                     </div>
                   )}
@@ -728,57 +723,57 @@ export default function CustomerWebMenu() {
                     <div className="flex-1 space-y-1.5 flex flex-col justify-between">
                       <div>
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          {/* Veg / Non-Veg Indicator (#198754 / #D32F2F) */}
+                          {/* Veg / Non-Veg Indicator */}
                           <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
-                            dish.isVeg ? 'border-[#198754]' : 'border-[#D32F2F]'
+                            dish.isVeg ? 'border-emerald-500 bg-emerald-950/60' : 'border-red-500 bg-red-950/60'
                           }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${dish.isVeg ? 'bg-[#198754]' : 'bg-[#D32F2F]'}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full ${dish.isVeg ? 'bg-emerald-500' : 'bg-red-500'}`} />
                           </span>
 
                           {dish.popular && (
-                            <span className="px-2 py-0.5 rounded-md bg-[#FFF8ED] text-[#E8752A] text-[10px] font-bold border border-[#E8752A]/30 flex items-center gap-0.5">
-                              <Flame className="w-2.5 h-2.5 text-[#E8752A]" />
+                            <span className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 text-[10px] font-bold border border-amber-500/30 flex items-center gap-0.5">
+                              <Flame className="w-2.5 h-2.5 text-orange-400" />
                               Bestseller
                             </span>
                           )}
 
                           {dish.rating && (
-                            <span className="px-1.5 py-0.5 rounded-md bg-[#FFF8ED] text-[#3B2115] text-[10px] font-bold flex items-center gap-0.5 border border-[#F4B942]/60">
-                              <Star className="w-2.5 h-2.5 fill-[#F4B942] text-[#F4B942]" />
+                            <span className="px-1.5 py-0.5 rounded-md bg-slate-800/90 text-amber-400 text-[10px] font-bold flex items-center gap-0.5 border border-amber-400/20">
+                              <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
                               {dish.rating}
                             </span>
                           )}
                         </div>
 
-                        {/* Dark Brown Item Name */}
+                        {/* White Item Name */}
                         <h3 
                           onClick={() => handleOpenFoodModal(dish)}
-                          className="font-extrabold text-sm text-[#24140D] cursor-pointer group-hover:text-[#E8752A] transition leading-snug"
+                          className="font-extrabold text-sm text-white cursor-pointer group-hover:text-amber-400 transition leading-snug"
                         >
                           {dish.name}
                         </h3>
 
-                        {/* Deep Brown Price */}
-                        <div className="font-black text-base text-[#3B2115] mt-0.5">
+                        {/* Amber Price */}
+                        <div className="font-black text-base text-amber-400 mt-0.5">
                           ₹{dish.price}
                         </div>
 
-                        {/* Warm Gray Description */}
-                        <p className="text-[11px] text-[#6B5B50] line-clamp-2 leading-relaxed mt-1">
+                        {/* Slate-400 Description */}
+                        <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed mt-1">
                           {dish.description}
                         </p>
                       </div>
 
                       {dish.prepTime && (
-                        <div className="flex items-center gap-1 text-[10px] text-[#6B5B50] pt-1 font-medium">
-                          <Clock className="w-3 h-3 text-[#6B5B50]" />
+                        <div className="flex items-center gap-1 text-[10px] text-slate-400 pt-1 font-medium">
+                          <Clock className="w-3 h-3 text-slate-500" />
                           <span>{dish.prepTime}</span>
                         </div>
                       )}
                     </div>
 
                     {/* Right Food Image & Orange Add to Cart Button */}
-                    <div className="relative w-28 h-28 shrink-0 rounded-xl overflow-hidden bg-[#FFF8ED] flex flex-col justify-end border border-[#6B5B50]/15">
+                    <div className="relative w-28 h-28 shrink-0 rounded-xl overflow-hidden bg-slate-950 flex flex-col justify-end border border-slate-800">
                       <img
                         src={dish.imageUrl}
                         alt={dish.name}
@@ -793,7 +788,7 @@ export default function CustomerWebMenu() {
                       <button
                         type="button"
                         onClick={(e) => toggleFavorite(e, dish.id)}
-                        className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-black/45 hover:bg-black/70 text-white backdrop-blur-xs transition z-10 cursor-pointer shadow-sm group/fav"
+                        className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-black/60 hover:bg-black/80 text-white backdrop-blur-xs transition z-10 cursor-pointer shadow-sm group/fav"
                         title={isFav ? 'Remove from favorites' : 'Add to favorites'}
                       >
                         <Heart className={`w-3.5 h-3.5 transition-transform group-hover/fav:scale-115 ${
@@ -805,18 +800,18 @@ export default function CustomerWebMenu() {
                       {inCart ? (
                         <div 
                           onClick={(e) => e.stopPropagation()} 
-                          className="absolute bottom-1.5 left-1.5 right-1.5 bg-[#3B2115] border border-[#F4B942]/60 rounded-lg flex items-center justify-between p-1 shadow-md text-white"
+                          className="absolute bottom-1.5 left-1.5 right-1.5 bg-slate-950/95 border border-amber-500/50 rounded-lg flex items-center justify-between p-1 shadow-md text-white backdrop-blur-xs"
                         >
                           <button
                             onClick={(e) => handleDecrement(e, dish)}
-                            className="p-1 hover:bg-white/20 text-[#F4B942] rounded transition cursor-pointer"
+                            className="p-1 hover:bg-slate-800 text-amber-400 rounded transition cursor-pointer"
                           >
                             <Minus className="w-3 h-3" />
                           </button>
                           <span className="font-black text-xs text-white">{inCart.quantity}</span>
                           <button
                             onClick={(e) => handleIncrement(e, dish)}
-                            className="p-1 hover:bg-white/20 text-[#F4B942] rounded transition cursor-pointer"
+                            className="p-1 hover:bg-slate-800 text-amber-400 rounded transition cursor-pointer"
                           >
                             <Plus className="w-3 h-3" />
                           </button>
@@ -824,7 +819,7 @@ export default function CustomerWebMenu() {
                       ) : (
                         <button
                           onClick={(e) => handleQuickAdd(e, dish)}
-                          className="absolute bottom-1.5 right-1.5 px-3 py-1 rounded-lg bg-[#E8752A] hover:bg-[#3B2115] active:bg-[#24140D] text-white font-black text-xs shadow-md transition active:scale-95 flex items-center gap-1 cursor-pointer"
+                          className="absolute bottom-1.5 right-1.5 px-3 py-1 rounded-lg bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow transition active:scale-95 flex items-center gap-1 cursor-pointer"
                         >
                           <Plus className="w-3 h-3" />
                           <span>ADD</span>
@@ -843,37 +838,37 @@ export default function CustomerWebMenu() {
       {/* Floating AI Recommendation Banner */}
       {aiRecommendation && (
         <div className="fixed bottom-20 left-4 right-4 max-w-lg mx-auto z-40 animate-in slide-in-from-bottom duration-300">
-          <div className="p-3.5 rounded-2xl bg-white border-2 border-[#F4B942] shadow-[0_8px_30px_rgba(59,33,21,0.15)] flex items-center justify-between gap-3">
+          <div className="p-3.5 rounded-2xl bg-slate-900/95 border border-amber-500/50 shadow-2xl backdrop-blur-md flex items-center justify-between gap-3 text-white">
             <div className="flex items-center gap-3">
               <img
                 src={aiRecommendation.dish.imageUrl}
                 alt={aiRecommendation.dish.name}
-                className="w-12 h-12 rounded-xl object-cover border border-[#F4B942] shrink-0"
+                className="w-12 h-12 rounded-xl object-cover border border-amber-500/50 shrink-0"
               />
               <div className="space-y-0.5">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-[#F4B942] text-[#3B2115] flex items-center gap-1 shadow-sm">
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-gradient-to-r from-orange-600 to-amber-600 text-white flex items-center gap-1 shadow-sm">
                     <Sparkles className="w-2.5 h-2.5" />
                     {aiRecommendation.aiBadge || 'Similar Dish Match'}
                   </span>
-                  <span className="text-[11px] font-black text-[#3B2115]">₹{aiRecommendation.dish.price}</span>
+                  <span className="text-[11px] font-black text-amber-400">₹{aiRecommendation.dish.price}</span>
                 </div>
-                <h4 className="font-bold text-xs text-[#24140D] line-clamp-1">{aiRecommendation.dish.name}</h4>
-                <p className="text-[10px] text-[#6B5B50] line-clamp-1">{aiRecommendation.reason}</p>
+                <h4 className="font-bold text-xs text-white line-clamp-1">{aiRecommendation.dish.name}</h4>
+                <p className="text-[10px] text-slate-400 line-clamp-1">{aiRecommendation.reason}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-1.5">
               <button
                 onClick={handleAcceptAiRecommendation}
-                className="px-3 py-1.5 rounded-xl bg-[#E8752A] hover:bg-[#3B2115] text-white font-black text-xs shadow-md transition active:scale-95 whitespace-nowrap cursor-pointer flex items-center gap-1"
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow transition active:scale-95 whitespace-nowrap cursor-pointer flex items-center gap-1"
               >
                 <Plus className="w-3 h-3" />
                 <span>Add</span>
               </button>
               <button
                 onClick={() => setAiRecommendation(null)}
-                className="p-1 rounded-lg text-[#6B5B50] hover:text-[#24140D] cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -882,12 +877,12 @@ export default function CustomerWebMenu() {
         </div>
       )}
 
-      {/* Floating Bottom Cart Bar in Warm Orange / Deep Brown */}
+      {/* Floating Bottom Cart Bar */}
       {cartItemCount > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-40">
+        <div className="fixed bottom-20 sm:bottom-6 left-4 right-4 max-w-lg mx-auto z-50">
           <Link
             to="/cart"
-            className="p-3.5 rounded-2xl bg-gradient-to-r from-[#E8752A] via-[#d9681f] to-[#3B2115] hover:opacity-95 text-white shadow-[0_8px_30px_rgba(232,117,42,0.4)] flex items-center justify-between transition-all transform active:scale-98 border border-[#F4B942]/40"
+            className="p-3.5 rounded-2xl bg-gradient-to-r from-orange-600 via-orange-500 to-amber-600 hover:opacity-95 text-white shadow-glow flex items-center justify-between transition-all transform active:scale-98 border border-orange-400/40"
           >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center font-black text-sm shadow-inner">
@@ -896,17 +891,17 @@ export default function CustomerWebMenu() {
               <div>
                 <div className="font-extrabold text-sm flex items-center gap-1.5">
                   <span>View Order Cart</span>
-                  {currentTable && <span className="text-xs font-semibold text-[#F4B942]">• Table {currentTable}</span>}
+                  {currentTable && <span className="text-xs font-semibold text-amber-200">• Table {currentTable}</span>}
                 </div>
-                <div className="text-xs text-[#FFF8ED]/90 font-medium">
+                <div className="text-xs text-white/90 font-medium">
                   Total: ₹{cartTotal.toFixed(0)} (incl. taxes)
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-1 font-black text-xs bg-white text-[#3B2115] px-3.5 py-1.5 rounded-xl shadow-sm">
+            <div className="flex items-center gap-1 font-black text-xs bg-slate-950 text-amber-400 px-3.5 py-1.5 rounded-xl shadow-sm border border-amber-400/30">
               <span>Checkout</span>
-              <ChevronRight className="w-4 h-4 text-[#E8752A]" />
+              <ChevronRight className="w-4 h-4 text-amber-400" />
             </div>
           </Link>
         </div>
@@ -914,11 +909,11 @@ export default function CustomerWebMenu() {
 
       {/* Food Details Modal */}
       {selectedFood && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white border border-[#F4B942]/40 rounded-t-3xl sm:rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-200 max-h-[90vh] flex flex-col justify-between">
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-200 max-h-[90vh] flex flex-col justify-between text-white">
             
             {/* Food Hero Image */}
-            <div className="relative h-52 bg-[#FFF8ED] shrink-0">
+            <div className="relative h-52 bg-slate-950 shrink-0">
               <img
                 src={selectedFood.imageUrl}
                 alt={selectedFood.name}
@@ -931,15 +926,15 @@ export default function CustomerWebMenu() {
                 <button
                   type="button"
                   onClick={(e) => toggleFavorite(e, selectedFood.id)}
-                  className="p-1.5 rounded-full bg-white/90 text-[#24140D] hover:bg-white shadow-md cursor-pointer transition"
+                  className="p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 shadow-md cursor-pointer transition"
                   title={favorites.includes(selectedFood.id) ? 'Remove from favorites' : 'Add to favorites'}
                 >
-                  <Heart className={`w-5 h-5 ${favorites.includes(selectedFood.id) ? 'fill-red-500 text-red-500' : 'text-[#6B5B50]'}`} />
+                  <Heart className={`w-5 h-5 ${favorites.includes(selectedFood.id) ? 'fill-red-500 text-red-500' : 'text-slate-300'}`} />
                 </button>
 
                 <button
                   onClick={() => setSelectedFood(null)}
-                  className="p-1.5 rounded-full bg-white/90 text-[#24140D] hover:bg-white shadow-md cursor-pointer transition"
+                  className="p-1.5 rounded-full bg-black/60 text-white hover:bg-black/80 shadow-md cursor-pointer transition"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -950,42 +945,42 @@ export default function CustomerWebMenu() {
             <div className="p-5 space-y-4 overflow-y-auto flex-1">
               <div className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-black text-lg text-[#24140D]">
+                  <h3 className="font-black text-lg text-white">
                     {selectedFood.name}
                   </h3>
                   <div className="flex items-center gap-2 mt-1">
                     <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${
-                      selectedFood.isVeg ? 'border-[#198754]' : 'border-[#D32F2F]'
+                      selectedFood.isVeg ? 'border-emerald-500 bg-emerald-950/60' : 'border-red-500 bg-red-950/60'
                     }`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${selectedFood.isVeg ? 'bg-[#198754]' : 'bg-[#D32F2F]'}`} />
+                      <span className={`w-1.5 h-1.5 rounded-full ${selectedFood.isVeg ? 'bg-emerald-500' : 'bg-red-500'}`} />
                     </span>
-                    <span className="text-xs font-semibold text-[#6B5B50]">
+                    <span className="text-xs font-semibold text-slate-300">
                       {selectedFood.isVeg ? 'Pure Vegetarian' : 'Non-Vegetarian'}
                     </span>
                     {selectedFood.category && (
-                      <span className="text-xs text-[#6B5B50]/80">• {selectedFood.category}</span>
+                      <span className="text-xs text-slate-400">• {selectedFood.category}</span>
                     )}
                   </div>
                 </div>
 
-                <span className="text-xl font-black text-[#3B2115] whitespace-nowrap">
+                <span className="text-xl font-black text-amber-400 whitespace-nowrap">
                   ₹{selectedFood.price}
                 </span>
               </div>
 
-              <p className="text-xs text-[#6B5B50] leading-relaxed">
+              <p className="text-xs text-slate-400 leading-relaxed">
                 {selectedFood.description}
               </p>
 
               {/* Ingredients */}
               {selectedFood.ingredients && (
                 <div>
-                  <h4 className="text-xs font-bold text-[#3B2115] uppercase tracking-wider mb-1.5">
+                  <h4 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1.5">
                     Authentic Spices & Ingredients
                   </h4>
                   <div className="flex flex-wrap gap-1.5">
                     {(Array.isArray(selectedFood.ingredients) ? selectedFood.ingredients : [selectedFood.ingredients]).map((ing, i) => (
-                      <span key={i} className="text-xs px-2.5 py-1 rounded-lg bg-[#FFF8ED] text-[#3B2115] border border-[#F4B942]/40">
+                      <span key={i} className="text-xs px-2.5 py-1 rounded-lg bg-slate-800 text-slate-200 border border-slate-700">
                         {ing}
                       </span>
                     ))}
@@ -995,7 +990,7 @@ export default function CustomerWebMenu() {
 
               {/* Cooking Notes */}
               <div>
-                <label className="block text-xs font-semibold text-[#3B2115] mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Special cooking instructions
                 </label>
                 <input
@@ -1003,25 +998,25 @@ export default function CustomerWebMenu() {
                   placeholder="e.g. Medium spicy, extra butter naan, no onion..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-[#FFF8ED] border border-[#F4B942]/40 text-xs text-[#24140D] placeholder-[#6B5B50]/60 focus:outline-none focus:border-[#E8752A] focus:bg-white"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400"
                 />
               </div>
 
               {/* Smart "You May Also Like" */}
-              <div className="pt-3 border-t border-[#F4B942]/30 space-y-2">
+              <div className="pt-3 border-t border-slate-800 space-y-2">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-[#24140D] flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#E8752A]" />
+                  <h4 className="text-xs font-black text-white flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                     <span>You May Also Like</span>
                   </h4>
-                  <span className="text-[10px] text-[#6B5B50]">Similar flavor profile</span>
+                  <span className="text-[10px] text-slate-400">Similar flavor profile</span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {getSimilarDishes({ currentItem: selectedFood, menuItems, limit: 3 }).map(dish => (
                     <div
                       key={dish.id}
                       onClick={() => handleOpenFoodModal(dish)}
-                      className="p-2 rounded-xl bg-[#FFF8ED] border border-[#F4B942]/40 hover:border-[#E8752A] transition cursor-pointer flex flex-col justify-between group"
+                      className="p-2 rounded-xl bg-slate-950 border border-slate-800 hover:border-orange-500/50 transition cursor-pointer flex flex-col justify-between group"
                     >
                       <div>
                         <img
@@ -1030,11 +1025,11 @@ export default function CustomerWebMenu() {
                           className="w-full h-14 object-cover rounded-lg mb-1 group-hover:scale-105 transition duration-200"
                           onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=300'; }}
                         />
-                        <p className="text-[11px] font-bold text-[#24140D] line-clamp-1 group-hover:text-[#E8752A] transition">{dish.name}</p>
+                        <p className="text-[11px] font-bold text-white line-clamp-1 group-hover:text-amber-400 transition">{dish.name}</p>
                       </div>
-                      <div className="flex items-center justify-between mt-1 pt-1 border-t border-[#F4B942]/30">
-                        <span className="text-[10px] font-black text-[#3B2115]">₹{dish.price}</span>
-                        <span className="text-[9px] font-bold text-[#E8752A]">View</span>
+                      <div className="flex items-center justify-between mt-1 pt-1 border-t border-slate-800">
+                        <span className="text-[10px] font-black text-amber-400">₹{dish.price}</span>
+                        <span className="text-[9px] font-bold text-orange-400">View</span>
                       </div>
                     </div>
                   ))}
@@ -1043,28 +1038,28 @@ export default function CustomerWebMenu() {
             </div>
 
             {/* Bottom Quantity & Add to Cart Bar */}
-            <div className="p-4 bg-[#FFF8ED] border-t border-[#F4B942]/30 flex items-center justify-between gap-3">
+            <div className="p-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between gap-3">
               {/* Stepper */}
-              <div className="flex items-center gap-3 bg-white px-3 py-1.5 rounded-xl border border-[#6B5B50]/20">
+              <div className="flex items-center gap-3 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
                 <button
                   onClick={() => setQty(Math.max(1, qty - 1))}
-                  className="text-[#6B5B50] hover:text-[#3B2115] p-1 cursor-pointer"
+                  className="text-slate-400 hover:text-white p-1 cursor-pointer"
                 >
                   <Minus className="w-4 h-4" />
                 </button>
-                <span className="font-black text-sm text-[#24140D] w-4 text-center">{qty}</span>
+                <span className="font-black text-sm text-white w-4 text-center">{qty}</span>
                 <button
                   onClick={() => setQty(qty + 1)}
-                  className="text-[#6B5B50] hover:text-[#3B2115] p-1 cursor-pointer"
+                  className="text-slate-400 hover:text-white p-1 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Add CTA: Warm Orange #E8752A hovering to Deep Brown #3B2115 */}
+              {/* Add CTA */}
               <button
                 onClick={handleAddAndClose}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#E8752A] hover:bg-[#3B2115] text-white font-black text-sm shadow-md transition active:scale-95 cursor-pointer"
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-sm shadow-glow transition active:scale-95 cursor-pointer"
               >
                 <span>Add to Cart</span>
                 <span>•</span>

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, localStore, isFirebaseConfigured } from '../firebase/config';
-import { collection, addDoc, onSnapshot, query, orderBy, where, getDocs } from 'firebase/firestore';
+import { DEMO_TABLES } from '../firebase/seed-data.js';
+import { collection, addDoc, onSnapshot, query, orderBy, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 
 const TableOrderContext = createContext();
 
@@ -191,7 +192,18 @@ export function TableOrderProvider({ children }) {
       const unsubTables = onSnapshot(collection(db, 'tables'), (snapshot) => {
         if (!snapshot.empty) {
           const tbls = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setTables(tbls);
+          if (tbls.length < 25) {
+            const existingMap = new Map(tbls.map(t => [String(t.tableNumber).padStart(2, '0'), t]));
+            const merged = DEMO_TABLES.map(dt => {
+              const num = String(dt.tableNumber).padStart(2, '0');
+              return existingMap.has(num) ? { ...dt, ...existingMap.get(num) } : dt;
+            });
+            setTables(merged);
+            localStore.saveTables(merged);
+          } else {
+            setTables(tbls);
+            localStore.saveTables(tbls);
+          }
         }
       });
 
@@ -284,64 +296,20 @@ export function TableOrderProvider({ children }) {
     localStorage.removeItem('smartdine_cart');
   };
 
+  // Sync cart to localStorage whenever cart changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('smartdine_cart', JSON.stringify(cart));
+    } catch {}
+  }, [cart]);
+
   // Calculations
   const cartSubtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const cartTax = Math.round(cartSubtotal * 0.05 * 100) / 100; // 5% GST
   const cartTotal = Math.round((cartSubtotal + cartTax) * 100) / 100;
   const cartItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Place order
-  const placeOrder = async ({ customerName, customerPhone, customerId = null, notes = '', paymentMethod = 'Pay at Counter' }) => {
-    if (cart.length === 0) throw new Error('Cart is empty');
-    
-    const effectiveTable = currentTable || localStorage.getItem('smartdine_active_table') || '1';
-    if (!currentTable) {
-      setCurrentTable(effectiveTable);
-      try { localStorage.setItem('smartdine_active_table', effectiveTable); } catch {}
-    }
-
-    const orderData = {
-      tableNumber: effectiveTable,
-      customerName: customerName || `Table ${effectiveTable} Guest`,
-      customerPhone: customerPhone || '',
-      customerId: customerId,
-      items: cart.map(item => ({
-        itemId: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        imageUrl: item.imageUrl || '',
-        isVeg: item.isVeg !== undefined ? item.isVeg : true,
-        instructions: item.instructions || ''
-      })),
-      subtotal: cartSubtotal,
-      tax: cartTax,
-      total: cartTotal,
-      notes: notes,
-      status: 'pending',
-      paymentStatus: 'pending',
-      paymentMethod: paymentMethod,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    let orderId = '';
-
-    if (isFirebaseConfigured) {
-      const docRef = await addDoc(collection(db, 'orders'), orderData);
-      orderId = docRef.id;
-    } else {
-      const created = localStore.addOrder(orderData);
-      orderId = created.id;
-    }
-
-    setLatestPlacedOrderId(orderId);
-    localStorage.setItem('smartdine_last_order_id', orderId);
-    clearCart();
-    return orderId;
-  };
-
-  // Check if an order has already been paid / cleared
+  // Check if an order has already been paid / cleared (defined before placeOrder)
   const isOrderPaid = (order) => {
     if (!order) return false;
     const pStatus = String(order.paymentStatus || '').trim().toLowerCase();
@@ -365,6 +333,138 @@ export function TableOrderProvider({ children }) {
       return true;
     }
     return false;
+  };
+
+  // Place order with table availability check and dynamic preparation ETA
+  // Place order with table availability check and dynamic preparation ETA
+  const placeOrder = async ({ 
+    customerName, 
+    customerPhone, 
+    customerId = null, 
+    notes = '', 
+    paymentMethod = 'CASH / COUNTER',
+    paymentStatus = 'PENDING',
+    paymentGateway = 'None',
+    razorpay_order_id = null,
+    razorpay_payment_id = null,
+    razorpay_signature = null,
+    transactionId = null,
+    paidAt = null,
+    refund_status = 'NONE',
+    discountAmount = 0,
+    couponCode = null,
+    total = null,
+    waitingForTable = false 
+  }) => {
+    if (cart.length === 0) throw new Error('Cart is empty');
+    
+    // Check available tables
+    const allTables = tables && tables.length > 0 ? tables : localStore.getTables();
+    const availableTables = allTables.filter(t => t.active !== false);
+    const occupiedTableNumbers = new Set(
+      orders
+        .filter(o => o.status !== 'completed' && o.status !== 'cancelled' && !isOrderPaid(o))
+        .map(o => String(o.tableNumber).padStart(2, '0'))
+    );
+
+    let isWaiting = Boolean(waitingForTable);
+    let effectiveTable = currentTable || localStorage.getItem('smartdine_active_table');
+
+    // If customer has not scanned or table is set to waiting
+    if (!effectiveTable || effectiveTable === 'waiting' || isWaiting) {
+      // Find first free table
+      const freeTable = availableTables.find(t => !occupiedTableNumbers.has(String(t.tableNumber).padStart(2, '0')));
+      if (freeTable && !isWaiting) {
+        effectiveTable = String(freeTable.tableNumber).padStart(2, '0');
+        setCurrentTable(effectiveTable);
+        try { localStorage.setItem('smartdine_active_table', effectiveTable); } catch {}
+      } else {
+        isWaiting = true;
+        effectiveTable = null;
+      }
+    } else {
+      // Formatted active table
+      effectiveTable = String(effectiveTable).padStart(2, '0');
+    }
+
+    // Active waiting queue calculation
+    const activeWaitingOrders = orders.filter(o => o.waitingForTable && o.status !== 'completed' && o.status !== 'cancelled');
+    const queuePos = isWaiting ? activeWaitingOrders.length + 1 : null;
+    const waitingTimePerCustomer = localStore.getTableWaitingTime() || 15;
+    const estimatedWaitingMinutes = isWaiting ? queuePos * waitingTimePerCustomer : null;
+
+    // Dynamic initial preparation ETA: 20 min base, +2m per item over 3 items
+    const estimatedPrepMinutes = Math.min(45, Math.max(15, 15 + Math.floor(cartItemCount * 2)));
+    const prepTimeRange = `${estimatedPrepMinutes}–${estimatedPrepMinutes + 5} min`;
+    const prepStartedAt = new Date().toISOString();
+
+    const finalPaymentStatus = String(paymentStatus).toUpperCase();
+    const finalPaymentMethod = paymentMethod.includes('Razorpay') || paymentMethod.includes('Online') ? 'RAZORPAY' : (paymentMethod || 'CASH / COUNTER');
+    const finalGateway = finalPaymentMethod === 'RAZORPAY' ? 'Razorpay' : (paymentGateway || 'None');
+    const finalAmount = total !== null && total !== undefined ? Number(total) : cartTotal;
+
+    const orderData = {
+      tableNumber: effectiveTable || 'Waiting for Table',
+      customerName: customerName || (effectiveTable ? `Table ${effectiveTable} Guest` : `Waiting Guest #${queuePos}`),
+      customerPhone: customerPhone || '',
+      customerId: customerId,
+      items: cart.map(item => ({
+        itemId: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        imageUrl: item.imageUrl || '',
+        isVeg: item.isVeg !== undefined ? item.isVeg : true,
+        instructions: item.instructions || ''
+      })),
+      currency: 'INR',
+      amount: finalAmount,
+      subtotal: cartSubtotal,
+      tax: cartTax,
+      discountAmount: Number(discountAmount) || 0,
+      couponCode: couponCode || null,
+      total: finalAmount,
+      notes: notes,
+      status: 'pending',
+      paymentStatus: finalPaymentStatus,
+      paymentMethod: finalPaymentMethod,
+      paymentGateway: finalGateway,
+      razorpay_order_id: razorpay_order_id || null,
+      razorpay_payment_id: razorpay_payment_id || transactionId || null,
+      razorpay_signature: razorpay_signature || null,
+      transactionId: transactionId || razorpay_payment_id || (finalPaymentStatus === 'PAID' ? `TXN-${Date.now()}` : null),
+      paidAt: paidAt || (finalPaymentStatus === 'PAID' ? new Date().toISOString() : null),
+      refund_status: refund_status || 'NONE',
+      prepStartedAt,
+      estimatedPrepMinutes,
+      prepTimeRange,
+      waitingForTable: isWaiting,
+      queuePosition: queuePos,
+      estimatedWaitingMinutes,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    let orderId = '';
+
+    if (isFirebaseConfigured) {
+      try {
+        const docRef = await addDoc(collection(db, 'orders'), orderData);
+        orderId = docRef.id;
+      } catch (err) {
+        console.warn('Firebase addDoc order error, using local fallback:', err);
+        const created = localStore.addOrder(orderData);
+        orderId = created.id;
+      }
+    } else {
+      const created = localStore.addOrder(orderData);
+      orderId = created.id;
+    }
+
+    setLatestPlacedOrderId(orderId);
+    localStorage.setItem('smartdine_last_order_id', orderId);
+    clearCart();
+    return orderId;
   };
 
   // Get active UNPAID dining orders for a table (multiple orders in same session)
@@ -469,7 +569,12 @@ export function TableOrderProvider({ children }) {
         snap.docs.forEach(async (d) => {
           const data = d.data();
           if (data.paymentStatus !== 'Paid') {
-            await addDoc(collection(db, 'orders'), {}); // trigger listener or localStore update
+            await updateDoc(doc(db, 'orders', d.id), {
+              status: 'bill requested',
+              paymentStatus: 'Bill Requested',
+              billRequestedAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
           }
         });
       } catch (err) {
@@ -478,6 +583,7 @@ export function TableOrderProvider({ children }) {
     }
 
     localStore.updateOrdersForTable(formatted, {
+      status: 'bill requested',
       paymentStatus: 'Bill Requested',
       billRequestedAt: new Date().toISOString()
     });
@@ -545,12 +651,126 @@ export function TableOrderProvider({ children }) {
     });
   };
 
-  const updateOrderStatus = (orderId, newStatus) => {
-    if (!isFirebaseConfigured) {
-      localStore.updateOrderStatus(orderId, newStatus);
-      const updated = localStore.getOrders();
-      setOrders([...updated]);
+  // Refund Order (Admin action)
+  const refundOrder = async (orderId, refundData = {}) => {
+    const updates = {
+      paymentStatus: 'REFUNDED',
+      refund_status: 'REFUNDED',
+      refundedAt: new Date().toISOString(),
+      refundId: refundData.refundId || null,
+      refundAmount: refundData.amount || null,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isFirebaseConfigured) {
+      try {
+        await updateDoc(doc(db, 'orders', orderId), updates);
+      } catch (err) {
+        console.warn('Firebase refund update error:', err);
+      }
     }
+
+    localStore.updateOrderData(orderId, updates);
+    const updated = localStore.getOrders();
+    setOrders([...updated]);
+    return updates;
+  };
+
+  // Mark a single order as Paid by Admin
+  const markOrderAsPaidByAdmin = async (orderId, paymentMethod = 'CASH / COUNTER') => {
+    const updates = {
+      paymentStatus: 'PAID',
+      paymentMethod: paymentMethod,
+      paidAt: new Date().toISOString(),
+      transactionId: `CASH-${Date.now().toString().slice(-6)}`,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isFirebaseConfigured) {
+      try {
+        await updateDoc(doc(db, 'orders', orderId), updates);
+      } catch (err) {
+        console.warn('Firebase mark order paid error:', err);
+      }
+    }
+
+    localStore.updateOrderData(orderId, updates);
+    const updated = localStore.getOrders();
+    setOrders([...updated]);
+    return updates;
+  };
+
+  // Update order status across lifecycle: pending -> preparing -> ready -> served -> bill requested -> completed
+  const updateOrderStatus = async (orderId, newStatus) => {
+    const updates = { 
+      status: newStatus, 
+      updatedAt: new Date().toISOString() 
+    };
+
+    if (newStatus === 'served') {
+      updates.servedAt = new Date().toISOString();
+    }
+    if (newStatus === 'completed') {
+      updates.completedAt = new Date().toISOString();
+    }
+
+    if (isFirebaseConfigured) {
+      try {
+        await updateDoc(doc(db, 'orders', orderId), updates);
+      } catch (err) {
+        console.warn('Firebase status update error:', err);
+      }
+    }
+
+    localStore.updateOrderStatus(orderId, newStatus);
+    const updated = localStore.getOrders();
+    setOrders([...updated]);
+  };
+
+  // Update preparation ETA from Kitchen/Admin (instantly updates customer view)
+  const updateOrderEta = async (orderId, newMinutes) => {
+    const minutes = Math.max(1, parseInt(newMinutes) || 20);
+    const rangeStr = `${minutes}–${minutes + 5} min`;
+
+    if (isFirebaseConfigured) {
+      try {
+        await updateDoc(doc(db, 'orders', orderId), {
+          estimatedPrepMinutes: minutes,
+          prepTimeRange: rangeStr,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn('Firebase ETA update error:', err);
+      }
+    }
+
+    localStore.updateOrderEta(orderId, minutes, rangeStr);
+    const updated = localStore.getOrders();
+    setOrders([...updated]);
+  };
+
+  // Staff/Admin assigns a table to a queued/waiting customer
+  const assignTableToWaitingOrder = async (orderId, tableNumber) => {
+    const formatted = String(tableNumber).padStart(2, '0');
+
+    if (isFirebaseConfigured) {
+      try {
+        await updateDoc(doc(db, 'orders', orderId), {
+          tableNumber: formatted,
+          waitingForTable: false,
+          tableReady: true,
+          tableReadyAt: new Date().toISOString(),
+          queuePosition: null,
+          updatedAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn('Firebase table assignment error:', err);
+      }
+    }
+
+    localStore.assignTableToOrder(orderId, formatted);
+    const updated = localStore.getOrders();
+    setOrders([...updated]);
   };
 
   const refreshOrders = async () => {
@@ -611,7 +831,11 @@ export function TableOrderProvider({ children }) {
       requestCashPaymentForTable,
       payTableBill,
       markTableAsPaidByAdmin,
+      markOrderAsPaidByAdmin,
+      refundOrder,
       updateOrderStatus,
+      updateOrderEta,
+      assignTableToWaitingOrder,
       refreshOrders,
       reloadLatestMenu,
       latestPlacedOrderId,

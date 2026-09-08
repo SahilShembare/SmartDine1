@@ -410,7 +410,22 @@ export const DEMO_TABLES = [
   { id: "table-7", tableNumber: "07", capacity: 8, active: true, location: "VIP Lounge", qrUrl: "https://smartdine.netlify.app/menu?table=07", deepLink: "smartdine://table/07" },
   { id: "table-8", tableNumber: "08", capacity: 4, active: true, location: "Main Hall", qrUrl: "https://smartdine.netlify.app/menu?table=08", deepLink: "smartdine://table/08" },
   { id: "table-9", tableNumber: "09", capacity: 2, active: true, location: "Garden Courtyard", qrUrl: "https://smartdine.netlify.app/menu?table=09", deepLink: "smartdine://table/09" },
-  { id: "table-10", tableNumber: "10", capacity: 6, active: true, location: "Garden Courtyard", qrUrl: "https://smartdine.netlify.app/menu?table=10", deepLink: "smartdine://table/10" }
+  { id: "table-10", tableNumber: "10", capacity: 6, active: true, location: "Garden Courtyard", qrUrl: "https://smartdine.netlify.app/menu?table=10", deepLink: "smartdine://table/10" },
+  { id: "table-11", tableNumber: "11", capacity: 2, active: true, location: "Window Side", qrUrl: "https://smartdine.netlify.app/menu?table=11", deepLink: "smartdine://table/11" },
+  { id: "table-12", tableNumber: "12", capacity: 4, active: true, location: "Main Hall", qrUrl: "https://smartdine.netlify.app/menu?table=12", deepLink: "smartdine://table/12" },
+  { id: "table-13", tableNumber: "13", capacity: 4, active: true, location: "Main Hall", qrUrl: "https://smartdine.netlify.app/menu?table=13", deepLink: "smartdine://table/13" },
+  { id: "table-14", tableNumber: "14", capacity: 6, active: true, location: "Family Booth", qrUrl: "https://smartdine.netlify.app/menu?table=14", deepLink: "smartdine://table/14" },
+  { id: "table-15", tableNumber: "15", capacity: 2, active: true, location: "Terrace Balcony", qrUrl: "https://smartdine.netlify.app/menu?table=15", deepLink: "smartdine://table/15" },
+  { id: "table-16", tableNumber: "16", capacity: 4, active: true, location: "Terrace Balcony", qrUrl: "https://smartdine.netlify.app/menu?table=16", deepLink: "smartdine://table/16" },
+  { id: "table-17", tableNumber: "17", capacity: 8, active: true, location: "VIP Lounge", qrUrl: "https://smartdine.netlify.app/menu?table=17", deepLink: "smartdine://table/17" },
+  { id: "table-18", tableNumber: "18", capacity: 4, active: true, location: "Main Hall", qrUrl: "https://smartdine.netlify.app/menu?table=18", deepLink: "smartdine://table/18" },
+  { id: "table-19", tableNumber: "19", capacity: 2, active: true, location: "Garden Courtyard", qrUrl: "https://smartdine.netlify.app/menu?table=19", deepLink: "smartdine://table/19" },
+  { id: "table-20", tableNumber: "20", capacity: 6, active: true, location: "Garden Courtyard", qrUrl: "https://smartdine.netlify.app/menu?table=20", deepLink: "smartdine://table/20" },
+  { id: "table-21", tableNumber: "21", capacity: 2, active: true, location: "Window Side", qrUrl: "https://smartdine.netlify.app/menu?table=21", deepLink: "smartdine://table/21" },
+  { id: "table-22", tableNumber: "22", capacity: 4, active: true, location: "Executive Section", qrUrl: "https://smartdine.netlify.app/menu?table=22", deepLink: "smartdine://table/22" },
+  { id: "table-23", tableNumber: "23", capacity: 4, active: true, location: "Executive Section", qrUrl: "https://smartdine.netlify.app/menu?table=23", deepLink: "smartdine://table/23" },
+  { id: "table-24", tableNumber: "24", capacity: 6, active: true, location: "Family Booth", qrUrl: "https://smartdine.netlify.app/menu?table=24", deepLink: "smartdine://table/24" },
+  { id: "table-25", tableNumber: "25", capacity: 10, active: true, location: "Royal Banquet Suite", qrUrl: "https://smartdine.netlify.app/menu?table=25", deepLink: "smartdine://table/25" }
 ];
 
 export const DEMO_ORDERS = [

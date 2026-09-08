@@ -194,6 +194,8 @@ export default function Login() {
     setLoading(true);
     try {
       await registerWithEmail(regName.trim(), regEmail.trim(), regPassword.trim(), 'customer');
+      localStorage.setItem('smartdine_guest_name', regName.trim());
+      localStorage.setItem('smartdine_guest_phone', regPhone.trim());
       toast.success(`🎉 Welcome to Smart Dine, ${regName.trim()}! Account created successfully.`);
       navigate('/scan');
     } catch (err) {
@@ -214,6 +216,7 @@ export default function Login() {
       let finalEmail = loginIdentifier.trim();
       // If user typed 10-digit mobile number instead of email
       if (/^\d{10}$/.test(finalEmail)) {
+        localStorage.setItem('smartdine_guest_phone', finalEmail);
         finalEmail = `${finalEmail}@smartdine.customer`;
       }
 
@@ -492,6 +495,39 @@ export default function Login() {
                 >
                   Create Account
                 </button>
+              </div>
+
+              {/* Quick Demo Fill Buttons inside Card */}
+              <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
+                <span className="text-[11px] font-semibold text-slate-400">Quick Demo Fill:</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginIdentifier('kitchen@smartdine.com');
+                      setPassword('kitchen123456');
+                      setSuccessMsg('👨‍🍳 Kitchen Staff mode active');
+                      setError('');
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-[11px] font-bold transition flex items-center gap-1 border border-slate-700 cursor-pointer"
+                  >
+                    <ChefHat className="w-3 h-3 text-amber-400" />
+                    <span>Kitchen Staff</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginIdentifier('admin@smartdine.com');
+                      setPassword('admin123456');
+                      setSuccessMsg('⚙️ Admin Portal mode active');
+                      setError('');
+                    }}
+                    className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-[11px] font-bold transition flex items-center gap-1 border border-slate-700 cursor-pointer"
+                  >
+                    <LayoutDashboard className="w-3 h-3 text-amber-400" />
+                    <span>Admin</span>
+                  </button>
+                </div>
               </div>
             </form>
           )}

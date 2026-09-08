@@ -1,8 +1,8 @@
 import React from 'react';
 
 /**
- * SmartDineLogo - Indian Restaurant Theme
- * SMART (Golden Yellow #F4B942 or Cream #FFF8ED) + DINE (Warm Orange #E8752A)
+ * SmartDineLogo - Luxury Obsidian & Amber Theme
+ * SMART (Amber-400) + DINE (Orange-500)
  */
 export default function SmartDineLogo({ size = 'md', showIcon = true, showText = true, className = '', light = false }) {
   const sizeConfig = {
@@ -22,7 +22,7 @@ export default function SmartDineLogo({ size = 'md', showIcon = true, showText =
         <img
           src="/logo.png"
           alt="SMART DINE - Premium Restaurant Dining"
-          className={`${config.icon} rounded-full object-cover ${config.iconBorder} border-[#F4B942] shadow-[0_0_12px_rgba(244,185,66,0.4)] hover:scale-105 transition-transform duration-200`}
+          className={`${config.icon} rounded-full object-cover ${config.iconBorder} border-amber-400 shadow-glow hover:scale-105 transition-transform duration-200`}
         />
       )}
       {showText && (
@@ -30,9 +30,9 @@ export default function SmartDineLogo({ size = 'md', showIcon = true, showText =
           className={`${config.text} font-black uppercase tracking-[0.08em] drop-shadow-sm`}
           style={{ fontFamily: "'Outfit', 'Poppins', sans-serif" }}
         >
-          <span className="text-[#F4B942]">SMART</span>
+          <span className="text-amber-400">SMART</span>
           {' '}
-          <span className="text-[#E8752A]">DINE</span>
+          <span className="text-orange-500">DINE</span>
         </span>
       )}
     </div>

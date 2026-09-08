@@ -54,7 +54,19 @@ export const localStore = {
   getMenuItems: () => getLocalData('menuItems', DEMO_MENU_ITEMS),
   saveMenuItems: (items) => setLocalData('menuItems', items),
   
-  getTables: () => getLocalData('tables', DEMO_TABLES),
+  getTables: () => {
+    const data = getLocalData('tables', DEMO_TABLES);
+    if (!Array.isArray(data) || data.length < 25) {
+      const existingMap = new Map((data || []).map(t => [String(t.tableNumber).padStart(2, '0'), t]));
+      const merged = DEMO_TABLES.map(dt => {
+        const num = String(dt.tableNumber).padStart(2, '0');
+        return existingMap.has(num) ? { ...dt, ...existingMap.get(num) } : dt;
+      });
+      setLocalData('tables', merged);
+      return merged;
+    }
+    return data;
+  },
   saveTables: (tables) => setLocalData('tables', tables),
   
   // Real orders start empty unless real customer orders have been placed
@@ -70,11 +82,18 @@ export const localStore = {
 
   addOrder: (orderData) => {
     const orders = getLocalData('orders', []);
+    const estMinutes = orderData.estimatedPrepMinutes || 20;
     const newOrder = {
       id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      status: 'pending',
+      prepStartedAt: orderData.prepStartedAt || new Date().toISOString(),
+      estimatedPrepMinutes: estMinutes,
+      prepTimeRange: orderData.prepTimeRange || `${estMinutes}–${estMinutes + 5} min`,
+      waitingForTable: orderData.waitingForTable || false,
+      queuePosition: orderData.queuePosition || null,
+      estimatedWaitingMinutes: orderData.estimatedWaitingMinutes || null,
+      status: orderData.status || 'pending',
       paymentStatus: 'pending',
       ...orderData
     };
@@ -87,13 +106,59 @@ export const localStore = {
     const orders = getLocalData('orders', []);
     const index = orders.findIndex(o => o.id === orderId);
     if (index !== -1) {
-      orders[index].status = newStatus;
-      orders[index].updatedAt = new Date().toISOString();
+      const updates = { status: newStatus, updatedAt: new Date().toISOString() };
+      if (newStatus === 'served') {
+        updates.servedAt = new Date().toISOString();
+      }
+      if (newStatus === 'completed') {
+        updates.completedAt = new Date().toISOString();
+      }
+      orders[index] = { ...orders[index], ...updates };
       setLocalData('orders', orders);
       return orders[index];
     }
     return null;
   },
+
+  updateOrderEta: (orderId, minutes, rangeStr) => {
+    const orders = getLocalData('orders', []);
+    const index = orders.findIndex(o => o.id === orderId);
+    if (index !== -1) {
+      const parsed = Math.max(1, parseInt(minutes) || 20);
+      orders[index] = {
+        ...orders[index],
+        estimatedPrepMinutes: parsed,
+        prepTimeRange: rangeStr || `${parsed}–${parsed + 5} min`,
+        updatedAt: new Date().toISOString()
+      };
+      setLocalData('orders', orders);
+      return orders[index];
+    }
+    return null;
+  },
+
+  assignTableToOrder: (orderId, tableNumber) => {
+    const orders = getLocalData('orders', []);
+    const index = orders.findIndex(o => o.id === orderId);
+    if (index !== -1) {
+      const formatted = String(tableNumber).padStart(2, '0');
+      orders[index] = {
+        ...orders[index],
+        tableNumber: formatted,
+        waitingForTable: false,
+        tableReady: true,
+        tableReadyAt: new Date().toISOString(),
+        queuePosition: null,
+        updatedAt: new Date().toISOString()
+      };
+      setLocalData('orders', orders);
+      return orders[index];
+    }
+    return null;
+  },
+
+  getTableWaitingTime: () => getLocalData('table_waiting_time', 15),
+  setTableWaitingTime: (minutes) => setLocalData('table_waiting_time', parseInt(minutes) || 15),
 
   updateOrderData: (orderId, updates) => {
     const orders = getLocalData('orders', []);

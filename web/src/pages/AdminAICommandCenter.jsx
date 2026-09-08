@@ -168,10 +168,10 @@ export default function AdminAICommandCenter() {
             <Link to="/admin" className="text-slate-500 hover:text-slate-800 font-medium">Admin</Link>
             <span className="text-slate-300">/</span>
             <div className="flex items-center gap-1.5 font-bold text-slate-900">
-              <Sparkles className="w-4 h-4 text-[#E8752A]" />
+              <Sparkles className="w-4 h-4 text-[#EA580C]" />
               <span>SmartDine AI Command Center</span>
             </div>
-            <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 text-[#E8752A] border border-orange-200 ml-2">
+            <span className="hidden md:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-orange-50 text-[#EA580C] border border-orange-200 ml-2">
               <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
               Live Telemetry Active
             </span>
@@ -183,7 +183,7 @@ export default function AdminAICommandCenter() {
                 setDrawerQuery('');
                 setAiDrawerOpen(true);
               }}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#E8752A] to-[#EA580C] text-white text-xs font-bold shadow-sm shadow-orange-500/20 hover:shadow-md transition active:scale-95"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#EA580C] to-[#EA580C] text-white text-xs font-bold shadow-sm shadow-orange-500/20 hover:shadow-md transition active:scale-95"
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-200" />
               <span>Ask SmartDine AI</span>
@@ -192,7 +192,7 @@ export default function AdminAICommandCenter() {
         </header>
 
         {/* Page Hero Banner */}
-        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#24140D] text-white px-4 sm:px-6 lg:px-8 py-7 shadow-inner">
+        <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-[#020617] text-white px-4 sm:px-6 lg:px-8 py-7 shadow-inner">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1.5">
@@ -250,7 +250,7 @@ export default function AdminAICommandCenter() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
                     isActive
-                      ? 'bg-[#E8752A] text-white shadow-sm shadow-orange-500/20'
+                      ? 'bg-[#EA580C] text-white shadow-sm shadow-orange-500/20'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`}
                 >
@@ -296,7 +296,7 @@ export default function AdminAICommandCenter() {
                     <span className="text-slate-500 font-medium">Actual Today: ₹25,450</span>
                     <button
                       onClick={() => setActiveTab('forecast')}
-                      className="font-bold text-[#E8752A] hover:underline flex items-center gap-0.5"
+                      className="font-bold text-[#EA580C] hover:underline flex items-center gap-0.5"
                     >
                       View Curve <ChevronRight className="w-3 h-3" />
                     </button>
@@ -321,7 +321,7 @@ export default function AdminAICommandCenter() {
                     <span className="text-slate-500 font-medium">Butter Chicken: +19%</span>
                     <button
                       onClick={() => setActiveTab('demand')}
-                      className="font-bold text-[#E8752A] hover:underline flex items-center gap-0.5"
+                      className="font-bold text-[#EA580C] hover:underline flex items-center gap-0.5"
                     >
                       Item Matrix <ChevronRight className="w-3 h-3" />
                     </button>
@@ -346,7 +346,7 @@ export default function AdminAICommandCenter() {
                     <span className="text-slate-500 font-medium">Order 8 kg to buffer</span>
                     <button
                       onClick={() => setActiveTab('inventory')}
-                      className="font-bold text-[#E8752A] hover:underline flex items-center gap-0.5"
+                      className="font-bold text-[#EA580C] hover:underline flex items-center gap-0.5"
                     >
                       Restock Plan <ChevronRight className="w-3 h-3" />
                     </button>
@@ -371,7 +371,7 @@ export default function AdminAICommandCenter() {
                     <span className="text-slate-500 font-medium">Hero: Food Taste (95%)</span>
                     <button
                       onClick={() => setActiveTab('sentiment')}
-                      className="font-bold text-[#E8752A] hover:underline flex items-center gap-0.5"
+                      className="font-bold text-[#EA580C] hover:underline flex items-center gap-0.5"
                     >
                       Sentiment Split <ChevronRight className="w-3 h-3" />
                     </button>
@@ -411,7 +411,7 @@ export default function AdminAICommandCenter() {
                                 </span>
                               </div>
                               <p className="text-xs text-slate-600 mt-1 leading-relaxed">{ins.shortExplanation}</p>
-                              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-[#E8752A] font-semibold">
+                              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-[#EA580C] font-semibold">
                                 <span>Action:</span>
                                 <span className="text-slate-700 font-medium">{ins.recommendedAction}</span>
                               </div>
@@ -439,7 +439,7 @@ export default function AdminAICommandCenter() {
                       </div>
                       <button
                         onClick={() => setActiveTab('recommendations')}
-                        className="text-xs font-bold text-[#E8752A] hover:underline"
+                        className="text-xs font-bold text-[#EA580C] hover:underline"
                       >
                         View All (4)
                       </button>
@@ -472,7 +472,7 @@ export default function AdminAICommandCenter() {
                               className={`text-xs font-bold px-3 py-1 rounded-lg transition flex items-center gap-1 ${
                                 appliedRecs[rec.id]
                                   ? 'bg-emerald-100 text-emerald-700'
-                                  : 'bg-[#E8752A] text-white hover:bg-[#EA580C]'
+                                  : 'bg-[#EA580C] text-white hover:bg-[#EA580C]'
                               }`}
                             >
                               {appliedRecs[rec.id] ? (
@@ -626,7 +626,7 @@ export default function AdminAICommandCenter() {
                             {/* Predicted Bar (Solid SmartDine Orange) */}
                             <div
                               style={{ height: `${predHeightPct}%` }}
-                              className="w-3 sm:w-6 bg-gradient-to-t from-[#E8752A] to-orange-400 rounded-t-md hover:opacity-90 transition-all duration-300"
+                              className="w-3 sm:w-6 bg-gradient-to-t from-[#EA580C] to-orange-400 rounded-t-md hover:opacity-90 transition-all duration-300"
                             />
                           </div>
 
@@ -648,7 +648,7 @@ export default function AdminAICommandCenter() {
                       <span className="font-semibold text-slate-700">Actual Realized Sales</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-3 h-3 rounded-xs bg-[#E8752A]"></span>
+                      <span className="w-3 h-3 rounded-xs bg-[#EA580C]"></span>
                       <span className="font-semibold text-slate-700">AI Predicted Sales</span>
                     </div>
                   </div>
@@ -900,7 +900,7 @@ export default function AdminAICommandCenter() {
                           className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${
                             purchaseOrders[item.id]
                               ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-[#E8752A] text-white hover:bg-[#EA580C]'
+                              : 'bg-[#EA580C] text-white hover:bg-[#EA580C]'
                           }`}
                         >
                           {purchaseOrders[item.id] ? (
@@ -1007,7 +1007,7 @@ export default function AdminAICommandCenter() {
                         className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
                           appliedMenuRecs[item.id]
                             ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-[#E8752A] text-white hover:bg-[#EA580C]'
+                            : 'bg-[#EA580C] text-white hover:bg-[#EA580C]'
                         }`}
                       >
                         {appliedMenuRecs[item.id] ? (
@@ -1149,7 +1149,7 @@ export default function AdminAICommandCenter() {
 
                 {/* AI Sentiment Action Recommendation */}
                 <div className="mt-5 p-4 rounded-xl bg-orange-50 border border-orange-200 flex items-start gap-3">
-                  <Sparkles className="w-5 h-5 text-[#E8752A] shrink-0 mt-0.5" />
+                  <Sparkles className="w-5 h-5 text-[#EA580C] shrink-0 mt-0.5" />
                   <div className="text-xs">
                     <p className="font-bold text-orange-950">AI Kitchen Priority Recommendation:</p>
                     <p className="text-orange-900 mt-0.5 leading-relaxed">{reviewSummary.recommendation}</p>
@@ -1263,7 +1263,7 @@ export default function AdminAICommandCenter() {
                     </div>
 
                     <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-                      <div className="text-xs font-semibold text-[#E8752A] flex items-center gap-1">
+                      <div className="text-xs font-semibold text-[#EA580C] flex items-center gap-1">
                         <span>Action: </span>
                         <span className="text-slate-700 font-medium">{anom.recommendedAction}</span>
                       </div>
@@ -1348,7 +1348,7 @@ export default function AdminAICommandCenter() {
                         className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm ${
                           appliedRecs[rec.id]
                             ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-[#E8752A] text-white hover:bg-[#EA580C]'
+                            : 'bg-[#EA580C] text-white hover:bg-[#EA580C]'
                         }`}
                       >
                         {appliedRecs[rec.id] ? (
@@ -1378,7 +1378,7 @@ export default function AdminAICommandCenter() {
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-orange-100 text-[#E8752A] flex items-center justify-center font-black">
+                <div className="w-8 h-8 rounded-xl bg-orange-100 text-[#EA580C] flex items-center justify-center font-black">
                   ?
                 </div>
                 <div>
@@ -1487,7 +1487,7 @@ export default function AdminAICommandCenter() {
                   toast.success('Dispatched corrective alert to restaurant staff', { icon: '📢' });
                   setAnomalyModal(null);
                 }}
-                className="px-4 py-2 bg-[#E8752A] hover:bg-[#EA580C] text-white text-xs font-bold rounded-xl transition"
+                className="px-4 py-2 bg-[#EA580C] hover:bg-[#EA580C] text-white text-xs font-bold rounded-xl transition"
               >
                 Dispatch Staff Alert
               </button>

@@ -37,27 +37,31 @@ import KitchenDashboard from './pages/KitchenDashboard';
 function AppContent() {
   const location = useLocation();
   const isAdminDashboard = location.pathname.startsWith('/admin') || location.pathname.startsWith('/kitchen');
+  const isHomePage = location.pathname === '/';
+  const isLoginPage = location.pathname === '/login';
+  const isScanPage = location.pathname === '/scan';
+  const hideBottomNav = isAdminDashboard || isHomePage || isLoginPage || isScanPage;
 
   return (
-    <div className={`min-h-screen ${isAdminDashboard ? 'bg-slate-950/10 text-slate-900' : 'bg-[#FFF8ED] text-[#24140D]'} flex flex-col font-sans`}>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-orange-500 selection:text-white">
       {!isAdminDashboard && <Navbar />}
       <Toaster 
         position="top-center"
         toastOptions={{
           duration: 3000,
           style: {
-            background: '#FFFFFF',
-            color: '#1E293B',
-            border: '1px solid #E2E8F0',
-            borderRadius: '12px',
+            background: '#0F172A',
+            color: '#F8FAFC',
+            border: '1px solid #334155',
+            borderRadius: '14px',
             fontSize: '14px',
             fontWeight: '600',
             padding: '12px 18px',
-            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
           },
         }}
       />
-      <div className={isAdminDashboard ? "flex-1" : "flex-1 pb-16 sm:pb-0"}>
+      <div className={hideBottomNav ? "flex-1" : "flex-1 pb-16 sm:pb-0"}>
         <Routes>
                 {/* Public & Customer Dine-in Ordering Routes */}
                 <Route path="/" element={<Home />} />
@@ -183,7 +187,7 @@ function AppContent() {
             </div>
             
             {/* Native Mobile Bottom Navigation Bar (Customer View only) */}
-            {!isAdminDashboard && <MobileNav />}
+            {!hideBottomNav && <MobileNav />}
           </div>
   );
 }

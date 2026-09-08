@@ -24,6 +24,7 @@ export default function AdminOrders() {
   const { 
     orders, 
     updateOrderStatus, 
+    updateOrderEta,
     markTableAsPaidByAdmin 
   } = useTableOrder();
 
@@ -34,10 +35,12 @@ export default function AdminOrders() {
   const statusColors = {
     new: 'bg-orange-500/20 text-orange-400 border-orange-500/40',
     placed: 'bg-orange-500/20 text-orange-400 border-orange-500/40',
-    accepted: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40',
-    preparing: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40',
+    pending: 'bg-orange-500/20 text-orange-400 border-orange-500/40',
+    accepted: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
+    preparing: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
     ready: 'bg-blue-500/20 text-blue-400 border-blue-500/40',
     served: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
+    enjoying_meal: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
     'bill requested': 'bg-purple-500/20 text-purple-400 border-purple-500/40',
     'cash requested': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
     completed: 'bg-slate-700/40 text-slate-400 border-slate-700/60',
@@ -222,53 +225,83 @@ export default function AdminOrders() {
                         </span>
                       )}
                     </div>
+
+                    {/* ETA Adjuster for Cooking / Active Orders */}
+                    {(order.status === 'pending' || order.status === 'placed' || order.status === 'preparing' || order.status === 'accepted') && (
+                      <div className="mt-2 p-2 rounded-xl bg-slate-950 border border-slate-800 text-xs flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-400" />
+                          <span>ETA: <strong className="text-amber-300">{order.estimatedPrepMinutes || 20}m</strong></span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => updateOrderEta(order.id, Math.max(5, (order.estimatedPrepMinutes || 20) - 5))}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700"
+                          >
+                            -5m
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateOrderEta(order.id, (order.estimatedPrepMinutes || 20) + 5)}
+                            className="px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold border border-slate-700"
+                          >
+                            +5m
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Operational Controls Lifecycle */}
                   <div className="pt-2 border-t border-slate-800 space-y-2">
                     <div className="grid grid-cols-2 gap-1.5 text-xs font-bold">
-                      {order.status === 'pending' || order.status === 'placed' ? (
-                        <button
-                          onClick={() => handleStatusChange(order.id, 'accepted')}
-                          className="py-1.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white cursor-pointer"
-                        >
-                          Accept Order
-                        </button>
-                      ) : null}
-
-                      {order.status === 'accepted' || order.status === 'pending' || order.status === 'placed' ? (
+                      {order.status === 'pending' || order.status === 'placed' || order.status === 'accepted' ? (
                         <button
                           onClick={() => handleStatusChange(order.id, 'preparing')}
-                          className="py-1.5 rounded-xl bg-yellow-600 hover:bg-yellow-500 text-white cursor-pointer"
+                          className="col-span-2 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white cursor-pointer flex items-center justify-center gap-1.5"
                         >
-                          Start Cooking
+                          <ChefHat className="w-3.5 h-3.5" />
+                          <span>Start Preparing</span>
                         </button>
                       ) : null}
 
                       {order.status === 'preparing' ? (
                         <button
                           onClick={() => handleStatusChange(order.id, 'ready')}
-                          className="col-span-2 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white cursor-pointer"
+                          className="col-span-2 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white cursor-pointer flex items-center justify-center gap-1.5"
                         >
-                          Mark Ready to Serve
+                          <BellRing className="w-3.5 h-3.5" />
+                          <span>Mark Ready to Serve</span>
                         </button>
                       ) : null}
 
                       {order.status === 'ready' ? (
                         <button
                           onClick={() => handleStatusChange(order.id, 'served')}
-                          className="col-span-2 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer"
+                          className="col-span-2 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer flex items-center justify-center gap-1.5"
                         >
-                          Mark Served to Table
+                          <span>Mark Served (Enjoying Meal)</span>
                         </button>
                       ) : null}
 
-                      {order.status === 'served' && (
+                      {(order.status === 'served' || order.status === 'enjoying_meal') ? (
+                        <button
+                          onClick={() => handleStatusChange(order.id, 'bill requested')}
+                          className="py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                          <Receipt className="w-3.5 h-3.5" />
+                          <span>Mark Bill Requested</span>
+                        </button>
+                      ) : null}
+
+                      {(order.status === 'bill requested' || order.status === 'served' || order.status === 'enjoying_meal') && (
                         <button
                           onClick={() => handleStatusChange(order.id, 'completed')}
-                          className="col-span-2 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 cursor-pointer"
+                          className={`${order.status === 'bill requested' ? 'col-span-2' : ''} py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 cursor-pointer flex items-center justify-center gap-1.5`}
                         >
-                          Mark Completed
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Complete Order</span>
                         </button>
                       )}
                     </div>

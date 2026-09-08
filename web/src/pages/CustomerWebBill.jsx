@@ -294,8 +294,8 @@ export default function CustomerWebBill() {
       font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
       margin: 0;
       padding: 15px;
-      background-color: #FFF8ED;
-      color: #24140D;
+      background-color: #F8FAFC;
+      color: #0F172A;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
@@ -303,27 +303,27 @@ export default function CustomerWebBill() {
       max-width: 540px;
       margin: 0 auto;
       background: #FFFFFF;
-      border: 3px solid #F4B942;
+      border: 2px solid #E2E8F0;
       border-radius: 20px;
       overflow: hidden;
-      box-shadow: 0 10px 30px rgba(59, 33, 21, 0.1);
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
     }
     .header {
-      background: linear-gradient(135deg, #3B2115 0%, #24140D 100%);
-      color: #FFF8ED;
+      background: linear-gradient(135deg, #020617 0%, #0F172A 100%);
+      color: #F8FAFC;
       padding: 20px;
       text-align: center;
-      border-bottom: 3px solid #F4B942;
+      border-bottom: 3px solid #F59E0B;
     }
     .restaurant-title {
       font-size: 22px;
       font-weight: 900;
-      color: #F4B942;
+      color: #F59E0B;
       margin: 0;
     }
     .tagline {
       font-size: 11px;
-      color: #FFF8ED;
+      color: #F8FAFC;
       opacity: 0.9;
       margin-top: 4px;
       text-transform: uppercase;
@@ -333,15 +333,15 @@ export default function CustomerWebBill() {
       display: flex;
       justify-content: space-between;
       padding: 14px 20px;
-      background: #FFF8ED;
-      border-bottom: 1.5px dashed #F4B942;
+      background: #F8FAFC;
+      border-bottom: 1.5px dashed #CBD5E1;
       font-size: 11px;
     }
-    .meta-box span { color: #6B5B50; display: block; font-size: 10px; text-transform: uppercase; }
-    .meta-box strong { color: #24140D; font-size: 12px; }
+    .meta-box span { color: #64748B; display: block; font-size: 10px; text-transform: uppercase; }
+    .meta-box strong { color: #0F172A; font-size: 12px; }
     .table-badge {
       display: inline-block;
-      background: #E8752A;
+      background: #EA580C;
       color: #FFFFFF;
       padding: 3px 10px;
       border-radius: 10px;
@@ -354,8 +354,8 @@ export default function CustomerWebBill() {
       font-size: 12px;
     }
     .items-table th {
-      background: #3B2115;
-      color: #F4B942;
+      background: #0F172A;
+      color: #F59E0B;
       padding: 8px 18px;
       text-align: left;
       font-size: 10px;
@@ -363,15 +363,15 @@ export default function CustomerWebBill() {
     }
     .items-table td {
       padding: 9px 18px;
-      border-bottom: 1px solid #FFF8ED;
+      border-bottom: 1px solid #F1F5F9;
     }
-    .items-table tr:nth-child(even) { background: #FFFBF5; }
+    .items-table tr:nth-child(even) { background: #F8FAFC; }
     .veg-dot {
       display: inline-block;
       width: 8px;
       height: 8px;
       border-radius: 2px;
-      background: #198754;
+      background: #16A34A;
       margin-right: 6px;
     }
     .nonveg-dot {
@@ -379,39 +379,39 @@ export default function CustomerWebBill() {
       width: 8px;
       height: 8px;
       border-radius: 2px;
-      background: #D32F2F;
+      background: #E11D48;
       margin-right: 6px;
     }
     .calc-section {
       padding: 14px 20px;
-      background: #FFF8ED;
-      border-top: 2px dashed #F4B942;
+      background: #F8FAFC;
+      border-top: 2px dashed #CBD5E1;
     }
     .calc-row {
       display: flex;
       justify-content: space-between;
       font-size: 11px;
       margin-bottom: 5px;
-      color: #6B5B50;
+      color: #64748B;
       font-weight: 600;
     }
-    .calc-row.discount { color: #198754; font-weight: 800; }
+    .calc-row.discount { color: #16A34A; font-weight: 800; }
     .grand-total {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding-top: 8px;
       margin-top: 6px;
-      border-top: 2px solid #3B2115;
+      border-top: 2px solid #0F172A;
       font-size: 15px;
       font-weight: 900;
-      color: #3B2115;
+      color: #0F172A;
     }
-    .grand-total .amount { color: #E8752A; font-size: 20px; font-weight: 900; }
+    .grand-total .amount { color: #EA580C; font-size: 20px; font-weight: 900; }
     .paid-stamp {
-      background: #E8F5E9;
-      border: 2px solid #2E7D32;
-      color: #2E7D32;
+      background: #ECFDF5;
+      border: 2px solid #059669;
+      color: #059669;
       padding: 8px;
       border-radius: 12px;
       text-align: center;
@@ -420,8 +420,8 @@ export default function CustomerWebBill() {
       margin: 12px 20px;
     }
     .footer {
-      background: #3B2115;
-      color: #F4B942;
+      background: #020617;
+      color: #F59E0B;
       text-align: center;
       padding: 12px;
       font-size: 11px;
@@ -467,9 +467,9 @@ export default function CustomerWebBill() {
               <span class="${item.isVeg ? 'veg-dot' : 'nonveg-dot'}"></span>
               <strong>${item.name}</strong>
             </td>
-            <td style="text-align: center; color: #E8752A; font-weight: 800;">${item.quantity}x</td>
-            <td style="text-align: right; color: #6B5B50;">₹${item.price.toFixed(0)}</td>
-            <td style="text-align: right; font-weight: 800; color: #3B2115;">₹${item.totalPrice.toFixed(2)}</td>
+            <td style="text-align: center; color: #EA580C; font-weight: 800;">${item.quantity}x</td>
+            <td style="text-align: right; color: #64748B;">₹${item.price.toFixed(0)}</td>
+            <td style="text-align: right; font-weight: 800; color: #0F172A;">₹${item.totalPrice.toFixed(2)}</td>
           </tr>
         `).join('')}
       </tbody>
@@ -478,7 +478,7 @@ export default function CustomerWebBill() {
     <div class="calc-section">
       <div class="calc-row">
         <span>Subtotal (${billData.consolidatedItems.length} items)</span>
-        <strong style="color: #24140D;">₹${billData.subtotal.toFixed(2)}</strong>
+        <strong style="color: #0F172A;">₹${billData.subtotal.toFixed(2)}</strong>
       </div>
       ${discountAmount > 0 ? `
       <div class="calc-row discount">
@@ -487,11 +487,11 @@ export default function CustomerWebBill() {
       </div>` : ''}
       <div class="calc-row">
         <span>CGST (2.5%)</span>
-        <strong style="color: #24140D;">₹${(billData.tax / 2).toFixed(2)}</strong>
+        <strong style="color: #0F172A;">₹${(billData.tax / 2).toFixed(2)}</strong>
       </div>
       <div class="calc-row">
         <span>SGST (2.5%)</span>
-        <strong style="color: #24140D;">₹${(billData.tax / 2).toFixed(2)}</strong>
+        <strong style="color: #0F172A;">₹${(billData.tax / 2).toFixed(2)}</strong>
       </div>
       <div class="grand-total">
         <span>GRAND TOTAL PAID</span>
@@ -501,7 +501,7 @@ export default function CustomerWebBill() {
 
     <div class="paid-stamp">
       PAID & VERIFIED ONLINE ✅ (${paymentSuccessData?.paymentMethod || paymentMode.toUpperCase()})<br>
-      <small style="font-size: 10px; font-weight: 600; color: #1B5E20;">Txn ID: ${paymentSuccessData?.transactionId || 'TXN-DIRECT'}</small>
+      <small style="font-size: 10px; font-weight: 600; color: #047857;">Txn ID: ${paymentSuccessData?.transactionId || 'TXN-DIRECT'}</small>
     </div>
 
     <div class="footer">
@@ -546,52 +546,52 @@ export default function CustomerWebBill() {
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, width, height);
 
-    // 2. Outer Card Border (Gold & Dark accents on pure white)
+    // 2. Outer Card Border
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(0, 0, width, height);
 
     ctx.lineWidth = 3;
-    ctx.strokeStyle = '#F4B942';
+    ctx.strokeStyle = '#F59E0B';
     ctx.strokeRect(15, 15, width - 30, height - 30);
 
-    // 3. Header Section (Pure White Background with Elegant Typography)
-    ctx.fillStyle = '#3B2115';
+    // 3. Header Section
+    ctx.fillStyle = '#0F172A';
     ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('👑 SMARTDINE RESTAURANT', width / 2, 55);
 
-    ctx.fillStyle = '#E8752A';
+    ctx.fillStyle = '#EA580C';
     ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
     ctx.fillText('AUTHENTIC ROYAL DINING • TAX INVOICE', width / 2, 75);
 
     // Gold divider under header
-    ctx.strokeStyle = '#F4B942';
+    ctx.strokeStyle = '#F59E0B';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(30, 95);
     ctx.lineTo(width - 30, 95);
     ctx.stroke();
 
-    // 4. Meta Row (Pure White Background)
+    // 4. Meta Row
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#6B5B50';
+    ctx.fillStyle = '#64748B';
     ctx.font = '10px system-ui, sans-serif';
     ctx.fillText('INVOICE NO', 35, 120);
-    ctx.fillStyle = '#24140D';
+    ctx.fillStyle = '#0F172A';
     ctx.font = 'bold 12px monospace';
     ctx.fillText(invoiceNumber, 35, 138);
 
-    ctx.fillStyle = '#6B5B50';
+    ctx.fillStyle = '#64748B';
     ctx.font = '10px system-ui, sans-serif';
     ctx.fillText('DINING TABLE', width / 2 - 35, 120);
-    ctx.fillStyle = '#E8752A';
+    ctx.fillStyle = '#EA580C';
     ctx.font = 'bold 13px system-ui, sans-serif';
     ctx.fillText(`Table ${formattedTable}`, width / 2 - 35, 138);
 
-    ctx.fillStyle = '#6B5B50';
+    ctx.fillStyle = '#64748B';
     ctx.font = '10px system-ui, sans-serif';
     ctx.fillText('DATE & TIME', width - 155, 120);
-    ctx.fillStyle = '#24140D';
+    ctx.fillStyle = '#0F172A';
     ctx.font = 'bold 11px system-ui, sans-serif';
     ctx.fillText(new Date().toLocaleDateString(), width - 155, 138);
 
@@ -603,9 +603,9 @@ export default function CustomerWebBill() {
     ctx.lineTo(width - 30, 155);
     ctx.stroke();
 
-    // 5. Table Header Row (Pure White with Gold underline)
+    // 5. Table Header Row
     let y = 175;
-    ctx.fillStyle = '#3B2115';
+    ctx.fillStyle = '#0F172A';
     ctx.font = 'bold 11px system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText('DELICACY / DISH', 40, y);
@@ -614,31 +614,31 @@ export default function CustomerWebBill() {
     ctx.fillText('AMOUNT', width - 40, y);
 
     // Divider under table header
-    ctx.strokeStyle = '#3B2115';
+    ctx.strokeStyle = '#0F172A';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(30, y + 8);
     ctx.lineTo(width - 30, y + 8);
     ctx.stroke();
 
-    // 6. Items list (100% Pure White background)
+    // 6. Items list
     y += 28;
     items.forEach((item) => {
       ctx.textAlign = 'left';
       // Veg/Non-Veg dot
-      ctx.fillStyle = item.isVeg ? '#198754' : '#D32F2F';
+      ctx.fillStyle = item.isVeg ? '#16A34A' : '#E11D48';
       ctx.fillRect(40, y - 8, 8, 8);
 
-      ctx.fillStyle = '#24140D';
+      ctx.fillStyle = '#0F172A';
       ctx.font = 'bold 12px system-ui, sans-serif';
       ctx.fillText(item.name.substring(0, 24), 56, y);
 
-      ctx.fillStyle = '#E8752A';
+      ctx.fillStyle = '#EA580C';
       ctx.font = 'bold 12px system-ui, sans-serif';
       ctx.fillText(`${item.quantity}x`, width - 170, y);
 
       ctx.textAlign = 'right';
-      ctx.fillStyle = '#3B2115';
+      ctx.fillStyle = '#0F172A';
       ctx.fillText(`₹${item.totalPrice.toFixed(2)}`, width - 40, y);
       y += 26;
     });
@@ -652,20 +652,20 @@ export default function CustomerWebBill() {
     ctx.lineTo(width - 30, y);
     ctx.stroke();
 
-    // 7. Summary Calculation (Pure White Background)
+    // 7. Summary Calculation
     y += 24;
     ctx.textAlign = 'left';
     ctx.font = '11px system-ui, sans-serif';
-    ctx.fillStyle = '#6B5B50';
+    ctx.fillStyle = '#64748B';
     ctx.fillText('Subtotal', 40, y);
     ctx.textAlign = 'right';
-    ctx.fillStyle = '#24140D';
+    ctx.fillStyle = '#0F172A';
     ctx.fillText(`₹${billData.subtotal.toFixed(2)}`, width - 40, y);
 
     if (discountAmount > 0) {
       y += 20;
       ctx.textAlign = 'left';
-      ctx.fillStyle = '#198754';
+      ctx.fillStyle = '#16A34A';
       ctx.fillText(`Discount (${appliedCoupon?.code || 'COUPON'})`, 40, y);
       ctx.textAlign = 'right';
       ctx.fillText(`-₹${discountAmount.toFixed(2)}`, width - 40, y);
@@ -673,40 +673,40 @@ export default function CustomerWebBill() {
 
     y += 20;
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#6B5B50';
+    ctx.fillStyle = '#64748B';
     ctx.fillText('GST (5% SGST + CGST)', 40, y);
     ctx.textAlign = 'right';
-    ctx.fillStyle = '#24140D';
+    ctx.fillStyle = '#0F172A';
     ctx.fillText(`₹${billData.tax.toFixed(2)}`, width - 40, y);
 
     // Grand total
     y += 26;
-    ctx.strokeStyle = '#3B2115';
+    ctx.strokeStyle = '#0F172A';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(30, y - 6);
     ctx.lineTo(width - 30, y - 6);
     ctx.stroke();
 
-    ctx.fillStyle = '#3B2115';
+    ctx.fillStyle = '#0F172A';
     ctx.font = 'bold 15px system-ui, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText('GRAND TOTAL PAID', 40, y + 10);
-    ctx.fillStyle = '#E8752A';
+    ctx.fillStyle = '#EA580C';
     ctx.font = 'bold 20px system-ui, sans-serif';
     ctx.textAlign = 'right';
     ctx.fillText(`₹${billData.total.toFixed(2)}`, width - 40, y + 10);
 
-    // 8. Paid Stamp Box (Clean Pure White with Green Border)
+    // 8. Paid Stamp Box
     y += 36;
     ctx.fillStyle = '#FFFFFF';
     ctx.fillRect(30, y, width - 60, 42);
-    ctx.strokeStyle = '#2E7D32';
+    ctx.strokeStyle = '#059669';
     ctx.lineWidth = 2;
     ctx.strokeRect(30, y, width - 60, 42);
 
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#2E7D32';
+    ctx.fillStyle = '#059669';
     ctx.font = 'bold 12px system-ui, sans-serif';
     ctx.fillText(`PAID & VERIFIED ONLINE ✅ (${paymentSuccessData?.paymentMethod || paymentMode.toUpperCase()})`, width / 2, y + 20);
     ctx.font = '10px monospace';
@@ -730,26 +730,26 @@ export default function CustomerWebBill() {
   // ================= PAYMENT SUCCESS VIEW =================
   if (paymentSuccessData) {
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-[#FFF8ED] text-[#24140D] flex items-center justify-center p-4 font-sans relative">
+      <div className="min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans relative selection:bg-orange-500 selection:text-white">
         
         {/* Download Format Selector Modal (PDF vs Image) */}
         {showDownloadModal && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
-            <div className="w-full max-w-sm bg-white border-2 border-[#F4B942] rounded-3xl p-5 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between border-b border-[#F4B942]/30 pb-3">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+            <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
-                  <FileDown className="w-5 h-5 text-[#E8752A]" />
-                  <h3 className="text-sm font-black text-[#24140D]">Download Bill Receipt</h3>
+                  <FileDown className="w-5 h-5 text-orange-400" />
+                  <h3 className="text-sm font-black text-white">Download Bill Receipt</h3>
                 </div>
                 <button
                   onClick={() => setShowDownloadModal(false)}
-                  className="p-1 rounded-lg text-[#6B5B50] hover:text-[#24140D] hover:bg-[#FFF8ED] cursor-pointer"
+                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <p className="text-xs text-[#6B5B50]">
+              <p className="text-xs text-slate-400">
                 Choose your preferred format to save the verified tax invoice:
               </p>
 
@@ -758,71 +758,71 @@ export default function CustomerWebBill() {
                 <button
                   type="button"
                   onClick={handleDownloadPdf}
-                  className="w-full p-3.5 rounded-2xl bg-[#FFF8ED] hover:bg-[#E8752A] hover:text-white border border-[#F4B942] text-[#3B2115] transition flex items-center justify-between group cursor-pointer shadow-sm"
+                  className="w-full p-3.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 transition flex items-center justify-between group cursor-pointer shadow-sm"
                 >
                   <div className="flex items-center gap-3 text-left">
-                    <div className="w-9 h-9 rounded-xl bg-red-100 text-red-600 flex items-center justify-center font-black text-xs shrink-0 group-hover:bg-white">
+                    <div className="w-9 h-9 rounded-xl bg-rose-950/60 text-rose-400 border border-rose-500/30 flex items-center justify-center font-black text-xs shrink-0">
                       PDF
                     </div>
                     <div>
-                      <div className="text-xs font-black">Download PDF Invoice</div>
-                      <div className="text-[10px] text-[#6B5B50] group-hover:text-white/80">Printable official document</div>
+                      <div className="text-xs font-black text-white">Download PDF Invoice</div>
+                      <div className="text-[10px] text-slate-400">Printable official document</div>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
 
                 {/* Image Option */}
                 <button
                   type="button"
                   onClick={handleDownloadImage}
-                  className="w-full p-3.5 rounded-2xl bg-[#FFF8ED] hover:bg-[#E8752A] hover:text-white border border-[#F4B942] text-[#3B2115] transition flex items-center justify-between group cursor-pointer shadow-sm"
+                  className="w-full p-3.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 transition flex items-center justify-between group cursor-pointer shadow-sm"
                 >
                   <div className="flex items-center gap-3 text-left">
-                    <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-black text-xs shrink-0 group-hover:bg-white">
+                    <div className="w-9 h-9 rounded-xl bg-blue-950/60 text-blue-400 border border-blue-500/30 flex items-center justify-center font-black text-xs shrink-0">
                       <ImageIcon className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-xs font-black">Download Image (JPG)</div>
-                      <div className="text-[10px] text-[#6B5B50] group-hover:text-white/80">Clear HD Photo Receipt (JPG)</div>
+                      <div className="text-xs font-black text-white">Download Image (JPG)</div>
+                      <div className="text-[10px] text-slate-400">Clear HD Photo Receipt (JPG)</div>
                     </div>
                   </div>
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        <div className="w-full max-w-md bg-white border-2 border-[#F4B942] rounded-3xl shadow-2xl overflow-hidden p-6 space-y-5 animate-in zoom-in-95 duration-300">
+        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-6 space-y-5 animate-in zoom-in-95 duration-300">
           
           <div className="text-center space-y-1.5">
-            <div className="w-14 h-14 rounded-full bg-emerald-100 text-[#198754] border-2 border-[#198754] flex items-center justify-center mx-auto shadow-md">
+            <div className="w-14 h-14 rounded-full bg-emerald-950/60 text-emerald-400 border-2 border-emerald-500 flex items-center justify-center mx-auto shadow-glow">
               <Check className="w-8 h-8 stroke-[3]" />
             </div>
-            <h1 className="text-xl font-black text-[#24140D]">Payment Successful!</h1>
-            <p className="text-xs text-[#6B5B50]">
+            <h1 className="text-xl font-black text-white">Payment Successful!</h1>
+            <p className="text-xs text-slate-400">
               Table {paymentSuccessData.tableNumber} bill settled cleanly.
             </p>
           </div>
 
           {/* Color-Rich Digital Invoice Card */}
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-[#FFF8ED] to-white border border-[#F4B942]/80 space-y-2 font-mono text-xs shadow-inner">
-            <div className="flex justify-between text-[#6B5B50]">
+          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 font-mono text-xs shadow-inner">
+            <div className="flex justify-between text-slate-400">
               <span>Invoice</span>
-              <span className="font-bold text-[#24140D]">{paymentSuccessData.invoiceNumber}</span>
+              <span className="font-bold text-slate-200">{paymentSuccessData.invoiceNumber}</span>
             </div>
-            <div className="flex justify-between text-[#6B5B50]">
+            <div className="flex justify-between text-slate-400">
               <span>Txn ID</span>
-              <span className="font-bold text-[#E8752A]">{paymentSuccessData.transactionId}</span>
+              <span className="font-bold text-amber-400">{paymentSuccessData.transactionId}</span>
             </div>
-            <div className="flex justify-between text-[#6B5B50]">
+            <div className="flex justify-between text-slate-400">
               <span>Mode</span>
-              <span className="font-bold text-[#24140D]">{paymentSuccessData.paymentMethod}</span>
+              <span className="font-bold text-slate-200">{paymentSuccessData.paymentMethod}</span>
             </div>
-            <div className="flex justify-between pt-2 border-t border-[#F4B942]/40 text-sm font-black text-[#24140D]">
+            <div className="flex justify-between pt-2 border-t border-slate-800 text-sm font-black text-white">
               <span>Amount Paid</span>
-              <span className="text-[#198754] text-xl font-black">₹{paymentSuccessData.amount.toFixed(2)}</span>
+              <span className="text-emerald-400 text-xl font-black">₹{paymentSuccessData.amount.toFixed(2)}</span>
             </div>
           </div>
 
@@ -831,17 +831,17 @@ export default function CustomerWebBill() {
             <button
               type="button"
               onClick={() => setShowBillFeedback(true)}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-[#F4B942] to-[#E8752A] hover:opacity-95 text-[#24140D] font-black text-xs shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow transition flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 text-[#3B2115]" />
+              <Sparkles className="w-4 h-4 text-amber-200" />
               <span>⭐ Rate Food & Dining Experience</span>
             </button>
 
             <Link
               to={`/menu?table=${formattedTable}`}
-              className="w-full py-3.5 rounded-2xl bg-[#E8752A] hover:bg-[#3B2115] text-white font-black text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
             >
-              <UtensilsCrossed className="w-4 h-4" />
+              <UtensilsCrossed className="w-4 h-4 text-amber-400" />
               <span>Back to Menu (Table {formattedTable})</span>
             </Link>
 
@@ -849,7 +849,7 @@ export default function CustomerWebBill() {
               <button
                 type="button"
                 onClick={handlePrintReceipt}
-                className="py-3 rounded-xl bg-[#3B2115] hover:bg-[#E8752A] text-[#F4B942] hover:text-white border border-[#F4B942] font-black text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="py-3 rounded-xl bg-slate-950 hover:bg-slate-800 text-amber-400 border border-slate-800 font-black text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 <span>Print Bill</span>
@@ -858,9 +858,9 @@ export default function CustomerWebBill() {
               <button
                 type="button"
                 onClick={() => setShowDownloadModal(true)}
-                className="py-3 rounded-xl bg-[#FFF8ED] hover:bg-white text-[#3B2115] border border-[#F4B942] font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="py-3 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Download className="w-3.5 h-3.5 text-[#E8752A]" />
+                <Download className="w-3.5 h-3.5 text-orange-400" />
                 <span>Download Bill</span>
               </button>
             </div>
@@ -884,15 +884,15 @@ export default function CustomerWebBill() {
 
   // ================= 1-PAGE UNIFIED BILLING & PAYMENT VIEW =================
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#FFF8ED] text-[#24140D] p-3 sm:p-5 font-sans flex items-center justify-center">
-      <div className="w-full max-w-5xl bg-white border-2 border-[#F4B942] rounded-3xl shadow-[0_8px_30px_rgba(59,33,21,0.12)] overflow-hidden flex flex-col my-auto">
+    <div className="min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-100 p-3 sm:p-5 font-sans flex items-center justify-center selection:bg-orange-500 selection:text-white">
+      <div className="w-full max-w-5xl bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto">
         
         {/* Compact Top Bar */}
-        <div className="bg-[#3B2115] text-[#FFF8ED] px-4 py-3 border-b border-[#F4B942]/60 flex items-center justify-between">
+        <div className="bg-slate-950 text-white px-4 py-3 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Link
-              to="/menu"
-              className="p-1 rounded-lg bg-white/10 hover:bg-white/20 text-[#FFF8ED] transition"
+              to={formattedTable ? `/menu?table=${formattedTable}` : '/menu'}
+              className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 transition"
               title="Return to Menu"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -900,7 +900,7 @@ export default function CustomerWebBill() {
             <div>
               <h1 className="font-black text-sm text-white tracking-tight flex items-center gap-1.5">
                 <span>SmartDine Restaurant</span>
-                <span className="text-[10px] text-[#F4B942] font-normal">• Table {formattedTable}</span>
+                <span className="text-[10px] text-amber-400 font-normal">• Table {formattedTable}</span>
               </h1>
             </div>
           </div>
@@ -908,30 +908,30 @@ export default function CustomerWebBill() {
           <div className="flex items-center gap-2">
             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${
               billData.billStatus === 'Bill Requested'
-                ? 'bg-amber-500/20 text-[#F4B942] border-[#F4B942] animate-pulse'
-                : 'bg-white/10 text-[#FFF8ED] border-white/20'
+                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse'
+                : 'bg-slate-800 text-slate-300 border-slate-700'
             }`}>
               {billData.billStatus}
             </span>
-            <span className="text-[11px] font-mono text-[#F4B942] hidden xs:inline">{invoiceNumber}</span>
+            <span className="text-[11px] font-mono text-slate-400 hidden xs:inline">{invoiceNumber}</span>
           </div>
         </div>
 
         {/* 1-Page 2-Column Responsive Body */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[#F4B942]/30 flex-1">
+        <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-slate-800 flex-1">
           
           {/* LEFT COLUMN: Consolidated Items & Bill Calculation (5 Cols) */}
-          <div className="lg:col-span-5 p-4 sm:p-5 flex flex-col justify-between bg-[#FFF8ED]/30 space-y-4">
+          <div className="lg:col-span-5 p-4 sm:p-5 flex flex-col justify-between bg-slate-950/40 space-y-4">
             
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h2 className="text-xs font-black text-[#3B2115] uppercase tracking-wider flex items-center gap-1.5">
-                  <Receipt className="w-4 h-4 text-[#E8752A]" />
+                <h2 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Receipt className="w-4 h-4 text-orange-500" />
                   <span>Order Delicacies ({billData.consolidatedItems.length})</span>
                 </h2>
 
                 {billData.orderCount > 1 && (
-                  <span className="text-[10px] font-bold text-[#E8752A] bg-[#FFF8ED] px-2 py-0.5 rounded-md border border-[#F4B942]/60">
+                  <span className="text-[10px] font-bold text-amber-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
                     {billData.orderCount} Orders Combined
                   </span>
                 )}
@@ -939,7 +939,7 @@ export default function CustomerWebBill() {
 
               {/* Cleared Orders Notice */}
               {billData.clearedOrderCount > 0 && (
-                <div className="p-2 rounded-xl bg-emerald-50 border border-[#198754]/30 text-[11px] text-[#198754] font-bold flex items-center justify-between">
+                <div className="p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-[11px] text-emerald-400 font-bold flex items-center justify-between">
                   <span>Previous Orders Settled:</span>
                   <span>₹{billData.totalClearedAmount.toFixed(0)} (Paid ✅)</span>
                 </div>
@@ -947,24 +947,24 @@ export default function CustomerWebBill() {
 
               {/* Items List (Scrollable if many dishes) */}
               {billData.consolidatedItems.length === 0 ? (
-                <div className="text-center py-8 text-xs text-[#6B5B50] space-y-2">
+                <div className="text-center py-8 text-xs text-slate-400 space-y-2">
                   <p>No unpaid dishes on Table {formattedTable}.</p>
-                  <Link to="/menu" className="text-[#E8752A] underline font-bold">Open Menu</Link>
+                  <Link to="/menu" className="text-amber-400 underline font-bold">Open Menu</Link>
                 </div>
               ) : (
-                <div className="max-h-[220px] lg:max-h-[260px] overflow-y-auto space-y-1.5 pr-1 divide-y divide-[#F4B942]/20">
+                <div className="max-h-[220px] lg:max-h-[260px] overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-800/60">
                   {billData.consolidatedItems.map((item, idx) => (
                     <div key={idx} className="pt-1.5 first:pt-0 flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5 truncate pr-2">
                         <span className={`w-2.5 h-2.5 rounded-sm border flex items-center justify-center shrink-0 ${
-                          item.isVeg ? 'border-[#198754]' : 'border-[#D32F2F]'
+                          item.isVeg ? 'border-emerald-500 bg-emerald-950/60' : 'border-rose-500 bg-rose-950/60'
                         }`}>
-                          <span className={`w-1 h-1 rounded-full ${item.isVeg ? 'bg-[#198754]' : 'bg-[#D32F2F]'}`} />
+                          <span className={`w-1 h-1 rounded-full ${item.isVeg ? 'bg-emerald-400' : 'bg-rose-400'}`} />
                         </span>
-                        <span className="font-bold text-[#24140D] truncate">{item.name}</span>
-                        <span className="text-[#E8752A] font-extrabold text-[11px]">x{item.quantity}</span>
+                        <span className="font-bold text-slate-200 truncate">{item.name}</span>
+                        <span className="text-amber-400 font-extrabold text-[11px]">x{item.quantity}</span>
                       </div>
-                      <span className="font-bold text-[#3B2115] shrink-0">₹{item.totalPrice.toFixed(0)}</span>
+                      <span className="font-bold text-slate-300 shrink-0">₹{item.totalPrice.toFixed(0)}</span>
                     </div>
                   ))}
                 </div>
@@ -972,14 +972,14 @@ export default function CustomerWebBill() {
             </div>
 
             {/* Subtotal & Taxes Summary Box */}
-            <div className="p-3.5 rounded-2xl bg-white border border-[#F4B942]/50 shadow-sm space-y-1.5 text-xs text-[#6B5B50]">
+            <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm space-y-1.5 text-xs text-slate-400">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span className="text-[#24140D] font-bold">₹{billData.subtotal.toFixed(2)}</span>
+                <span className="text-white font-bold">₹{billData.subtotal.toFixed(2)}</span>
               </div>
 
               {discountAmount > 0 && (
-                <div className="flex justify-between text-[#198754] font-bold">
+                <div className="flex justify-between text-emerald-400 font-bold">
                   <span>Discount ({appliedCoupon?.code})</span>
                   <span>-₹{discountAmount.toFixed(2)}</span>
                 </div>
@@ -987,12 +987,12 @@ export default function CustomerWebBill() {
 
               <div className="flex justify-between text-[11px]">
                 <span>GST (5% SGST + CGST)</span>
-                <span className="text-[#24140D] font-medium">₹{billData.tax.toFixed(2)}</span>
+                <span className="text-slate-300 font-medium">₹{billData.tax.toFixed(2)}</span>
               </div>
 
-              <div className="pt-1.5 border-t border-[#FFF8ED] flex justify-between items-center text-sm font-black text-[#24140D]">
+              <div className="pt-1.5 border-t border-slate-800 flex justify-between items-center text-sm font-black text-white">
                 <span>Payable Amount</span>
-                <span className="text-[#E8752A] text-xl font-black">₹{billData.total.toFixed(2)}</span>
+                <span className="text-amber-400 text-xl font-black font-mono">₹{billData.total.toFixed(2)}</span>
               </div>
             </div>
 
@@ -1005,11 +1005,11 @@ export default function CustomerWebBill() {
               
               {/* Payment Mode Selector Tabs */}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-black text-[#3B2115] uppercase tracking-wider flex items-center gap-1">
-                  <Lock className="w-3.5 h-3.5 text-[#198754]" />
+                <span className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1">
+                  <Lock className="w-3.5 h-3.5 text-orange-400" />
                   <span>Choose Payment</span>
                 </span>
-                <span className="text-[10px] text-[#198754] font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-[#198754]/30">
+                <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-500/30">
                   100% Encrypted
                 </span>
               </div>
@@ -1030,16 +1030,16 @@ export default function CustomerWebBill() {
                       onClick={() => setPaymentMode(mode.id)}
                       className={`py-2 px-1.5 rounded-xl border text-center transition flex flex-col items-center justify-center gap-0.5 cursor-pointer relative overflow-hidden ${
                         paymentMode === mode.id
-                          ? 'bg-[#0C2340] border-[#2B84EA] text-white shadow-sm'
-                          : 'bg-[#FFF8ED] border-[#6B5B50]/20 text-[#24140D] hover:bg-white'
+                          ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow border-amber-500'
+                          : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
                       }`}
                     >
                       {mode.badge && (
-                        <span className="absolute top-0 right-0 bg-[#2B84EA] text-[7px] font-black text-white px-1 py-0.2 rounded-bl">
+                        <span className="absolute top-0 right-0 bg-amber-500 text-[7px] font-black text-slate-950 px-1 py-0.2 rounded-bl">
                           {mode.badge}
                         </span>
                       )}
-                      <Icon className={`w-4 h-4 ${paymentMode === mode.id ? 'text-[#2B84EA]' : 'text-[#E8752A]'}`} />
+                      <Icon className={`w-4 h-4 ${paymentMode === mode.id ? 'text-white' : 'text-orange-400'}`} />
                       <span className="text-[10px] font-black">{mode.label}</span>
                     </button>
                   );
@@ -1050,38 +1050,38 @@ export default function CustomerWebBill() {
 
               {/* 0. RAZORPAY */}
               {paymentMode === 'razorpay' && (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-[#0C2340]/5 via-blue-50/50 to-indigo-50/40 border border-blue-200/80 space-y-2.5 animate-in fade-in">
+                <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5 animate-in fade-in">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-md bg-[#0C2340] text-[#2B84EA] font-black text-xs flex items-center justify-center shadow">
+                      <div className="w-6 h-6 rounded-md bg-gradient-to-r from-orange-600 to-amber-600 text-white font-black text-xs flex items-center justify-center shadow">
                         R
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900">Razorpay Payment Gateway</h4>
-                        <p className="text-[10px] text-slate-500">Instant UPI, Cards & NetBanking</p>
+                        <h4 className="text-xs font-bold text-white">Razorpay Payment Gateway</h4>
+                        <p className="text-[10px] text-slate-400">Instant UPI, Cards & NetBanking</p>
                       </div>
                     </div>
-                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-500/30">
                       Auto-Verified
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-semibold text-slate-700">
-                    <div className="p-1.5 rounded-xl bg-white border border-blue-100 shadow-sm flex flex-col items-center gap-0.5">
-                      <Smartphone className="w-3.5 h-3.5 text-blue-600" />
+                  <div className="grid grid-cols-3 gap-1.5 text-center text-[10px] font-semibold text-slate-300">
+                    <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 shadow-sm flex flex-col items-center gap-0.5">
+                      <Smartphone className="w-3.5 h-3.5 text-amber-400" />
                       <span>UPI & QR</span>
                     </div>
-                    <div className="p-1.5 rounded-xl bg-white border border-blue-100 shadow-sm flex flex-col items-center gap-0.5">
-                      <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+                    <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 shadow-sm flex flex-col items-center gap-0.5">
+                      <CreditCard className="w-3.5 h-3.5 text-amber-400" />
                       <span>All Cards</span>
                     </div>
-                    <div className="p-1.5 rounded-xl bg-white border border-blue-100 shadow-sm flex flex-col items-center gap-0.5">
-                      <Building2 className="w-3.5 h-3.5 text-purple-600" />
+                    <div className="p-1.5 rounded-xl bg-slate-900 border border-slate-800 shadow-sm flex flex-col items-center gap-0.5">
+                      <Building2 className="w-3.5 h-3.5 text-amber-400" />
                       <span>NetBanking</span>
                     </div>
                   </div>
 
-                  <p className="text-[11px] text-slate-600 bg-white/90 p-2 rounded-xl border border-blue-100/60 leading-relaxed">
+                  <p className="text-[11px] text-slate-400 bg-slate-900/80 p-2 rounded-xl border border-slate-800 leading-relaxed">
                     Click <strong>Pay Bill via Razorpay</strong> below to settle Table #{formattedTable}. Upon verification, your table bill will be automatically cleared.
                   </p>
                 </div>
@@ -1089,8 +1089,8 @@ export default function CustomerWebBill() {
 
               {/* 1. UPI */}
               {paymentMode === 'upi' && (
-                <div className="p-3 rounded-2xl bg-[#FFF8ED]/60 border border-[#F4B942]/40 space-y-2.5">
-                  <div className="flex items-center gap-1.5 border-b border-[#F4B942]/30 pb-1.5">
+                <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2.5">
+                  <div className="flex items-center gap-1.5 border-b border-slate-800 pb-1.5">
                     {['qr', 'app', 'id'].map((sub) => (
                       <button
                         key={sub}
@@ -1098,8 +1098,8 @@ export default function CustomerWebBill() {
                         onClick={() => setUpiMethod(sub)}
                         className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
                           upiMethod === sub
-                            ? 'bg-[#E8752A] text-white font-black'
-                            : 'bg-white text-[#6B5B50]'
+                            ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white font-black shadow-glow'
+                            : 'bg-slate-900 text-slate-400 hover:text-white'
                         }`}
                       >
                         {sub === 'qr' ? 'Dynamic QR' : sub === 'app' ? 'UPI Apps' : 'UPI ID'}
@@ -1108,8 +1108,8 @@ export default function CustomerWebBill() {
                   </div>
 
                   {upiMethod === 'qr' && (
-                    <div className="flex items-center gap-3 bg-white p-2.5 rounded-xl border border-[#F4B942]/40">
-                      <div className="w-24 h-24 bg-white border border-[#3B2115] rounded-xl p-1 shrink-0 flex items-center justify-center">
+                    <div className="flex items-center gap-3 bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                      <div className="w-24 h-24 bg-white border border-slate-300 rounded-xl p-1 shrink-0 flex items-center justify-center">
                         <img 
                           src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=upi://pay?pa=smartdine@icici%26pn=SmartDine%20Table${formattedTable}%26am=${billData.total.toFixed(2)}%26cu=INR`} 
                           alt="Dynamic UPI QR"
@@ -1117,8 +1117,8 @@ export default function CustomerWebBill() {
                         />
                       </div>
                       <div className="space-y-1 text-xs">
-                        <div className="font-black text-[#24140D]">Scan to Pay ₹{billData.total.toFixed(2)}</div>
-                        <p className="text-[11px] text-[#6B5B50]">Open GPay, PhonePe, Paytm, or BHIM to scan.</p>
+                        <div className="font-black text-white">Scan to Pay <span className="text-amber-400 font-mono">₹{billData.total.toFixed(2)}</span></div>
+                        <p className="text-[11px] text-slate-400">Open GPay, PhonePe, Paytm, or BHIM to scan.</p>
                       </div>
                     </div>
                   )}
@@ -1132,8 +1132,8 @@ export default function CustomerWebBill() {
                           onClick={() => setSelectedUpiApp(app)}
                           className={`p-2 rounded-xl border text-[11px] font-bold text-center transition cursor-pointer ${
                             selectedUpiApp === app
-                              ? 'bg-white border-[#E8752A] text-[#E8752A] ring-1 ring-[#E8752A]'
-                              : 'bg-white text-[#24140D] border-[#6B5B50]/20'
+                              ? 'bg-amber-500/10 border-amber-500 text-amber-400 ring-1 ring-amber-500'
+                              : 'bg-slate-900 text-slate-300 border-slate-800'
                           }`}
                         >
                           {app}
@@ -1148,7 +1148,7 @@ export default function CustomerWebBill() {
                       placeholder="e.g. mobile@upi / yourname@okhdfcbank"
                       value={upiId}
                       onChange={(e) => setUpiId(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-[#F4B942]/60 text-xs font-bold text-[#24140D] focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
                     />
                   )}
                 </div>
@@ -1156,37 +1156,37 @@ export default function CustomerWebBill() {
 
               {/* 2. CARD */}
               {paymentMode === 'card' && (
-                <div className="p-3 rounded-2xl bg-[#FFF8ED]/60 border border-[#F4B942]/40 space-y-2 text-xs">
+                <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
                   <div>
-                    <label className="block text-[10px] font-bold text-[#6B5B50] mb-0.5">Card Number</label>
+                    <label className="block text-[10px] font-bold text-slate-400 mb-0.5">Card Number</label>
                     <input
                       type="text"
                       placeholder="4532 •••• •••• 8910"
                       value={cardNumber}
                       onChange={handleCardNumberChange}
-                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#F4B942]/60 font-mono font-bold text-[#24140D] text-xs focus:outline-none"
+                      className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 font-mono font-bold text-white text-xs focus:outline-none focus:border-amber-400"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-[10px] font-bold text-[#6B5B50] mb-0.5">Expiry (MM/YY)</label>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-0.5">Expiry (MM/YY)</label>
                       <input
                         type="text"
                         placeholder="MM/YY"
                         value={cardExpiry}
                         onChange={handleExpiryChange}
-                        className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#F4B942]/60 font-mono font-bold text-[#24140D] text-center text-xs focus:outline-none"
+                        className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 font-mono font-bold text-white text-center text-xs focus:outline-none focus:border-amber-400"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-[#6B5B50] mb-0.5">CVV</label>
+                      <label className="block text-[10px] font-bold text-slate-400 mb-0.5">CVV</label>
                       <input
                         type="password"
                         maxLength={4}
                         placeholder="•••"
                         value={cardCvv}
                         onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, ''))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#F4B942]/60 font-mono font-bold text-[#24140D] text-center text-xs focus:outline-none"
+                        className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 font-mono font-bold text-white text-center text-xs focus:outline-none focus:border-amber-400"
                       />
                     </div>
                   </div>
@@ -1195,7 +1195,7 @@ export default function CustomerWebBill() {
 
               {/* 3. NET BANKING */}
               {paymentMode === 'netbanking' && (
-                <div className="p-3 rounded-2xl bg-[#FFF8ED]/60 border border-[#F4B942]/40 grid grid-cols-3 gap-1.5">
+                <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 grid grid-cols-3 gap-1.5">
                   {['HDFC Bank', 'SBI Bank', 'ICICI Bank', 'Axis Bank', 'Kotak Bank', 'PNB Bank'].map(b => (
                     <button
                       key={b}
@@ -1203,8 +1203,8 @@ export default function CustomerWebBill() {
                       onClick={() => setSelectedBank(b)}
                       className={`p-2 rounded-xl border text-[11px] font-bold text-center transition cursor-pointer ${
                         selectedBank === b
-                          ? 'bg-white border-[#E8752A] text-[#E8752A] ring-1 ring-[#E8752A]'
-                          : 'bg-white text-[#24140D] border-[#6B5B50]/20'
+                          ? 'bg-amber-500/10 border-amber-500 text-amber-400 ring-1 ring-amber-500'
+                          : 'bg-slate-900 text-slate-300 border-slate-800'
                       }`}
                     >
                       {b}
@@ -1215,12 +1215,12 @@ export default function CustomerWebBill() {
 
               {/* 4. CASH */}
               {paymentMode === 'cash' && (
-                <div className="p-3 rounded-2xl bg-[#FFF8ED]/60 border border-[#F4B942]/40 text-xs text-[#6B5B50] space-y-1">
-                  <span className="font-bold text-[#24140D] flex items-center gap-1">
-                    <Banknote className="w-4 h-4 text-[#198754]" />
+                <div className="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/40 text-xs text-amber-300 space-y-1">
+                  <span className="font-bold text-white flex items-center gap-1">
+                    <Banknote className="w-4 h-4 text-orange-400" />
                     <span>Pay at Cashier Counter / Captain</span>
                   </span>
-                  <p className="text-[11px]">
+                  <p className="text-[11px] text-amber-200/80">
                     Settle ₹{billData.total.toFixed(0)} via cash or card swipe with your table captain.
                   </p>
                 </div>
@@ -1229,9 +1229,9 @@ export default function CustomerWebBill() {
               {/* Compact Coupon Form */}
               <div className="pt-1">
                 {appliedCoupon ? (
-                  <div className="p-2 rounded-xl bg-emerald-50 border border-[#198754]/40 flex items-center justify-between text-xs text-[#198754] font-bold">
+                  <div className="p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-between text-xs text-emerald-400 font-bold">
                     <span>{appliedCoupon.code} (-₹{appliedCoupon.discount.toFixed(0)})</span>
-                    <button onClick={removeCoupon} className="text-red-600 underline text-[11px] cursor-pointer">Remove</button>
+                    <button onClick={removeCoupon} className="text-rose-400 underline text-[11px] cursor-pointer">Remove</button>
                   </div>
                 ) : (
                   <div>
@@ -1241,11 +1241,11 @@ export default function CustomerWebBill() {
                         placeholder="Enter coupon (ROYAL50, FEAST100)"
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                        className="flex-1 px-3 py-1.5 rounded-xl bg-[#FFF8ED] border border-[#F4B942]/60 text-xs font-bold text-[#24140D] focus:outline-none"
+                        className="flex-1 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
                       />
                       <button
                         type="submit"
-                        className="px-3.5 py-1.5 rounded-xl bg-[#3B2115] hover:bg-[#E8752A] text-white text-xs font-bold transition cursor-pointer"
+                        className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold transition cursor-pointer shadow-glow"
                       >
                         Apply
                       </button>
@@ -1253,7 +1253,7 @@ export default function CustomerWebBill() {
 
                     {/* Quick Available Vouchers Chips */}
                     <div className="flex items-center gap-1.5 flex-wrap pt-2">
-                      <span className="text-[10px] font-bold text-[#6B5B50]">Vouchers:</span>
+                      <span className="text-[10px] font-bold text-slate-400">Vouchers:</span>
                       {[
                         { code: 'ROYAL50', label: '50% OFF' },
                         { code: 'FEAST100', label: '₹100 FLAT' },
@@ -1273,7 +1273,7 @@ export default function CustomerWebBill() {
                             setAppliedCoupon({ code: v.code, discount: disc, desc: `${v.label} Discount` });
                             toast.success(`Coupon ${v.code} applied! Saved ₹${disc.toFixed(0)}`, { icon: '🎁' });
                           }}
-                          className="px-2 py-0.5 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200 text-[#E8752A] text-[10px] font-bold transition cursor-pointer"
+                          className="px-2 py-0.5 rounded-lg bg-slate-950 hover:bg-slate-900 border border-slate-800 text-amber-400 text-[10px] font-bold transition cursor-pointer"
                         >
                           {v.code} ({v.label})
                         </button>
@@ -1290,13 +1290,9 @@ export default function CustomerWebBill() {
               <button
                 onClick={handlePayNow}
                 disabled={isPaying || billData.total <= 0}
-                className={`w-full py-3.5 rounded-2xl text-white font-black text-sm sm:text-base shadow-md transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
-                  paymentMode === 'razorpay'
-                    ? 'bg-[#0C2340] hover:bg-[#1a3a60] shadow-blue-900/20'
-                    : 'bg-[#E8752A] hover:bg-[#3B2115] shadow-[0_4px_20px_rgba(232,117,42,0.35)]'
-                }`}
+                className="w-full py-3.5 rounded-2xl text-white font-black text-sm sm:text-base shadow-glow transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500"
               >
-                <Lock className={`w-4 h-4 ${paymentMode === 'razorpay' ? 'text-[#2B84EA]' : 'text-[#F4B942]'}`} />
+                <Lock className="w-4 h-4 text-amber-200" />
                 <span>
                   {isPaying 
                     ? 'Processing Payment...' 
@@ -1308,7 +1304,7 @@ export default function CustomerWebBill() {
                 </span>
               </button>
 
-              <div className="flex items-center justify-between text-[10px] text-[#6B5B50] px-1">
+              <div className="flex items-center justify-between text-[10px] text-slate-500 px-1">
                 <span>Safe 256-bit SSL Checkout</span>
                 <span>SmartDine Royal Indian Dining</span>
               </div>

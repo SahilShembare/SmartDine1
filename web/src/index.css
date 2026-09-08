@@ -6,90 +6,90 @@
 
 @layer base {
   body {
-    background-color: #FFF8ED;
-    color: #24140D;
+    background-color: #020617;
+    color: #F8FAFC;
     @apply min-h-screen antialiased font-sans;
   }
 }
 
-/* Premium Indian Restaurant Theme Utilities */
+/* Luxury Dark Restaurant Theme Utilities (Home Page Consistent) */
 .bg-warm-cream {
-  background-color: #FFF8ED;
+  background-color: #090D16;
 }
 
 .bg-deep-brown {
-  background-color: #3B2115;
+  background-color: #0F172A;
 }
 
 .text-deep-brown {
-  color: #3B2115;
+  color: #E2E8F0;
 }
 
 .text-dark-brown {
-  color: #24140D;
+  color: #F8FAFC;
 }
 
 .text-warm-gray {
-  color: #6B5B50;
+  color: #94A3B8;
 }
 
 .bg-warm-orange {
-  background-color: #E8752A;
+  background-color: #EA580C;
 }
 
 .text-warm-orange {
-  color: #E8752A;
+  color: #EA580C;
 }
 
 .border-warm-orange {
-  border-color: #E8752A;
+  border-color: #EA580C;
 }
 
 .border-gold {
-  border-color: #F4B942;
+  border-color: #F59E0B;
 }
 
 .bg-gold {
-  background-color: #F4B942;
+  background-color: #F59E0B;
 }
 
 .text-gold {
-  color: #F4B942;
+  color: #F59E0B;
 }
 
 /* Special Thali Golden Highlight */
 .thali-card-highlight {
-  border: 1.5px solid #F4B942;
-  box-shadow: 0 4px 20px -2px rgba(244, 185, 66, 0.25);
+  border: 1.5px solid #F59E0B;
+  box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.25);
   position: relative;
 }
 
-/* Custom Indian Theme Scrollbar */
+/* Custom Sleek Dark Theme Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #FFF8ED;
+  background: #020617;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #E8752A;
+  background: #EA580C;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3B2115;
+  background: #F59E0B;
 }
 
 /* Pulse animation */
 @keyframes order-pulse {
   0%, 100% {
-    box-shadow: 0 0 0 0 rgba(232, 117, 42, 0.6);
+    box-shadow: 0 0 0 0 rgba(234, 88, 12, 0.6);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(232, 117, 42, 0);
+    box-shadow: 0 0 0 10px rgba(234, 88, 12, 0);
   }
 }
 
@@ -111,62 +111,9 @@
   }
   .qr-card-print {
     page-break-inside: avoid;
-    border: 2px solid #3B2115 !important;
+    border: 2px solid #000000 !important;
     box-shadow: none !important;
     color: black !important;
     background: white !important;
   }
 }
-
-/* ========================================================================== */
-/* ADMIN DASHBOARD RESTAURANT BACKGROUND & GLASSMORPHISM THEME                */
-/* ========================================================================== */
-.admin-dashboard-container {
-  position: relative;
-  min-height: 100vh;
-  background-color: transparent !important;
-}
-
-.admin-dashboard-bg-layer {
-  position: fixed;
-  inset: 0;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  pointer-events: none;
-  z-index: 0;
-  transition: background-image 0.6s ease-in-out;
-}
-
-.admin-dashboard-overlay {
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(circle at top right, rgba(232, 117, 42, 0.18), transparent 50%),
-              linear-gradient(180deg, rgba(15, 23, 42, 0.35) 0%, rgba(15, 23, 42, 0.55) 100%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Enhanced Glassmorphic Translucency for Admin Panels */
-.admin-dashboard-container .bg-white {
-  background-color: rgba(255, 255, 255, 0.88) !important;
-  backdrop-filter: blur(14px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
-  border-color: rgba(255, 255, 255, 0.85) !important;
-  box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.10), 0 4px 12px -2px rgba(15, 23, 42, 0.05) !important;
-}
-
-.admin-dashboard-container aside {
-  background-color: rgba(255, 255, 255, 0.94) !important;
-  backdrop-filter: blur(16px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-  border-right-color: rgba(226, 232, 240, 0.85) !important;
-}
-
-.admin-dashboard-container header {
-  background-color: rgba(255, 255, 255, 0.90) !important;
-  backdrop-filter: blur(16px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-  border-bottom-color: rgba(226, 232, 240, 0.85) !important;
-}
-

@@ -118,7 +118,7 @@ export default function AskSmartDineAI({ isOpen: externalIsOpen, onClose: extern
       <button
         onClick={toggleOpen}
         id="ask-smartdine-ai-btn"
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-[#E8752A] via-[#EA580C] to-[#C2410C] hover:from-[#EA580C] hover:to-[#9A3412] text-white rounded-full shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 hover:-translate-y-0.5 transition-all duration-200 border border-orange-300/40 cursor-pointer font-bold text-sm group"
+        className="fixed bottom-6 right-6 z-40 flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-orange-600 via-amber-600 to-orange-700 hover:from-orange-500 hover:to-amber-500 text-white rounded-full shadow-glow hover:shadow-xl hover:-translate-y-0.5 transition-all duration-200 border border-amber-400/40 cursor-pointer font-bold text-sm group"
         title="Open SmartDine AI Assistant"
       >
         <span className="relative flex h-3 w-3">
@@ -132,45 +132,45 @@ export default function AskSmartDineAI({ isOpen: externalIsOpen, onClose: extern
       {/* Slide-out Drawer Backdrop */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-50 transition-opacity"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 transition-opacity"
           onClick={toggleOpen}
         />
       )}
 
       {/* Slide-out Drawer Panel */}
       <div
-        className={`fixed top-0 right-0 bottom-0 z-50 w-full sm:w-[480px] bg-white shadow-2xl border-l border-slate-200 flex flex-col transform transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 bottom-0 z-50 w-full sm:w-[480px] bg-slate-900 shadow-2xl border-l border-slate-800 flex flex-col transform transition-transform duration-300 ease-in-out text-slate-100 ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Drawer Header */}
-        <div className="px-5 py-4 bg-gradient-to-r from-slate-900 via-slate-800 to-[#24140D] text-white flex items-center justify-between border-b border-slate-700">
+        <div className="px-5 py-4 bg-slate-950 text-white flex items-center justify-between border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#E8752A] to-[#F97316] flex items-center justify-center text-white shadow-md">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-orange-600 to-amber-600 flex items-center justify-center text-white shadow-md">
               <Sparkles className="w-5 h-5 text-amber-100" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white tracking-tight">SmartDine AI</h3>
-                <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded-full bg-orange-500/30 text-orange-300 border border-orange-400/30">
+                <span className="text-[10px] uppercase font-black px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                   Assistant
                 </span>
               </div>
-              <p className="text-[11px] text-slate-300">Live operational & predictive intelligence</p>
+              <p className="text-[11px] text-slate-400">Live operational & predictive intelligence</p>
             </div>
           </div>
 
           <div className="flex items-center gap-1">
             <button
               onClick={() => setMessages([messages[0]])}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
               title="Clear chat history"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
             <button
               onClick={toggleOpen}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
               title="Close assistant"
             >
               <X className="w-5 h-5" />
@@ -179,13 +179,13 @@ export default function AskSmartDineAI({ isOpen: externalIsOpen, onClose: extern
         </div>
 
         {/* Explainability Banner */}
-        <div className="px-4 py-2 bg-amber-50/90 border-b border-amber-200/80 flex items-center gap-2 text-[11px] text-amber-900">
-          <Info className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+        <div className="px-4 py-2 bg-slate-950/90 border-b border-slate-800 flex items-center gap-2 text-[11px] text-amber-400">
+          <Info className="w-3.5 h-3.5 text-amber-400 shrink-0" />
           <span>Answers are synthesized dynamically from restaurant order histories & inventory telemetry.</span>
         </div>
 
         {/* Chat Message Scrollable Container */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/70">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-950/60">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -193,7 +193,7 @@ export default function AskSmartDineAI({ isOpen: externalIsOpen, onClose: extern
             >
               <div className="flex items-end gap-2 max-w-[90%]">
                 {msg.sender === 'ai' && (
-                  <div className="w-7 h-7 rounded-lg bg-orange-600 flex items-center justify-center text-white shrink-0 shadow-sm mb-1">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-r from-orange-600 to-amber-600 flex items-center justify-center text-white shrink-0 shadow-sm mb-1">
                     <Bot className="w-4 h-4" />
                   </div>
                 )}
@@ -201,19 +201,19 @@ export default function AskSmartDineAI({ isOpen: externalIsOpen, onClose: extern
                 <div
                   className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
                     msg.sender === 'user'
-                      ? 'bg-[#E8752A] text-white rounded-br-none shadow-sm'
-                      : 'bg-white text-slate-800 border border-slate-200/90 rounded-bl-none shadow-sm'
+                      ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-br-none shadow-sm font-medium'
+                      : 'bg-slate-900 text-slate-200 border border-slate-800 rounded-bl-none shadow-sm'
                   }`}
                 >
                   <p className="whitespace-pre-line">{msg.text}</p>
 
                   {/* Optional Telemetry Data Points for AI Replies */}
                   {msg.dataPoints && msg.dataPoints.length > 0 && (
-                    <div className="mt-3 pt-2.5 border-t border-slate-100 grid grid-cols-2 gap-2">
+                    <div className="mt-3 pt-2.5 border-t border-slate-800 grid grid-cols-2 gap-2">
                       {msg.dataPoints.map((dp, idx) => (
-                        <div key={idx} className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        <div key={idx} className="bg-slate-950 p-2 rounded-lg border border-slate-800">
                           <p className="text-[10px] text-slate-400 uppercase font-semibold">{dp.label}</p>
-                          <p className="text-xs font-bold text-slate-800 mt-0.5">{dp.value}</p>
+                          <p className="text-xs font-bold text-amber-400 mt-0.5">{dp.value}</p>
                         </div>
                       ))}
                     </div>
@@ -222,7 +222,7 @@ export default function AskSmartDineAI({ isOpen: externalIsOpen, onClose: extern
                   {/* Confidence Badge */}
                   {msg.confidence && (
                     <div className="mt-2.5 pt-1.5 flex items-center justify-between text-[10px] text-slate-400">
-                      <span className="flex items-center gap-1 text-emerald-600 font-semibold">
+                      <span className="flex items-center gap-1 text-emerald-400 font-semibold">
                         <CheckCircle2 className="w-3 h-3" />
                         Confidence: {msg.confidence}%
                       </span>
@@ -232,7 +232,7 @@ export default function AskSmartDineAI({ isOpen: externalIsOpen, onClose: extern
                 </div>
 
                 {msg.sender === 'user' && (
-                  <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-white shrink-0 shadow-sm mb-1">
+                  <div className="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-amber-400 shrink-0 shadow-sm mb-1 border border-slate-700">
                     <User className="w-4 h-4" />
                   </div>
                 )}
@@ -243,11 +243,11 @@ export default function AskSmartDineAI({ isOpen: externalIsOpen, onClose: extern
           {/* Typing Indicator */}
           {isTyping && (
             <div className="flex items-end gap-2 max-w-[90%]">
-              <div className="w-7 h-7 rounded-lg bg-orange-600 flex items-center justify-center text-white shrink-0 shadow-sm mb-1">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-r from-orange-600 to-amber-600 flex items-center justify-center text-white shrink-0 shadow-sm mb-1">
                 <Bot className="w-4 h-4" />
               </div>
-              <div className="bg-white border border-slate-200/90 rounded-2xl rounded-bl-none p-3 shadow-sm flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-orange-400 animate-bounce"></span>
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl rounded-bl-none p-3 shadow-sm flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-bounce"></span>
                 <span className="w-2 h-2 rounded-full bg-orange-500 animate-bounce [animation-delay:0.2s]"></span>
                 <span className="w-2 h-2 rounded-full bg-orange-600 animate-bounce [animation-delay:0.4s]"></span>
                 <span className="text-[11px] text-slate-400 ml-1 font-medium">SmartDine AI is thinking...</span>
@@ -259,9 +259,9 @@ export default function AskSmartDineAI({ isOpen: externalIsOpen, onClose: extern
         </div>
 
         {/* Suggested Quick Question Chips */}
-        <div className="p-3 bg-white border-t border-slate-200/80">
-          <p className="text-[11px] font-semibold text-slate-500 mb-2 flex items-center gap-1">
-            <HelpCircle className="w-3 h-3 text-orange-500" />
+        <div className="p-3 bg-slate-900 border-t border-slate-800">
+          <p className="text-[11px] font-semibold text-slate-400 mb-2 flex items-center gap-1">
+            <HelpCircle className="w-3 h-3 text-amber-400" />
             Suggested Questions:
           </p>
           <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
@@ -269,7 +269,7 @@ export default function AskSmartDineAI({ isOpen: externalIsOpen, onClose: extern
               <button
                 key={idx}
                 onClick={() => handleSend(q)}
-                className="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-100 hover:bg-orange-50 hover:text-[#E8752A] hover:border-orange-200 border border-slate-200 text-[11px] text-slate-700 font-medium transition shrink-0 active:scale-95"
+                className="whitespace-nowrap px-2.5 py-1 rounded-full bg-slate-800 hover:bg-slate-700 hover:text-amber-400 border border-slate-700 text-[11px] text-slate-300 font-medium transition shrink-0 active:scale-95 cursor-pointer"
               >
                 {q}
               </button>
@@ -278,20 +278,20 @@ export default function AskSmartDineAI({ isOpen: externalIsOpen, onClose: extern
         </div>
 
         {/* Chat Input Bar */}
-        <div className="p-3.5 bg-white border-t border-slate-200">
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus-within:border-[#E8752A] focus-within:ring-2 focus-within:ring-orange-500/20 transition">
+        <div className="p-3.5 bg-slate-900 border-t border-slate-800">
+          <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 focus-within:border-amber-500 focus-within:ring-1 focus-within:ring-amber-500 transition">
             <input
               type="text"
               value={inputQuery}
               onChange={(e) => setInputQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask anything about sales, items, inventory..."
-              className="flex-1 bg-transparent text-xs text-slate-800 placeholder-slate-400 focus:outline-none py-1.5"
+              className="flex-1 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none py-1.5"
             />
             <button
               onClick={() => handleSend()}
               disabled={!inputQuery.trim() || isTyping}
-              className="p-1.5 rounded-lg bg-[#E8752A] text-white hover:bg-[#EA580C] disabled:opacity-40 disabled:cursor-not-allowed transition"
+              className="p-1.5 rounded-lg bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
               title="Send message"
             >
               <Send className="w-3.5 h-3.5" />

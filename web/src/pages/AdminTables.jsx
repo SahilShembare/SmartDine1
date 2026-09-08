@@ -16,11 +16,17 @@ import {
   Trash2, 
   Sparkles,
   UtensilsCrossed,
-  Users
+  Users,
+  Clock,
+  UserCheck,
+  AlertCircle,
+  Timer,
+  CheckCircle2,
+  ArrowRight
 } from 'lucide-react';
 
 export default function AdminTables() {
-  const { tables, setTables } = useTableOrder();
+  const { tables, setTables, orders, assignTableToWaitingOrder } = useTableOrder();
   const [selectedTableForQR, setSelectedTableForQR] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingTable, setEditingTable] = useState(null);
@@ -28,12 +34,67 @@ export default function AdminTables() {
     return window.location.origin || 'https://smartdine.netlify.app';
   });
 
+  const [defaultWaitTime, setDefaultWaitTime] = useState(() => {
+    return localStore.getTableWaitingTime ? localStore.getTableWaitingTime() : 15;
+  });
+  const [selectedAssignments, setSelectedAssignments] = useState({});
+  const [assigningId, setAssigningId] = useState(null);
+
   const [formData, setFormData] = useState({
     tableNumber: '',
     capacity: '4',
     location: 'Main Dining Hall',
     active: true
   });
+
+  // Active waiting queue orders
+  const waitingOrders = (orders || []).filter(o => 
+    o.waitingForTable && 
+    o.status !== 'completed' && 
+    o.status !== 'cancelled'
+  );
+
+  // Helper to find order currently occupying a table
+  const getTableOccupant = (tableNum) => {
+    const formatted = String(tableNum).padStart(2, '0');
+    return (orders || []).find(o => 
+      !o.waitingForTable && 
+      o.status !== 'completed' && 
+      o.status !== 'cancelled' && 
+      String(o.tableNumber).padStart(2, '0') === formatted
+    );
+  };
+
+  // Available active tables
+  const availableTables = tables.filter(t => 
+    t.active !== false && !getTableOccupant(t.tableNumber)
+  );
+
+  const occupiedTablesCount = tables.filter(t => getTableOccupant(t.tableNumber)).length;
+
+  const handleAssignTable = async (orderId) => {
+    const targetTable = selectedAssignments[orderId] || (availableTables[0]?.tableNumber);
+    if (!targetTable) {
+      alert('No tables available or selected. Please select a table.');
+      return;
+    }
+    setAssigningId(orderId);
+    try {
+      await assignTableToWaitingOrder(orderId, targetTable);
+    } catch (err) {
+      console.error('Error assigning table:', err);
+    } finally {
+      setAssigningId(null);
+    }
+  };
+
+  const handleWaitTimeChange = (mins) => {
+    const parsed = Math.max(1, parseInt(mins, 10) || 15);
+    setDefaultWaitTime(parsed);
+    if (localStore.setTableWaitingTime) {
+      localStore.setTableWaitingTime(parsed);
+    }
+  };
 
   const getQRUrl = (tableNum) => {
     const formatted = String(tableNum).padStart(2, '0');
@@ -163,7 +224,7 @@ export default function AdminTables() {
               </span>
             </h1>
             <p className="text-sm text-slate-400 mt-1">
-              Generate, preview, download, and print table standees for customer contactless ordering
+              Manage restaurant tables, live waiting queue, and contactless QR standees
             </p>
           </div>
 
@@ -186,20 +247,204 @@ export default function AdminTables() {
           </div>
         </div>
 
+        {/* Live Table Availability & Queue Stats Bar */}
+        <div className="no-print grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Tables</p>
+              <p className="text-2xl font-black text-white mt-1">{tables.length}</p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-300">
+              <UtensilsCrossed className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Available Now</p>
+              <p className="text-2xl font-black text-emerald-400 mt-1">{availableTables.length}</p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-semibold text-amber-400 uppercase tracking-wider">Occupied</p>
+              <p className="text-2xl font-black text-amber-400 mt-1">{occupiedTablesCount}</p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <Users className="w-5 h-5" />
+            </div>
+          </div>
+
+          <div className={`p-4 rounded-2xl border flex items-center justify-between transition-colors ${
+            waitingOrders.length > 0 
+              ? 'bg-orange-950/20 border-orange-500/40' 
+              : 'bg-slate-900 border-slate-800'
+          }`}>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <p className="text-[11px] font-semibold text-orange-400 uppercase tracking-wider">Waiting Queue</p>
+                {waitingOrders.length > 0 && (
+                  <span className="w-2 h-2 rounded-full bg-orange-400 animate-ping"></span>
+                )}
+              </div>
+              <p className="text-2xl font-black text-orange-400 mt-1">{waitingOrders.length}</p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center text-orange-400">
+              <UserCheck className="w-5 h-5" />
+            </div>
+          </div>
+        </div>
+
+        {/* Live Dine-In Waiting Queue Section */}
+        {waitingOrders.length > 0 && (
+          <div className="no-print p-5 rounded-2xl bg-gradient-to-br from-orange-950/30 via-slate-900 to-slate-900 border-2 border-orange-500/40 shadow-xl space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-orange-500/20">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400 shadow">
+                  <Clock className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-extrabold text-white">Live Dine-In Waiting Queue</h2>
+                    <span className="px-2 py-0.5 rounded-full bg-orange-500 text-black text-xs font-black">
+                      {waitingOrders.length} Waiting
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">
+                    Customers awaiting table assignment. Assign an available table to notify them immediately.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700 text-xs">
+                <Timer className="w-4 h-4 text-orange-400" />
+                <span className="text-slate-300 font-medium">Default Est. Wait:</span>
+                <input
+                  type="number"
+                  min="5"
+                  max="120"
+                  step="5"
+                  value={defaultWaitTime}
+                  onChange={(e) => handleWaitTimeChange(e.target.value)}
+                  className="w-14 px-2 py-0.5 bg-slate-900 border border-slate-700 rounded text-center text-orange-400 font-bold focus:outline-none focus:border-orange-500"
+                />
+                <span className="text-slate-400">min</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {waitingOrders.map((order, idx) => {
+                const position = order.waitingQueuePosition || (idx + 1);
+                const waitMins = order.estimatedWaitMinutes || defaultWaitTime;
+                const assignedTable = selectedAssignments[order.id] || (availableTables[0]?.tableNumber || '');
+
+                return (
+                  <div
+                    key={order.id}
+                    className="p-4 rounded-xl bg-slate-900/90 border border-orange-500/30 shadow-md flex flex-col justify-between space-y-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-md bg-orange-500/20 border border-orange-500/40 text-orange-400 text-xs font-black">
+                            Queue #{position}
+                          </span>
+                          <span className="text-xs font-bold text-white">
+                            {order.customerName || 'Dine-In Guest'}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-1 font-mono">
+                          Order #{order.id ? order.id.slice(-6) : '---'} • {order.items?.length || 0} items
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="inline-flex items-center gap-1 text-xs font-extrabold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                          <Clock className="w-3 h-3" />
+                          ~{waitMins} min
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-2 rounded-lg bg-slate-800/60 border border-slate-700/50 text-[11px] text-slate-300">
+                      <div className="line-clamp-2">
+                        {order.items?.map(it => `${it.quantity || 1}x ${it.name}`).join(', ') || 'No item details'}
+                      </div>
+                    </div>
+
+                    {/* Table Assignment Row */}
+                    <div className="pt-2 border-t border-slate-800 flex items-center gap-2">
+                      <select
+                        value={assignedTable}
+                        onChange={(e) => setSelectedAssignments({
+                          ...selectedAssignments,
+                          [order.id]: e.target.value
+                        })}
+                        className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-white focus:outline-none focus:border-orange-500 font-semibold"
+                      >
+                        {availableTables.length > 0 ? (
+                          availableTables.map(t => (
+                            <option key={t.id} value={t.tableNumber}>
+                              Table {t.tableNumber} ({t.capacity || 4} seats)
+                            </option>
+                          ))
+                        ) : (
+                          tables.map(t => (
+                            <option key={t.id} value={t.tableNumber}>
+                              Table {t.tableNumber} {getTableOccupant(t.tableNumber) ? '(Occupied)' : ''}
+                            </option>
+                          ))
+                        )}
+                      </select>
+
+                      <button
+                        onClick={() => handleAssignTable(order.id)}
+                        disabled={assigningId === order.id}
+                        className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold flex items-center gap-1 shadow disabled:opacity-50 transition"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Seat</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Base URL customizer notice */}
         <div className="no-print p-4 rounded-2xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-400">
           <div>
             <span className="text-slate-200 font-semibold">QR Code Target Domain: </span>
             <code className="text-orange-400 font-mono bg-slate-800 px-2 py-0.5 rounded">{baseUrl}/menu?table=XX</code>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400">Custom Domain:</span>
-            <input
-              type="text"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-orange-500 w-56 font-mono"
-            />
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400">Default Waiting Time:</span>
+              <input
+                type="number"
+                min="5"
+                max="120"
+                value={defaultWaitTime}
+                onChange={(e) => handleWaitTimeChange(e.target.value)}
+                className="w-16 px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 text-orange-400 text-xs font-bold text-center focus:outline-none focus:border-orange-500"
+              />
+              <span className="text-slate-500">min</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400">Custom Domain:</span>
+              <input
+                type="text"
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs focus:outline-none focus:border-orange-500 w-56 font-mono"
+              />
+            </div>
           </div>
         </div>
 
@@ -207,10 +452,13 @@ export default function AdminTables() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {tables.map((table) => {
             const qrTarget = getQRUrl(table.tableNumber);
+            const occupant = getTableOccupant(table.tableNumber);
             return (
               <div
                 key={table.id}
-                className="qr-card-print rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden flex flex-col justify-between transition-all duration-200 hover:border-orange-500/50 shadow-lg"
+                className={`qr-card-print rounded-2xl border bg-slate-900/90 overflow-hidden flex flex-col justify-between transition-all duration-200 hover:border-orange-500/50 shadow-lg ${
+                  occupant ? 'border-amber-500/40' : 'border-slate-800'
+                }`}
               >
                 
                 {/* Standee Header */}
@@ -228,6 +476,32 @@ export default function AdminTables() {
                   <div className="px-3 py-1 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-400 font-extrabold text-sm tracking-wider">
                     TABLE {table.tableNumber}
                   </div>
+                </div>
+
+                {/* Table Live Occupancy Banner */}
+                <div className="no-print pt-3 px-4">
+                  {occupant ? (
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                        <div>
+                          <span className="text-amber-300 font-bold block">Occupied • Order #{occupant.id.slice(-6)}</span>
+                          <span className="text-[10px] text-slate-400">{occupant.customerName || 'Dine-In Guest'}</span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        {occupant.status || 'Active'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[11px]">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span>Vacant & Ready</span>
+                      </div>
+                      <span className="text-[10px] text-emerald-400 font-medium">Available</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* QR Code Display Card */}

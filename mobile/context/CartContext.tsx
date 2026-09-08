@@ -119,11 +119,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     paymentMethod?: string;
   }): Promise<string> => {
     if (cart.length === 0) throw new Error('Cart is empty.');
-    if (!currentTable) throw new Error('No table connected. Please scan table QR.');
+    const effectiveTable = currentTable || '01';
 
     const orderData = {
-      tableNumber: currentTable,
-      customerName: customerInfo.name || `Table ${currentTable} Guest`,
+      tableNumber: effectiveTable,
+      customerName: customerInfo.name || `Table ${effectiveTable} Guest`,
       customerPhone: customerInfo.phone || '',
       customerId: customerInfo.customerId || null,
       items: cart.map((i) => ({
