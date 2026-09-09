@@ -282,7 +282,7 @@ export const BusinessInsightsService = {
       shortExplanation: 'Cancellation rate increased by 8% during peak rush hours (8:30 PM – 9:15 PM) due to kitchen wait times.',
       impact: 'Medium',
       impactColor: 'text-amber-600 bg-amber-50 border-amber-200',
-      recommendedAction: 'Improve KOT queue batching and notify customers of 20-min wait times during rush to set expectations.',
+      recommendedAction: 'Improve kitchen order queue batching and notify customers of 20-min wait times during rush to set expectations.',
       confidence: 87
     },
     {

@@ -23,7 +23,7 @@ const DEFAULT_USERS = [
     role: "admin"
   },
   {
-    name: "Master Chef Kitchen",
+    name: "Kitchen Chef",
     email: "kitchen@smartdine.com",
     password: "kitchen123456",
     role: "kitchen"

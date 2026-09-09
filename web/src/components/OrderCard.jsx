@@ -11,6 +11,8 @@ import {
   Phone, 
   Receipt,
   MessageSquare,
+  ShoppingBag,
+  Sparkles,
   AlertTriangle,
   Printer,
   Flame,
@@ -18,7 +20,8 @@ import {
   Timer,
   ExternalLink,
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  ChevronUp
 } from 'lucide-react';
 
 export default function OrderCard({ 
@@ -47,30 +50,7 @@ export default function OrderCard({
     return () => clearInterval(timer);
   }, [order?.createdAt]);
 
-  // Line-cook item checklist state (persisted in localStorage for kitchen continuity)
-  const [checkedItems, setCheckedItems] = useState(() => {
-    try {
-      const saved = localStorage.getItem(`smartdine_kds_checked_${order?.id}`);
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  const toggleItemCheck = (idx) => {
-    if (readOnly) return;
-    setCheckedItems(prev => {
-      const next = { ...prev, [idx]: !prev[idx] };
-      try {
-        localStorage.setItem(`smartdine_kds_checked_${order?.id}`, JSON.stringify(next));
-      } catch {}
-      return next;
-    });
-  };
-
   const totalItemsCount = order?.items?.length || 0;
-  const platedItemsCount = Object.values(checkedItems).filter(Boolean).length;
-  const isAllPlated = totalItemsCount > 0 && platedItemsCount >= totalItemsCount;
 
   // Format Elapsed Time (MM:SS or HH:MM)
   const formatTimer = (totalSecs) => {
@@ -161,7 +141,7 @@ export default function OrderCard({
       default:
         return { 
           label: order?.status || 'Active', 
-          tag: 'KDS',
+          tag: 'KITCHEN',
           bg: 'bg-slate-800 border-slate-700 text-slate-300', 
           pulse: false 
         };
@@ -229,7 +209,7 @@ export default function OrderCard({
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-mono font-extrabold text-slate-300">
-                  KOT #{String(order?.id || '').slice(-6).toUpperCase()}
+                  Order #{String(order?.id || '').slice(-6).toUpperCase()}
                 </span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase tracking-wider">
                   Dine-In
@@ -299,115 +279,57 @@ export default function OrderCard({
       )}
 
       {/* ==================================================================== */}
-      {/* 3. INTERACTIVE DISH CHECKLIST (Cook Plating Progression)              */}
+      {/* 3. ORDER DISHES LIST                                                 */}
       {/* ==================================================================== */}
       <div className="p-4 space-y-3 flex-1">
         
-        {/* Plating Progress Header */}
+        {/* Order Items Header */}
         <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 pb-1 border-b border-slate-800/60">
           <span className="uppercase tracking-wider">
-            Ticket Items ({totalItemsCount})
-          </span>
-          <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold ${
-            isAllPlated 
-              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' 
-              : 'bg-slate-800 text-slate-300'
-          }`}>
-            {platedItemsCount} / {totalItemsCount} Plated
+            Order Items ({totalItemsCount})
           </span>
         </div>
 
         {/* Dish Items List */}
         <div className="space-y-1.5">
-          {order?.items?.map((item, idx) => {
-            const isChecked = !!checkedItems[idx];
-            return (
-              <div 
-                key={idx}
-                onClick={() => toggleItemCheck(idx)}
-                className={`p-2 rounded-xl border transition-all flex items-start justify-between gap-2.5 cursor-pointer ${
-                  isChecked 
-                    ? 'bg-emerald-950/20 border-emerald-500/30 text-slate-400 opacity-75' 
-                    : 'bg-slate-800/40 hover:bg-slate-800/70 border-slate-800 hover:border-slate-700 text-slate-100'
-                }`}
-                title={readOnly ? undefined : "Click to mark this dish as Plated / Cooked"}
-              >
-                {/* Checkbox & Details */}
-                <div className="flex items-start gap-2.5 flex-1 min-w-0">
-                  {/* Interactive Tap Checkbox */}
-                  <button
-                    type="button"
-                    disabled={readOnly}
-                    className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 mt-0.5 transition ${
-                      isChecked 
-                        ? 'bg-emerald-500 border-emerald-400 text-slate-950 font-black' 
-                        : 'border-slate-600 bg-slate-900/60 hover:border-orange-500 text-transparent'
-                    }`}
-                  >
-                    <Check className="w-3.5 h-3.5 stroke-[3]" />
-                  </button>
+          {order?.items?.map((item, idx) => (
+            <div 
+              key={idx}
+              className="p-2.5 rounded-xl border border-slate-800/90 bg-slate-800/40 flex items-start justify-between gap-2.5 text-slate-100"
+            >
+              {/* Item Details */}
+              <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                {/* Veg / Non-Veg food indicator symbol */}
+                <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mt-0.5 ${
+                  item.isVeg !== false ? 'border-emerald-500 bg-emerald-950/30' : 'border-red-500 bg-red-950/30'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    item.isVeg !== false ? 'bg-emerald-500' : 'bg-red-500'
+                  }`} />
+                </span>
 
-                  {/* Veg / Non-Veg food indicator symbol */}
-                  <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 mt-0.5 ${
-                    item.isVeg !== false ? 'border-emerald-500 bg-emerald-950/30' : 'border-red-500 bg-red-950/30'
-                  }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${
-                      item.isVeg !== false ? 'bg-emerald-500' : 'bg-red-500'
-                    }`} />
-                  </span>
-
-                  {/* Dish Name & Quantity */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-baseline gap-1.5">
-                      <span className={`px-1.5 py-0.2 rounded font-black text-xs shrink-0 ${
-                        isChecked 
-                          ? 'bg-slate-800 text-slate-400' 
-                          : 'bg-orange-500/20 text-orange-400 border border-orange-500/40'
-                      }`}>
-                        {item.quantity}x
-                      </span>
-                      <span className={`font-bold text-sm tracking-tight truncate ${
-                        isChecked ? 'line-through text-slate-400' : 'text-slate-100'
-                      }`}>
-                        {item.name}
-                      </span>
-                    </div>
-
-                    {/* Custom Line-Item Cooking Instruction */}
-                    {item.instructions && (
-                      <div className="text-[11px] text-amber-300 italic flex items-center gap-1 mt-1 pl-1">
-                        <MessageSquare className="w-3 h-3 shrink-0 text-amber-400" />
-                        <span className="truncate">{item.instructions}</span>
-                      </div>
-                    )}
+                {/* Dish Name & Quantity */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="px-1.5 py-0.2 rounded font-black text-xs shrink-0 bg-orange-500/20 text-orange-400 border border-orange-500/40">
+                      {item.quantity}x
+                    </span>
+                    <span className="font-bold text-sm tracking-tight truncate text-slate-100">
+                      {item.name}
+                    </span>
                   </div>
-                </div>
 
-                {/* Plated Tag or Price */}
-                <div className="shrink-0 flex items-center gap-1.5">
-                  {isChecked ? (
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-extrabold uppercase tracking-wide">
-                      Plated
-                    </span>
-                  ) : (
-                    <span className="text-xs font-mono font-semibold text-slate-400">
-                      ₹{((item.price || 0) * (item.quantity || 1)).toFixed(0)}
-                    </span>
+                  {/* Custom Line-Item Cooking Instruction */}
+                  {item.instructions && (
+                    <div className="text-[11px] text-amber-300 italic flex items-center gap-1 mt-1 pl-1">
+                      <MessageSquare className="w-3 h-3 shrink-0 text-amber-400" />
+                      <span className="truncate">{item.instructions}</span>
+                    </div>
                   )}
                 </div>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Progress Bar */}
-        <div className="w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
-          <div 
-            className={`h-full transition-all duration-300 ${
-              isAllPlated ? 'bg-emerald-500' : 'bg-gradient-to-r from-orange-500 to-amber-500'
-            }`}
-            style={{ width: `${totalItemsCount > 0 ? (platedItemsCount / totalItemsCount) * 100 : 0}%` }}
-          />
+            </div>
+          ))}
         </div>
 
         {/* ================================================================== */}
@@ -470,32 +392,25 @@ export default function OrderCard({
       {/* ==================================================================== */}
       <div className="p-3.5 border-t border-slate-800/80 bg-slate-800/30 space-y-2.5">
         
-        {/* Bill Total & Payment Status Row */}
+        {/* Total Dishes & Print Slip Row (No income/prices) */}
         <div className="flex items-center justify-between text-xs">
           <div className="flex items-center gap-1.5 text-slate-400">
-            <Receipt className="w-3.5 h-3.5 text-slate-400" />
-            <span className="font-semibold text-slate-300">Total:</span>
-            <span className="text-white font-extrabold text-sm">₹{order?.total?.toFixed(0) || '0'}</span>
+            <Utensils className="w-3.5 h-3.5 text-orange-400" />
+            <span className="font-semibold text-slate-300">Total Items:</span>
+            <span className="text-white font-extrabold text-sm">{totalItemsCount} dishes</span>
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wide border ${
-              order?.paymentStatus === 'paid' || order?.paymentStatus === 'Paid'
-                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' 
-                : 'bg-slate-800 border-slate-700 text-slate-300'
-            }`}>
-              {order?.paymentStatus || 'Pending'}
-            </span>
-
-            {/* Print KOT Slip Button */}
+            {/* Print Slip Button */}
             {onOpenKotSlip && (
               <button
                 type="button"
                 onClick={() => onOpenKotSlip(order)}
-                className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer"
-                title="Print Thermal KOT Slip"
+                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer flex items-center gap-1 text-[11px] font-bold"
+                title="Print Thermal Order Slip"
               >
                 <Printer className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Slip</span>
               </button>
             )}
           </div>
@@ -518,7 +433,7 @@ export default function OrderCard({
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-orange-600 via-amber-600 to-orange-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-xs shadow-glow transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 tracking-wide uppercase"
               >
                 <ChefHat className="w-4 h-4" />
-                <span>🔥 Start Cooking (Accept KOT)</span>
+                <span>🔥 Start Cooking (Accept Order)</span>
               </button>
             )}
 
@@ -558,7 +473,7 @@ export default function OrderCard({
               </button>
             )}
 
-            {/* Secondary Option: Print KOT & Cancel Button */}
+            {/* Secondary Option: Print & Cancel Button */}
             <div className="flex items-center justify-between pt-1 text-[11px]">
               {onOpenKotSlip && (
                 <button
@@ -567,7 +482,7 @@ export default function OrderCard({
                   className="text-slate-400 hover:text-orange-400 flex items-center gap-1 transition cursor-pointer font-semibold"
                 >
                   <Printer className="w-3 h-3" />
-                  <span>Print KOT</span>
+                  <span>Print Slip</span>
                 </button>
               )}
 
@@ -575,7 +490,7 @@ export default function OrderCard({
                 <button
                   type="button"
                   onClick={() => {
-                    if (window.confirm(`Are you sure you want to cancel Ticket KOT #${order?.id}?`)) {
+                    if (window.confirm(`Are you sure you want to cancel Order #${order?.id}?`)) {
                       onUpdateStatus(order.id, 'cancelled');
                     }
                   }}

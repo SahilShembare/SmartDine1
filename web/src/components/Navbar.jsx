@@ -341,8 +341,8 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
-            ) : (!isAdminPage && !isLoginPage && !isScanPage) ? (
-              /* CUSTOMER PROFILE BUTTON */
+            ) : (!isHomePage && !isAdminPage && !isLoginPage && !isScanPage) ? (
+              /* CUSTOMER PROFILE BUTTON (Hidden on Home, Login, Scan & Admin) */
               <Link
                 to="/profile"
                 title="Customer Profile & Dining Details"

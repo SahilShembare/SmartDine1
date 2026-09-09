@@ -116,7 +116,7 @@ export function AuthProvider({ children }) {
     const mockUser = {
       uid: `demo-${role}-1`,
       email: `${role}@smartdine.com`,
-      displayName: role === 'admin' ? 'Master Admin' : role === 'kitchen' ? 'Head Chef & Kitchen' : 'VIP Diner',
+      displayName: role === 'admin' ? 'Master Admin' : role === 'kitchen' ? 'Kitchen Chef' : 'VIP Diner',
       role: role,
       photoURL: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80`
     };
