@@ -97,23 +97,44 @@
   animation: order-pulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
 
-/* Print styles for QR sheets */
+/* Print utility classes */
+.print-only {
+  display: none !important;
+}
+
 @media print {
+  @page {
+    margin: 12mm;
+    size: auto;
+  }
+
   body {
     background: white !important;
-    color: black !important;
+    color: #0f172a !important;
+    font-size: 11pt;
   }
+
   .no-print {
     display: none !important;
   }
+
   .print-only {
     display: block !important;
   }
+
+  /* Force background colors to print correctly (charts, progress bars, badges) */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   .qr-card-print {
     page-break-inside: avoid;
+    break-inside: avoid;
     border: 2px solid #000000 !important;
     box-shadow: none !important;
     color: black !important;
     background: white !important;
   }
 }
+

@@ -598,7 +598,7 @@ export default function CustomerWebCart() {
         isPaid
           ? '🎉 Payment Verified! Order sent to kitchen.'
           : '👨‍🍳 Order sent to kitchen! Please pay at counter after dining.',
-        { duration: 4000 }
+        { id: 'cart-order-placed-toast', duration: 4000 }
       );
 
       // Set completed order data for receipt & tracking screen

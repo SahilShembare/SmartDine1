@@ -136,6 +136,7 @@ export default function CustomerWebMenu() {
       const lastWelcomed = sessionStorage.getItem('smartdine_welcomed_table');
       if (lastWelcomed !== formatted) {
         toast.success(`🍽️ Welcome to Table ${formatted}! Browse menu & order.`, {
+          id: 'welcome-table-toast',
           duration: 3000,
           icon: '✨'
         });

@@ -107,6 +107,9 @@ export const localStore = {
     const index = orders.findIndex(o => o.id === orderId);
     if (index !== -1) {
       const updates = { status: newStatus, updatedAt: new Date().toISOString() };
+      if (newStatus === 'preparing' && !orders[index].prepStartedAt) {
+        updates.prepStartedAt = new Date().toISOString();
+      }
       if (newStatus === 'served') {
         updates.servedAt = new Date().toISOString();
       }

@@ -36,28 +36,33 @@ import KitchenDashboard from './pages/KitchenDashboard';
 
 function AppContent() {
   const location = useLocation();
-  const isAdminDashboard = location.pathname.startsWith('/admin') || location.pathname.startsWith('/kitchen');
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  const isAdminDashboard = isAdminRoute || location.pathname.startsWith('/kitchen');
   const isHomePage = location.pathname === '/';
   const isLoginPage = location.pathname === '/login';
   const isScanPage = location.pathname === '/scan';
   const hideBottomNav = isAdminDashboard || isHomePage || isLoginPage || isScanPage;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-orange-500 selection:text-white">
+    <div className={`min-h-screen flex flex-col font-sans ${
+      isAdminRoute 
+        ? 'bg-slate-50 text-slate-800' 
+        : 'bg-slate-950 text-slate-100 selection:bg-orange-500 selection:text-white'
+    }`}>
       {!isAdminDashboard && <Navbar />}
       <Toaster 
         position="top-center"
         toastOptions={{
           duration: 3000,
           style: {
-            background: '#0F172A',
+            background: isAdminRoute ? '#1E293B' : '#0F172A',
             color: '#F8FAFC',
             border: '1px solid #334155',
             borderRadius: '14px',
             fontSize: '14px',
             fontWeight: '600',
             padding: '12px 18px',
-            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
+            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)',
           },
         }}
       />
@@ -73,20 +78,20 @@ function AppContent() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/scan" element={<ScanTable />} />
 
-                {/* 10 Protected SaaS Admin Console Routes */}
+                {/* Clean SmartDine Admin Console Routes */}
                 <Route 
                   path="/admin" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminDashboard />
+                      <AdminDashboard initialTab="dashboard" />
                     </ProtectedRoute>
                   } 
                 />
                 <Route 
-                  path="/admin/ai" 
+                  path="/admin/kitchen" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminAICommandCenter />
+                      <AdminDashboard initialTab="kitchen" />
                     </ProtectedRoute>
                   } 
                 />
@@ -94,15 +99,7 @@ function AppContent() {
                   path="/admin/orders" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminOrders />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/admin/tables" 
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminTables />
+                      <AdminDashboard initialTab="kitchen" />
                     </ProtectedRoute>
                   } 
                 />
@@ -110,23 +107,15 @@ function AppContent() {
                   path="/admin/menu" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminMenu />
+                      <AdminDashboard initialTab="menu" />
                     </ProtectedRoute>
                   } 
                 />
                 <Route 
-                  path="/admin/categories" 
+                  path="/admin/tables" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminCategories />
-                    </ProtectedRoute>
-                  } 
-                />
-                <Route 
-                  path="/admin/payments" 
-                  element={
-                    <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminPayments />
+                      <AdminDashboard initialTab="tables" />
                     </ProtectedRoute>
                   } 
                 />
@@ -134,15 +123,39 @@ function AppContent() {
                   path="/admin/customers" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminCustomers />
+                      <AdminDashboard initialTab="customers" />
                     </ProtectedRoute>
                   } 
                 />
                 <Route 
-                  path="/admin/coupons" 
+                  path="/admin/payments" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminCoupons />
+                      <AdminDashboard initialTab="payments" />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/admin/reports" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AdminDashboard initialTab="reports" />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/admin/sales-analysis" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AdminDashboard initialTab="sales-analysis" />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/admin/ai" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AdminDashboard initialTab="ai" />
                     </ProtectedRoute>
                   } 
                 />
@@ -150,15 +163,15 @@ function AppContent() {
                   path="/admin/analytics" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminAnalytics />
+                      <AdminDashboard initialTab="reports" />
                     </ProtectedRoute>
                   } 
                 />
                 <Route 
-                  path="/admin/notifications" 
+                  path="/admin/categories" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminNotifications />
+                      <AdminDashboard initialTab="menu" />
                     </ProtectedRoute>
                   } 
                 />
@@ -166,7 +179,7 @@ function AppContent() {
                   path="/admin/settings" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>
-                      <AdminSettings />
+                      <AdminDashboard initialTab="settings" />
                     </ProtectedRoute>
                   } 
                 />

@@ -26,10 +26,12 @@ export default function ScanTable() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [scanError, setScanError] = useState('');
+  const [scannedTable, setScannedTable] = useState(null);
   
   const html5QrRef = useRef(null);
   const fileInputRef = useRef(null);
   const isStartingRef = useRef(false);
+  const isProcessingRef = useRef(false);
 
   // Helper to extract table number from any QR text / url / json
   const parseTableNumber = (text) => {
@@ -63,11 +65,17 @@ export default function ScanTable() {
 
   // Successful table detection handler
   const handleTableFound = (rawText) => {
+    if (isProcessingRef.current) return true; // Single-flight lock: prevents multi-frame re-triggers
+
     const tableNum = parseTableNumber(rawText);
     if (tableNum) {
+      isProcessingRef.current = true;
       const formatted = String(tableNum).padStart(2, '0');
-      stopCamera();
+      
+      setScannedTable(formatted);
       setTableSession(formatted);
+      stopCamera();
+
       try {
         confetti({
           particleCount: 80,
@@ -75,10 +83,15 @@ export default function ScanTable() {
           origin: { y: 0.6 }
         });
       } catch {}
-      toast.success(`🎉 Connected to Table ${formatted}! Opening digital menu...`, { duration: 2500 });
+
+      toast.success(`🎉 Connected to Table ${formatted}! Opening digital menu...`, { 
+        id: 'table-scan-connect-toast',
+        duration: 2500 
+      });
+
       setTimeout(() => {
-        navigate(`/menu?table=${formatted}`);
-      }, 500);
+        navigate(`/menu?table=${formatted}`, { replace: true });
+      }, 700);
       return true;
     }
     return false;
@@ -123,13 +136,15 @@ export default function ScanTable() {
     }
   };
 
-  // Stop camera
+  // Stop camera safely
   const stopCamera = async () => {
-    if (html5QrRef.current && isCameraActive) {
+    if (html5QrRef.current) {
       try {
-        await html5QrRef.current.stop();
+        if (html5QrRef.current.isScanning) {
+          await html5QrRef.current.stop();
+        }
       } catch (err) {
-        console.warn('Error stopping camera:', err);
+        console.debug('Scanner stop handled:', err);
       }
       setIsCameraActive(false);
     }
@@ -332,6 +347,32 @@ export default function ScanTable() {
         </div>
 
       </div>
+
+      {/* Table Connected Success Modal Popup */}
+      {scannedTable && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500 flex items-center justify-center mx-auto shadow-glow">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+            <div className="space-y-1">
+              <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                Connected Successfully
+              </span>
+              <h3 className="text-2xl font-black text-white pt-2">
+                Table {scannedTable}
+              </h3>
+              <p className="text-xs text-slate-300">
+                Opening your live digital menu...
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2 text-xs text-amber-400 font-semibold pt-1">
+              <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+              <span>Redirecting to menu...</span>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

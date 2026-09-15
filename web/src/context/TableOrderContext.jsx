@@ -5,6 +5,130 @@ import { collection, addDoc, onSnapshot, query, orderBy, where, getDocs, doc, up
 
 const TableOrderContext = createContext();
 
+export const CLEAN_INITIAL_ORDERS = [
+  {
+    id: 'ORD-1048',
+    tableNumber: '04',
+    customerName: 'Sahil Sharma',
+    customerPhone: '+91 98765 43210',
+    items: [
+      { itemId: 'pbm-01', name: 'Paneer Butter Masala', quantity: 2, price: 240, isVeg: true },
+      { itemId: 'bn-01', name: 'Butter Naan', quantity: 3, price: 40, isVeg: true },
+      { itemId: 'jr-01', name: 'Jeera Rice', quantity: 1, price: 120, isVeg: true }
+    ],
+    amount: 680,
+    total: 680,
+    subtotal: 647.62,
+    tax: 32.38,
+    status: 'pending',
+    paymentStatus: 'Pending',
+    paymentMethod: 'Cash',
+    createdAt: new Date(Date.now() - 8 * 60000).toISOString(),
+    updatedAt: new Date(Date.now() - 8 * 60000).toISOString()
+  },
+  {
+    id: 'ORD-1047',
+    tableNumber: '02',
+    customerName: 'Priya Patel',
+    customerPhone: '+91 98234 56789',
+    items: [
+      { itemId: 'gt-01', name: 'Special Gujarati Thali', quantity: 1, price: 320, isVeg: true },
+      { itemId: 'ml-01', name: 'Mango Lassi', quantity: 1, price: 70, isVeg: true }
+    ],
+    amount: 390,
+    total: 390,
+    subtotal: 371.43,
+    tax: 18.57,
+    status: 'preparing',
+    paymentStatus: 'Paid',
+    paymentMethod: 'UPI',
+    paidAt: new Date(Date.now() - 20 * 60000).toISOString(),
+    createdAt: new Date(Date.now() - 22 * 60000).toISOString(),
+    updatedAt: new Date(Date.now() - 15 * 60000).toISOString()
+  },
+  {
+    id: 'ORD-1046',
+    tableNumber: '07',
+    customerName: 'Rahul Verma',
+    customerPhone: '+91 97112 34567',
+    items: [
+      { itemId: 'cp-01', name: 'Crispy Chilli Paneer', quantity: 2, price: 210, isVeg: true },
+      { itemId: 'fr-01', name: 'Veg Fried Rice', quantity: 1, price: 180, isVeg: true },
+      { itemId: 'ls-01', name: 'Fresh Lime Soda', quantity: 2, price: 60, isVeg: true }
+    ],
+    amount: 720,
+    total: 720,
+    subtotal: 685.71,
+    tax: 34.29,
+    status: 'ready',
+    paymentStatus: 'Paid',
+    paymentMethod: 'Card',
+    paidAt: new Date(Date.now() - 32 * 60000).toISOString(),
+    createdAt: new Date(Date.now() - 35 * 60000).toISOString(),
+    updatedAt: new Date(Date.now() - 5 * 60000).toISOString()
+  },
+  {
+    id: 'ORD-1045',
+    tableNumber: '11',
+    customerName: 'Ananya Iyer',
+    customerPhone: '+91 99456 78123',
+    items: [
+      { itemId: 'dm-01', name: 'Dal Makhani', quantity: 1, price: 220, isVeg: true },
+      { itemId: 'gn-01', name: 'Garlic Naan', quantity: 2, price: 55, isVeg: true },
+      { itemId: 'gj-01', name: 'Gulab Jamun (2 pcs)', quantity: 1, price: 90, isVeg: true }
+    ],
+    amount: 420,
+    total: 420,
+    subtotal: 400.00,
+    tax: 20.00,
+    status: 'served',
+    paymentStatus: 'Paid',
+    paymentMethod: 'UPI',
+    paidAt: new Date(Date.now() - 50 * 60000).toISOString(),
+    createdAt: new Date(Date.now() - 55 * 60000).toISOString(),
+    updatedAt: new Date(Date.now() - 10 * 60000).toISOString()
+  },
+  {
+    id: 'ORD-1044',
+    tableNumber: '01',
+    customerName: 'Vikram Malhotra',
+    customerPhone: '+91 98333 44555',
+    items: [
+      { itemId: 'tp-01', name: 'Tandoori Paneer Tikka', quantity: 1, price: 260, isVeg: true },
+      { itemId: 'br-01', name: 'Butter Roti', quantity: 2, price: 25, isVeg: true },
+      { itemId: 'cc-01', name: 'Cold Coffee with Ice Cream', quantity: 2, price: 150, isVeg: true }
+    ],
+    amount: 610,
+    total: 610,
+    subtotal: 580.95,
+    tax: 29.05,
+    status: 'served',
+    paymentStatus: 'Paid',
+    paymentMethod: 'Cash',
+    paidAt: new Date(Date.now() - 65 * 60000).toISOString(),
+    createdAt: new Date(Date.now() - 70 * 60000).toISOString(),
+    updatedAt: new Date(Date.now() - 25 * 60000).toISOString()
+  },
+  {
+    id: 'ORD-1043',
+    tableNumber: '09',
+    customerName: 'Meera Joshi',
+    customerPhone: '+91 98123 45670',
+    items: [
+      { itemId: 'sk-01', name: 'Sabudana Khichdi', quantity: 1, price: 160, isVeg: true }
+    ],
+    amount: 160,
+    total: 160,
+    subtotal: 152.38,
+    tax: 7.62,
+    status: 'cancelled',
+    paymentStatus: 'Cancelled',
+    paymentMethod: 'None',
+    createdAt: new Date(Date.now() - 120 * 60000).toISOString(),
+    updatedAt: new Date(Date.now() - 110 * 60000).toISOString()
+  }
+];
+
 export function TableOrderProvider({ children }) {
   // Table session
   const [currentTable, setCurrentTable] = useState(() => {
@@ -38,18 +162,20 @@ export function TableOrderProvider({ children }) {
   
   const [orders, setOrders] = useState(() => {
     try {
-      const realOrdersPurged = localStorage.getItem('smartdine_real_production_mode_v1');
-      if (!realOrdersPurged) {
-        localStorage.setItem('smartdine_real_production_mode_v1', 'true');
-        // Filter out any leftover seed dummy demo orders
-        const raw = localStore.getOrders();
-        const cleanRealOrders = raw.filter(o => !['ORD-9821', 'ORD-9822', 'ORD-9823', 'ORD-9824'].includes(o.id));
-        localStore.saveOrders(cleanRealOrders);
-        return cleanRealOrders;
+      const isCleanV2 = localStorage.getItem('smartdine_clean_admin_v2');
+      if (!isCleanV2) {
+        localStorage.setItem('smartdine_clean_admin_v2', 'true');
+        localStore.saveOrders(CLEAN_INITIAL_ORDERS);
+        return CLEAN_INITIAL_ORDERS;
       }
-      return localStore.getOrders();
+      const existing = localStore.getOrders();
+      if (!Array.isArray(existing) || existing.length === 0) {
+        localStore.saveOrders(CLEAN_INITIAL_ORDERS);
+        return CLEAN_INITIAL_ORDERS;
+      }
+      return existing;
     } catch {
-      return localStore.getOrders();
+      return CLEAN_INITIAL_ORDERS;
     }
   });
 
@@ -354,7 +480,8 @@ export function TableOrderProvider({ children }) {
     discountAmount = 0,
     couponCode = null,
     total = null,
-    waitingForTable = false 
+    waitingForTable = false,
+    prepStartedAt = null
   }) => {
     if (cart.length === 0) throw new Error('Cart is empty');
     
@@ -396,12 +523,17 @@ export function TableOrderProvider({ children }) {
     // Dynamic initial preparation ETA: 20 min base, +2m per item over 3 items
     const estimatedPrepMinutes = Math.min(45, Math.max(15, 15 + Math.floor(cartItemCount * 2)));
     const prepTimeRange = `${estimatedPrepMinutes}–${estimatedPrepMinutes + 5} min`;
-    const prepStartedAt = new Date().toISOString();
-
-    const finalPaymentStatus = String(paymentStatus).toUpperCase();
-    const finalPaymentMethod = paymentMethod.includes('Razorpay') || paymentMethod.includes('Online') ? 'RAZORPAY' : (paymentMethod || 'CASH / COUNTER');
+    const finalPrepStartedAt = prepStartedAt || new Date().toISOString();
+    // Check if customer is paying with an online method (UPI, Card, Net Banking, Razorpay)
+    const isOnlineMethod = ['upi', 'card', 'netbanking', 'net banking', 'razorpay', 'online'].some(m => 
+      String(paymentMethod || '').toLowerCase().includes(m)
+    );
+    const finalPaymentStatus = isOnlineMethod ? 'PAID' : (String(paymentStatus || 'PENDING').toUpperCase());
+    const finalPaymentMethod = paymentMethod.includes('Razorpay') || paymentMethod.includes('Online') ? 'RAZORPAY' : (paymentMethod || 'CASH');
     const finalGateway = finalPaymentMethod === 'RAZORPAY' ? 'Razorpay' : (paymentGateway || 'None');
     const finalAmount = total !== null && total !== undefined ? Number(total) : cartTotal;
+    const finalPaidAt = (finalPaymentStatus === 'PAID' || isOnlineMethod) ? (paidAt || new Date().toISOString()) : null;
+    const finalTxnId = transactionId || razorpay_payment_id || (finalPaymentStatus === 'PAID' ? `TXN-${Date.now().toString().slice(-6)}` : null);
 
     const orderData = {
       tableNumber: effectiveTable || 'Waiting for Table',
@@ -432,10 +564,10 @@ export function TableOrderProvider({ children }) {
       razorpay_order_id: razorpay_order_id || null,
       razorpay_payment_id: razorpay_payment_id || transactionId || null,
       razorpay_signature: razorpay_signature || null,
-      transactionId: transactionId || razorpay_payment_id || (finalPaymentStatus === 'PAID' ? `TXN-${Date.now()}` : null),
-      paidAt: paidAt || (finalPaymentStatus === 'PAID' ? new Date().toISOString() : null),
+      transactionId: finalTxnId,
+      paidAt: finalPaidAt,
       refund_status: refund_status || 'NONE',
-      prepStartedAt,
+      prepStartedAt: finalPrepStartedAt,
       estimatedPrepMinutes,
       prepTimeRange,
       waitingForTable: isWaiting,
@@ -676,10 +808,10 @@ export function TableOrderProvider({ children }) {
     return updates;
   };
 
-  // Mark a single order as Paid by Admin
-  const markOrderAsPaidByAdmin = async (orderId, paymentMethod = 'CASH / COUNTER') => {
+  // Mark a single order as Paid by Admin (for Cash orders)
+  const markOrderAsPaidByAdmin = async (orderId, paymentMethod = 'Cash') => {
     const updates = {
-      paymentStatus: 'PAID',
+      paymentStatus: 'Paid',
       paymentMethod: paymentMethod,
       paidAt: new Date().toISOString(),
       transactionId: `CASH-${Date.now().toString().slice(-6)}`,
@@ -700,6 +832,29 @@ export function TableOrderProvider({ children }) {
     return updates;
   };
 
+  // Mark a single order as Unpaid by Admin (for Cash orders)
+  const markOrderAsUnpaidByAdmin = async (orderId) => {
+    const updates = {
+      paymentStatus: 'Pending',
+      paidAt: null,
+      transactionId: null,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isFirebaseConfigured) {
+      try {
+        await updateDoc(doc(db, 'orders', orderId), updates);
+      } catch (err) {
+        console.warn('Firebase mark order unpaid error:', err);
+      }
+    }
+
+    localStore.updateOrderData(orderId, updates);
+    const updated = localStore.getOrders();
+    setOrders([...updated]);
+    return updates;
+  };
+
   // Update order status across lifecycle: pending -> preparing -> ready -> served -> bill requested -> completed
   const updateOrderStatus = async (orderId, newStatus) => {
     const updates = { 
@@ -707,6 +862,9 @@ export function TableOrderProvider({ children }) {
       updatedAt: new Date().toISOString() 
     };
 
+    if (newStatus === 'preparing') {
+      updates.prepStartedAt = new Date().toISOString();
+    }
     if (newStatus === 'served') {
       updates.servedAt = new Date().toISOString();
     }
@@ -802,6 +960,107 @@ export function TableOrderProvider({ children }) {
     }
   };
 
+  const addMenuItem = (item) => {
+    const newItem = {
+      id: `item-${Date.now()}`,
+      name: item.name || 'New Dish',
+      price: Number(item.price) || 0,
+      categoryId: item.categoryId || (categories[0]?.id || 'main-course'),
+      category: item.category || (categories[0]?.name || 'Main Course'),
+      description: item.description || '',
+      imageUrl: item.imageUrl || '/dishes/paneer_butter_masala.jpg',
+      isVeg: item.isVeg !== undefined ? item.isVeg : true,
+      inStock: item.inStock !== undefined ? item.inStock : true,
+      available: item.available !== undefined ? item.available : true,
+      createdAt: new Date().toISOString()
+    };
+    const updated = [newItem, ...menuItems];
+    setMenuItems(updated);
+    localStore.saveMenuItems(updated);
+    return newItem;
+  };
+
+  const updateMenuItem = (itemId, updates) => {
+    const updated = menuItems.map(item => item.id === itemId ? { ...item, ...updates } : item);
+    setMenuItems(updated);
+    localStore.saveMenuItems(updated);
+  };
+
+  const deleteMenuItem = (itemId) => {
+    const updated = menuItems.filter(item => item.id !== itemId);
+    setMenuItems(updated);
+    localStore.saveMenuItems(updated);
+  };
+
+  const toggleItemAvailability = (itemId) => {
+    const updated = menuItems.map(item => {
+      if (item.id === itemId) {
+        const current = item.inStock !== undefined ? item.inStock : (item.available !== false);
+        return { ...item, inStock: !current, available: !current };
+      }
+      return item;
+    });
+    setMenuItems(updated);
+    localStore.saveMenuItems(updated);
+  };
+
+  const addCategory = (categoryData) => {
+    const newCat = {
+      id: categoryData.id || `cat-${Date.now()}`,
+      name: categoryData.name,
+      description: categoryData.description || '',
+      imageUrl: categoryData.imageUrl || '',
+      active: true,
+      displayOrder: categories.length + 1,
+      createdAt: new Date().toISOString()
+    };
+    const updated = [...categories, newCat];
+    setCategories(updated);
+    localStore.saveCategories(updated);
+    return newCat;
+  };
+
+  const updateTableStatus = (tableNumber, newStatus) => {
+    const formatted = String(tableNumber).padStart(2, '0');
+    const updated = tables.map(tbl => {
+      if (String(tbl.tableNumber).padStart(2, '0') === formatted) {
+        return { ...tbl, status: newStatus };
+      }
+      return tbl;
+    });
+    setTables(updated);
+    localStore.saveTables(updated);
+  };
+
+  const addTable = (tableData) => {
+    const formatted = String(tableData.tableNumber).padStart(2, '0');
+    const existingIndex = tables.findIndex(t => String(t.tableNumber).padStart(2, '0') === formatted);
+    if (existingIndex !== -1) {
+      throw new Error(`Table ${formatted} already exists!`);
+    }
+
+    const newTbl = {
+      id: `tbl-${formatted}-${Date.now()}`,
+      tableNumber: formatted,
+      capacity: Number(tableData.capacity) || 4,
+      section: tableData.section || 'Main Dining',
+      status: 'Available',
+      active: true,
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [...tables, newTbl];
+    setTables(updated);
+    localStore.saveTables(updated);
+    return newTbl;
+  };
+
+  const resetCleanAdminOrders = () => {
+    localStore.saveOrders(CLEAN_INITIAL_ORDERS);
+    setOrders([...CLEAN_INITIAL_ORDERS]);
+    localStorage.setItem('smartdine_clean_admin_v2', 'true');
+  };
+
   return (
     <TableOrderContext.Provider value={{
       currentTable,
@@ -832,6 +1091,7 @@ export function TableOrderProvider({ children }) {
       payTableBill,
       markTableAsPaidByAdmin,
       markOrderAsPaidByAdmin,
+      markOrderAsUnpaidByAdmin,
       refundOrder,
       updateOrderStatus,
       updateOrderEta,
@@ -841,7 +1101,15 @@ export function TableOrderProvider({ children }) {
       latestPlacedOrderId,
       lastSyncTime,
       customerFeedbacks,
-      submitOrderFeedback
+      submitOrderFeedback,
+      addMenuItem,
+      updateMenuItem,
+      deleteMenuItem,
+      toggleItemAvailability,
+      addCategory,
+      updateTableStatus,
+      addTable,
+      resetCleanAdminOrders
     }}>
       {children}
     </TableOrderContext.Provider>
