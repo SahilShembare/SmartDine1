@@ -346,8 +346,8 @@ export default function CustomerWebMenu() {
               </span>
             </button>
 
-            {categories.map((cat) => {
-              const count = menuItems.filter(i => i.categoryId === cat.id).length;
+            {categories.filter(cat => menuItems.some(i => i.categoryId === cat.id || i.category === cat.name)).map((cat) => {
+              const count = menuItems.filter(i => i.categoryId === cat.id || i.category === cat.name).length;
               const isThaliCat = cat.name.toLowerCase().includes('thali');
               return (
                 <button

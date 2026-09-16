@@ -19,6 +19,10 @@ import {
   Square
 } from 'lucide-react';
 
+// Singleton lock & active scanner tracking across component remounts
+let globalScanLocked = false;
+let globalActiveScanner = null;
+
 export default function ScanTable() {
   const navigate = useNavigate();
   const { setTableSession } = useTableOrder();
@@ -26,12 +30,10 @@ export default function ScanTable() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [scanError, setScanError] = useState('');
-  const [scannedTable, setScannedTable] = useState(null);
   
-  const html5QrRef = useRef(null);
   const fileInputRef = useRef(null);
   const isStartingRef = useRef(false);
-  const isProcessingRef = useRef(false);
+  const isStoppingRef = useRef(false);
 
   // Helper to extract table number from any QR text / url / json
   const parseTableNumber = (text) => {
@@ -63,38 +65,109 @@ export default function ScanTable() {
     return null;
   };
 
-  // Successful table detection handler
+  // Hardware-level safe camera stopper
+  const stopCamera = async () => {
+    if (isStoppingRef.current) return;
+    isStoppingRef.current = true;
+
+    // 1. Immediately terminate hardware video tracks on the video element directly
+    try {
+      const videoElem = document.querySelector('#qr-reader video');
+      if (videoElem && videoElem.srcObject) {
+        const stream = videoElem.srcObject;
+        stream.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch {}
+        });
+        videoElem.srcObject = null;
+      }
+    } catch (e) {
+      console.debug('Direct stream stop notice:', e);
+    }
+
+    // 2. Cleanly stop and clear scanner instance
+    if (globalActiveScanner) {
+      try {
+        if (globalActiveScanner.isScanning) {
+          await globalActiveScanner.stop();
+        }
+      } catch (err) {
+        console.debug('Scanner stop handled gracefully:', err);
+      }
+      try {
+        await globalActiveScanner.clear();
+      } catch (err) {
+        console.debug('Scanner clear handled gracefully:', err);
+      }
+      globalActiveScanner = null;
+    }
+
+    setIsCameraActive(false);
+    isStoppingRef.current = false;
+  };
+
+  // Successful table detection handler - Strictly executed ONCE
   const handleTableFound = (rawText) => {
-    if (isProcessingRef.current) return true; // Single-flight lock: prevents multi-frame re-triggers
+    if (globalScanLocked) return true; // Global lock prevents any duplicate executions or multiple toasts
 
     const tableNum = parseTableNumber(rawText);
-    if (tableNum) {
-      isProcessingRef.current = true;
-      const formatted = String(tableNum).padStart(2, '0');
-      
-      setScannedTable(formatted);
-      setTableSession(formatted);
-      stopCamera();
+    if (!tableNum) return false;
 
-      try {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      } catch {}
+    // Lock immediately
+    globalScanLocked = true;
+    const formatted = String(tableNum).padStart(2, '0');
 
-      toast.success(`🎉 Connected to Table ${formatted}! Opening digital menu...`, { 
-        id: 'table-scan-connect-toast',
-        duration: 2500 
+    // 1. Immediately freeze camera preview video so it stops analyzing frames
+    try {
+      if (globalActiveScanner?.isScanning) {
+        globalActiveScanner.pause(true);
+      }
+    } catch {}
+
+    // 2. Immediately terminate hardware video tracks
+    try {
+      const videoElem = document.querySelector('#qr-reader video');
+      if (videoElem && videoElem.srcObject) {
+        videoElem.srcObject.getTracks().forEach(t => { try { t.stop(); } catch {} });
+      }
+    } catch {}
+
+    // 3. Set active table in session, localStorage, and prevent duplicate menu welcome toast
+    setTableSession(formatted);
+    try {
+      localStorage.setItem('smartdine_active_table', formatted);
+      sessionStorage.setItem('smartdine_welcomed_table', formatted);
+    } catch {}
+
+    // 4. Dismiss ALL existing/stacked toasts so only ONE clean toast appears!
+    toast.dismiss();
+    toast.success(`🎉 Connected to Table ${formatted}! Opening digital menu...`, { 
+      id: 'table-scan-connect-toast',
+      duration: 2500 
+    });
+
+    // 5. Celebration confetti with quick auto-clearing
+    try {
+      confetti({
+        particleCount: 35,
+        spread: 55,
+        origin: { y: 0.5 },
+        ticks: 100
       });
+    } catch {}
 
-      setTimeout(() => {
-        navigate(`/menu?table=${formatted}`, { replace: true });
-      }, 700);
-      return true;
-    }
-    return false;
+    // 6. Instant, smooth redirect to digital menu
+    navigate(`/menu?table=${formatted}`, { replace: true });
+
+    // 7. Hard fallback if mobile browser SPA history is sluggish
+    setTimeout(() => {
+      if (window.location.pathname.includes('/scan')) {
+        window.location.href = `/menu?table=${formatted}`;
+      }
+    }, 120);
+
+    return true;
   };
 
   // Start back camera
@@ -103,23 +176,32 @@ export default function ScanTable() {
     setScanError('');
     setCameraLoading(true);
     isStartingRef.current = true;
+    globalScanLocked = false;
 
     try {
-      if (!html5QrRef.current) {
-        html5QrRef.current = new Html5Qrcode('qr-reader');
+      // If a previous instance is lingering, destroy it first
+      if (globalActiveScanner) {
+        try {
+          if (globalActiveScanner.isScanning) {
+            await globalActiveScanner.stop();
+          }
+          await globalActiveScanner.clear();
+        } catch {}
+        globalActiveScanner = null;
       }
 
-      await html5QrRef.current.start(
+      const scanner = new Html5Qrcode('qr-reader');
+      globalActiveScanner = scanner;
+
+      await scanner.start(
         { facingMode: 'environment' },
         {
-          fps: 15,
+          fps: 10,
           qrbox: { width: 250, height: 250 },
           aspectRatio: 1.0
         },
         (decodedText) => {
-          if (handleTableFound(decodedText)) {
-            // Found and redirected
-          }
+          handleTableFound(decodedText);
         },
         () => {
           // Frame read callback (ignore non-scanned frames)
@@ -136,20 +218,6 @@ export default function ScanTable() {
     }
   };
 
-  // Stop camera safely
-  const stopCamera = async () => {
-    if (html5QrRef.current) {
-      try {
-        if (html5QrRef.current.isScanning) {
-          await html5QrRef.current.stop();
-        }
-      } catch (err) {
-        console.debug('Scanner stop handled:', err);
-      }
-      setIsCameraActive(false);
-    }
-  };
-
   // File upload handler
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -161,7 +229,9 @@ export default function ScanTable() {
     try {
       const fileScanner = new Html5Qrcode('qr-reader-file-temp');
       const result = await fileScanner.scanFile(file, true);
-      fileScanner.clear();
+      try {
+        fileScanner.clear();
+      } catch {}
 
       if (!handleTableFound(result)) {
         setScanError('QR code detected, but could not identify a valid SmartDine Table number.');
@@ -175,8 +245,37 @@ export default function ScanTable() {
   };
 
   useEffect(() => {
+    // Reset scan lock upon fresh visit to scan page
+    globalScanLocked = false;
+
     return () => {
-      stopCamera();
+      // Clear confetti on leave
+      try {
+        confetti.reset();
+      } catch {}
+
+      // Instant hardware tracks release on unmount
+      try {
+        const videoElem = document.querySelector('#qr-reader video');
+        if (videoElem && videoElem.srcObject) {
+          videoElem.srcObject.getTracks().forEach((track) => {
+            try {
+              track.stop();
+            } catch {}
+          });
+        }
+      } catch {}
+
+      // Safe cleanup of globalActiveScanner instance
+      if (globalActiveScanner) {
+        try {
+          if (globalActiveScanner.isScanning) {
+            globalActiveScanner.stop().catch(() => {});
+          }
+          globalActiveScanner.clear().catch(() => {});
+        } catch {}
+        globalActiveScanner = null;
+      }
     };
   }, []);
 
@@ -348,31 +447,7 @@ export default function ScanTable() {
 
       </div>
 
-      {/* Table Connected Success Modal Popup */}
-      {scannedTable && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 border-2 border-emerald-500 flex items-center justify-center mx-auto shadow-glow">
-              <CheckCircle2 className="w-9 h-9" />
-            </div>
-            <div className="space-y-1">
-              <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                Connected Successfully
-              </span>
-              <h3 className="text-2xl font-black text-white pt-2">
-                Table {scannedTable}
-              </h3>
-              <p className="text-xs text-slate-300">
-                Opening your live digital menu...
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-2 text-xs text-amber-400 font-semibold pt-1">
-              <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
-              <span>Redirecting to menu...</span>
-            </div>
-          </div>
-        </div>
-      )}
+
 
     </div>
   );
