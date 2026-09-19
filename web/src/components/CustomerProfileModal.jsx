@@ -237,7 +237,7 @@ export default function CustomerProfileModal({ isOpen, onClose }) {
                   required
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="e.g. Sahil / Priya"
+                  placeholder="Enter your name"
                   className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-bold focus:outline-none focus:border-amber-400"
                 />
               </div>
@@ -247,7 +247,7 @@ export default function CustomerProfileModal({ isOpen, onClose }) {
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="e.g. 9876543210"
+                  placeholder="Enter 10-digit mobile number"
                   className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-bold focus:outline-none focus:border-amber-400"
                 />
               </div>

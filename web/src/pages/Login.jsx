@@ -341,7 +341,7 @@ export default function Login() {
     setSuccessMsg('');
     const id = forgotIdentifier.trim();
     if (!id || !id.includes('@')) {
-      setError('Please enter a valid registered email address (e.g. name@gmail.com).');
+      setError('Please enter a valid registered email address.');
       return;
     }
 
@@ -574,7 +574,7 @@ export default function Login() {
                   <input
                     type="text"
                     required
-                    placeholder="name@example.com or 10-digit mobile"
+                    placeholder="Enter email address or mobile number"
                     value={loginIdentifier}
                     onChange={(e) => setLoginIdentifier(e.target.value)}
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
@@ -715,7 +715,7 @@ export default function Login() {
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Sahil Shembare"
+                        placeholder="Enter your full name"
                         value={regName}
                         onChange={(e) => setRegName(e.target.value)}
                         onBlur={() => checkExistingUserWarning('name', regName)}
@@ -731,7 +731,7 @@ export default function Login() {
                       <input
                         type="email"
                         required
-                        placeholder="e.g. sahil@gmail.com"
+                        placeholder="Enter your email address"
                         value={regEmail}
                         onChange={(e) => setRegEmail(e.target.value)}
                         onBlur={() => checkExistingUserWarning('email', regEmail)}
@@ -748,7 +748,7 @@ export default function Login() {
                         type="tel"
                         required
                         maxLength={10}
-                        placeholder="9876543210"
+                        placeholder="Enter 10-digit mobile number"
                         value={regPhone}
                         onChange={(e) => setRegPhone(e.target.value.replace(/\D/g, ''))}
                         onBlur={() => checkExistingUserWarning('phone', regPhone)}
@@ -913,7 +913,7 @@ export default function Login() {
                       <input
                         type="text"
                         required
-                        placeholder="e.g. 9876543210 or name@gmail.com"
+                        placeholder="Enter registered mobile number or email"
                         value={forgotIdentifier}
                         onChange={(e) => setForgotIdentifier(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"

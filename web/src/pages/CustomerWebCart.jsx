@@ -1463,7 +1463,7 @@ export default function CustomerWebCart() {
               <label className="block text-xs font-semibold text-slate-300 mb-1">Your Name</label>
               <input
                 type="text"
-                placeholder="e.g. Rajesh / Priya"
+                placeholder="Enter your name"
                 value={customerName}
                 onChange={(e) => {
                   setCustomerName(e.target.value);
@@ -1799,7 +1799,7 @@ export default function CustomerWebCart() {
                   <label className="block text-[11px] font-bold text-slate-300 mb-1">Name on Card</label>
                   <input
                     type="text"
-                    placeholder="e.g. Rahul Sharma"
+                    placeholder="Enter cardholder name"
                     value={cardHolder}
                     onChange={(e) => setCardHolder(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 font-semibold text-white text-xs focus:outline-none focus:border-amber-400 shadow-xs"
