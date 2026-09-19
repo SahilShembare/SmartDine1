@@ -5,9 +5,7 @@ const SMTP_USER = process.env.SMTP_USER || 'smartdine82@gmail.com';
 const SMTP_PASS = process.env.SMTP_PASS || 'qsefkvyvicukxuqi';
 
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
+  service: 'gmail',
   auth: {
     user: SMTP_USER,
     pass: SMTP_PASS
@@ -20,7 +18,11 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { email, name = 'Customer', purpose = 'registration' } = req.body || {};
+    let body = req.body;
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch {}
+    }
+    const { email, name = 'Customer', purpose = 'registration' } = body || {};
 
     if (!email || !email.includes('@')) {
       return res.status(400).json({ error: 'Please provide a valid email address.' });
@@ -31,14 +33,6 @@ export default async function handler(req, res) {
       return res.status(400).json({
         success: false,
         error: `Yeh Email "${email}" pehle se registered hai (Already filled). Same email se repeat registration allow nahi hai. Kripya Login karein.`
-      });
-    }
-
-    // 🔒 STRICT RULE: Prevent forgot password if email is not registered
-    if (purpose === 'forgot_password' && !isEmailRegistered(email)) {
-      return res.status(400).json({
-        success: false,
-        error: `Yeh Email "${email}" registered nahi hai. Sirf registered user hi password reset kar sakte hain. Kripya pehle Register karein.`
       });
     }
 

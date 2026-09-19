@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 function razorpayDevApiPlugin() {
   const getHandler = async (relativePath) => {
     const filePath = path.resolve(__dirname, relativePath);
-    const fileUrl = pathToFileURL(filePath).href;
+    const fileUrl = `${pathToFileURL(filePath).href}?t=${Date.now()}`;
     const mod = await import(fileUrl);
     return mod.default || mod;
   };
@@ -68,11 +68,20 @@ function razorpayDevApiPlugin() {
           } else if (url === '/api/send-email-otp') {
             const handler = await getHandler('./api/send-email-otp.js');
             return handler(req, res);
+          } else if (url === '/api/send-password-reset-link') {
+            const handler = await getHandler('./api/send-password-reset-link.js');
+            return handler(req, res);
           } else if (url === '/api/check-duplicate-user') {
             const handler = await getHandler('./api/check-duplicate-user.js');
             return handler(req, res);
           } else if (url === '/api/record-registered-user') {
             const handler = await getHandler('./api/record-registered-user.js');
+            return handler(req, res);
+          } else if (url === '/api/update-user-password') {
+            const handler = await getHandler('./api/update-user-password.js');
+            return handler(req, res);
+          } else if (url === '/api/verify-user-credentials') {
+            const handler = await getHandler('./api/verify-user-credentials.js');
             return handler(req, res);
           } else {
             return next();

@@ -34,7 +34,9 @@ export default function Login() {
   // URL params
   const tableParam = searchParams.get('table');
   const roleParam = searchParams.get('role') || 'customer'; // 'customer', 'kitchen', 'admin'
-  const initialMode = searchParams.get('mode') === 'register' ? 'register' : 'login';
+  const isResetLink = searchParams.get('mode') === 'reset';
+  const resetEmailParam = searchParams.get('email') || '';
+  const initialMode = isResetLink ? 'forgot' : (searchParams.get('mode') === 'register' ? 'register' : 'login');
   
   // Tabs: 'login' | 'register' | 'forgot'
   const [activeTab, setActiveTab] = useState(initialMode);
@@ -88,14 +90,28 @@ export default function Login() {
   const [otpTimer, setOtpTimer] = useState(60);
 
   // Forgot Password States
-  const [forgotIdentifier, setForgotIdentifier] = useState('');
-  const [forgotOtpStep, setForgotOtpStep] = useState(false);
+  const [forgotIdentifier, setForgotIdentifier] = useState(resetEmailParam);
+  const [forgotOtpStep, setForgotOtpStep] = useState(isResetLink);
+  const [isDirectReset, setIsDirectReset] = useState(isResetLink);
   const [generatedForgotOtp, setGeneratedForgotOtp] = useState('');
   const [userEnteredForgotOtp, setUserEnteredForgotOtp] = useState('');
   const [forgotOtpTimer, setForgotOtpTimer] = useState(60);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
+
+  // Detect reset link directly from URL
+  useEffect(() => {
+    if (isResetLink) {
+      setActiveTab('forgot');
+      setForgotOtpStep(true);
+      setIsDirectReset(true);
+      if (resetEmailParam) {
+        setForgotIdentifier(resetEmailParam);
+      }
+      setSuccessMsg('🔐 Verified Reset Link: Please enter your new password below.');
+    }
+  }, [searchParams]);
 
   // Global Status States
   const [error, setError] = useState('');
@@ -334,7 +350,7 @@ export default function Login() {
     }
   };
 
-  // Handle Send Real Email Password Reset via Firebase Mail Service
+  // Handle Send Real Email Password Reset via Gmail SMTP Service
   const handleSendRealEmailReset = async (e) => {
     e?.preventDefault?.();
     setError('');
@@ -342,24 +358,23 @@ export default function Login() {
     const id = forgotIdentifier.trim();
     if (!id || !id.includes('@')) {
       setError('Please enter a valid registered email address.');
+      toast.error('Please enter a valid email address.');
       return;
     }
 
     setLoading(true);
     try {
-      // 🔒 Check if user is registered
-      const isRegistered = await checkIsUserRegistered(id);
-      if (!isRegistered) {
-        setError(`No account found for "${id}". Sirf registered user hi forgot password kar sakte hain. Kripya pehle Register karein.`);
-        toast.error('Account not registered. Please register first.');
-        setLoading(false);
-        return;
-      }
-
-      await sendRealResetEmail(id);
-      setSuccessMsg(`📧 Password reset link has been dispatched to ${id}! Please check your Inbox / Spam folder.`);
+      await sendRealResetEmail(id, window.location.origin);
+      const msg = `📧 Password reset link has been dispatched to ${id}! Please check your Inbox and Spam folder.`;
+      setSuccessMsg(msg);
+      toast.success(`Password reset link sent to ${id}! Check your inbox.`, {
+        duration: 8000,
+        icon: '📧'
+      });
     } catch (err) {
-      setError(err.message || 'Failed to send reset email. Make sure the email is registered.');
+      console.error('Password reset link error:', err);
+      setError(err.message || 'Failed to send reset email. Please try again.');
+      toast.error(err.message || 'Failed to send reset email.');
     } finally {
       setLoading(false);
     }
@@ -378,15 +393,6 @@ export default function Login() {
 
     setLoading(true);
     try {
-      // 🔒 Check if user is registered
-      const isRegistered = await checkIsUserRegistered(id);
-      if (!isRegistered) {
-        setError(`No account found for "${id}". Sirf registered user hi password reset kar sakte hain. Kripya pehle Register karein.`);
-        toast.error('Account not registered. Please register first.');
-        setLoading(false);
-        return;
-      }
-
       if (id.includes('@')) {
         const res = await fetch('/api/send-email-otp', {
           method: 'POST',
@@ -432,9 +438,11 @@ export default function Login() {
     setError('');
     setSuccessMsg('');
 
-    if (userEnteredForgotOtp.trim() !== generatedForgotOtp) {
-      setError('Invalid OTP code. Please enter the correct 6-digit code.');
-      return;
+    if (!isDirectReset) {
+      if (userEnteredForgotOtp.trim() !== generatedForgotOtp) {
+        setError('Invalid OTP code. Please enter the correct 6-digit code.');
+        return;
+      }
     }
 
     if (newPassword.length < 6) {
@@ -465,6 +473,7 @@ export default function Login() {
       setTimeout(() => {
         setActiveTab('login');
         setForgotOtpStep(false);
+        setIsDirectReset(false);
         setLoginIdentifier(forgotIdentifier.trim());
         setPassword('');
         setSuccessMsg('✅ Password reset successfully! Please enter your new password to sign in.');
@@ -945,42 +954,56 @@ export default function Login() {
                 </form>
               ) : (
                 <form onSubmit={handleVerifyForgotOtpAndReset} className="space-y-3.5">
-                  <div className="text-center space-y-1">
-                    <p className="text-xs text-slate-400">
-                      OTP Sent to <strong className="text-white">{forgotIdentifier}</strong>
-                    </p>
-                  </div>
+                  {isDirectReset ? (
+                    <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-center space-y-1">
+                      <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-400">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Verified Password Reset Link</span>
+                      </div>
+                      <p className="text-[11px] text-slate-300">
+                        Choose a new password for <strong className="text-white">{forgotIdentifier}</strong>
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="text-center space-y-1">
+                        <p className="text-xs text-slate-400">
+                          OTP Sent to <strong className="text-white">{forgotIdentifier}</strong>
+                        </p>
+                      </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">6-Digit Verification OTP</label>
-                    <input
-                      type="text"
-                      required
-                      maxLength={6}
-                      autoComplete="one-time-code"
-                      placeholder="• • • • • •"
-                      value={userEnteredForgotOtp}
-                      onChange={(e) => setUserEnteredForgotOtp(e.target.value.replace(/\D/g, ''))}
-                      className="w-full py-2.5 text-center tracking-[0.5em] text-lg font-extrabold font-mono rounded-xl bg-slate-800 border-2 border-orange-500/50 text-orange-400 focus:outline-none focus:border-orange-500"
-                    />
-                  </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-300 mb-1">6-Digit Verification OTP</label>
+                        <input
+                          type="text"
+                          required
+                          maxLength={6}
+                          autoComplete="one-time-code"
+                          placeholder="• • • • • •"
+                          value={userEnteredForgotOtp}
+                          onChange={(e) => setUserEnteredForgotOtp(e.target.value.replace(/\D/g, ''))}
+                          className="w-full py-2.5 text-center tracking-[0.5em] text-lg font-extrabold font-mono rounded-xl bg-slate-800 border-2 border-orange-500/50 text-orange-400 focus:outline-none focus:border-orange-500"
+                        />
+                      </div>
 
-                  <div className="flex items-center justify-between text-xs text-slate-400">
-                    <span>Didn't receive code?</span>
-                    {forgotOtpTimer === 0 ? (
-                      <button
-                        type="button"
-                        onClick={handleSendForgotOtp}
-                        className="text-orange-400 font-bold hover:underline"
-                      >
-                        Resend OTP
-                      </button>
-                    ) : (
-                      <span className="text-slate-500 font-medium">
-                        Resend in <strong className="text-orange-400">{forgotOtpTimer}s</strong>
-                      </span>
-                    )}
-                  </div>
+                      <div className="flex items-center justify-between text-xs text-slate-400">
+                        <span>Didn't receive code?</span>
+                        {forgotOtpTimer === 0 ? (
+                          <button
+                            type="button"
+                            onClick={handleSendForgotOtp}
+                            className="text-orange-400 font-bold hover:underline"
+                          >
+                            Resend OTP
+                          </button>
+                        ) : (
+                          <span className="text-slate-500 font-medium">
+                            Resend in <strong className="text-orange-400">{forgotOtpTimer}s</strong>
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Create New Password</label>
@@ -1023,19 +1046,29 @@ export default function Login() {
 
                   <button
                     type="submit"
-                    disabled={loading || userEnteredForgotOtp.length !== 6}
+                    disabled={loading || (!isDirectReset && userEnteredForgotOtp.length !== 6)}
                     className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 disabled:opacity-50 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>{loading ? 'Updating Password...' : 'Verify OTP & Set New Password'}</span>
+                    <span>
+                      {loading 
+                        ? 'Updating Password...' 
+                        : isDirectReset 
+                        ? 'Save New Password & Sign In' 
+                        : 'Verify OTP & Set New Password'}
+                    </span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setForgotOtpStep(false)}
-                    className="w-full text-center text-xs text-slate-400 hover:text-slate-200"
+                    onClick={() => {
+                      setForgotOtpStep(false);
+                      setIsDirectReset(false);
+                    }}
+                    className="w-full py-2 text-xs font-semibold text-slate-400 hover:text-white flex items-center justify-center gap-1.5 transition"
                   >
-                    ← Edit Mobile Number / Email
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Back to Forgot Password</span>
                   </button>
                 </form>
               )}

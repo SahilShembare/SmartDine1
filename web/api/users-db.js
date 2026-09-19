@@ -69,3 +69,42 @@ export function saveRegisteredUser({ name, email, phone, role = 'customer' }) {
     return false;
   }
 }
+
+export function updateUserPassword(email, newPassword) {
+  if (!email || !newPassword) return false;
+  const cleanEmail = email.trim().toLowerCase();
+  const users = getRegisteredUsers();
+  const index = users.findIndex(u => u.email && u.email.trim().toLowerCase() === cleanEmail);
+  
+  if (index !== -1) {
+    users[index].password = newPassword;
+    users[index].updatedAt = new Date().toISOString();
+  } else {
+    users.push({
+      email: cleanEmail,
+      name: cleanEmail.split('@')[0],
+      password: newPassword,
+      role: 'customer',
+      updatedAt: new Date().toISOString()
+    });
+  }
+
+  try {
+    fs.writeFileSync(DB_PATH, JSON.stringify(users, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    console.error('Error updating password in DB:', err);
+    return false;
+  }
+}
+
+export function verifyUserCredentials(email, password) {
+  if (!email || !password) return null;
+  const cleanEmail = email.trim().toLowerCase();
+  const users = getRegisteredUsers();
+  const user = users.find(u => u.email && u.email.trim().toLowerCase() === cleanEmail);
+  if (user && user.password && user.password === password) {
+    return user;
+  }
+  return null;
+}

@@ -101,7 +101,19 @@ export function AuthProvider({ children }) {
       if (!isEmail && cleanDigits && guestPhone && guestPhone.replace(/\D/g, '') === cleanDigits) return true;
     } catch {}
 
-    // 3. If Firebase is configured, check Firestore registered_users
+    // 3. Check server-side registry API
+    try {
+      const url = isEmail
+        ? `/api/check-duplicate-user?email=${encodeURIComponent(cleanId)}`
+        : `/api/check-duplicate-user?phone=${encodeURIComponent(cleanDigits)}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.isDuplicate) return true;
+      }
+    } catch (e) {}
+
+    // 4. If Firebase is configured, check Firestore registered_users
     if (isFirebaseConfigured && db && isEmail) {
       try {
         const docRef = doc(db, 'registered_users', cleanId);
@@ -112,7 +124,7 @@ export function AuthProvider({ children }) {
       }
     }
 
-    // 4. Also check Firebase Auth methods if email
+    // 5. Also check Firebase Auth methods if email
     if (isFirebaseConfigured && auth && isEmail) {
       try {
         const methods = await fetchSignInMethodsForEmail(auth, cleanId);
@@ -222,16 +234,84 @@ export function AuthProvider({ children }) {
   };
 
   const loginWithEmail = async (email, password) => {
+    const cleanEmail = email.trim().toLowerCase();
+
     if (isFirebaseConfigured) {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      return cred.user;
+      try {
+        const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+        return cred.user;
+      } catch (firebaseErr) {
+        console.warn('Firebase signIn failed, checking registered password store:', firebaseErr.code);
+
+        // 1. Check local storage registered accounts
+        const list = getRegisteredAccounts();
+        const localUser = list.find(u => u.email?.toLowerCase() === cleanEmail && u.password === password);
+        if (localUser) {
+          const role = localUser.role || (cleanEmail.includes('admin') ? 'admin' : cleanEmail.includes('kitchen') ? 'kitchen' : 'customer');
+          const userData = {
+            uid: localUser.uid || `local-${Date.now()}`,
+            email: cleanEmail,
+            displayName: localUser.name || cleanEmail.split('@')[0],
+            role: role
+          };
+          setCurrentUser(userData);
+          localStorage.setItem('smartdine_auth_user', JSON.stringify(userData));
+          return userData;
+        }
+
+        // 2. Check server-side verified credentials API
+        try {
+          const res = await fetch('/api/verify-user-credentials', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: cleanEmail, password })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.matched && data.user) {
+              const userData = {
+                uid: `server-${Date.now()}`,
+                email: cleanEmail,
+                displayName: data.user.name || cleanEmail.split('@')[0],
+                role: data.user.role || 'customer'
+              };
+              setCurrentUser(userData);
+              localStorage.setItem('smartdine_auth_user', JSON.stringify(userData));
+              return userData;
+            }
+          }
+        } catch (serverErr) {
+          console.warn('Server credentials verify error:', serverErr);
+        }
+
+        // 3. Check Firestore registered_users document
+        if (db) {
+          try {
+            const snap = await getDoc(doc(db, 'registered_users', cleanEmail));
+            if (snap.exists() && snap.data()?.password === password) {
+              const uData = snap.data();
+              const userData = {
+                uid: `firestore-${Date.now()}`,
+                email: cleanEmail,
+                displayName: uData.name || cleanEmail.split('@')[0],
+                role: uData.role || 'customer'
+              };
+              setCurrentUser(userData);
+              localStorage.setItem('smartdine_auth_user', JSON.stringify(userData));
+              return userData;
+            }
+          } catch (fsErr) {}
+        }
+
+        throw firebaseErr;
+      }
     } else {
       // Demo authentication simulation
-      const role = email.includes('admin') ? 'admin' : 
-                   email.includes('kitchen') ? 'kitchen' : 'customer';
+      const role = cleanEmail.includes('admin') ? 'admin' : 
+                   cleanEmail.includes('kitchen') ? 'kitchen' : 'customer';
       const mockUser = {
         uid: `demo-${role}-${Date.now()}`,
-        email: email,
+        email: cleanEmail,
         displayName: role === 'admin' ? 'Head Administrator' : role === 'kitchen' ? 'Head Chef (Kitchen)' : 'Customer Guest',
         role: role,
         photoURL: null
@@ -254,6 +334,7 @@ export function AuthProvider({ children }) {
         name: name.trim(),
         email: cleanEmail,
         phone: cleanPhone,
+        password: password,
         role: role,
         registeredAt: new Date().toISOString()
       });
@@ -269,6 +350,7 @@ export function AuthProvider({ children }) {
           name: name.trim(),
           email: cleanEmail,
           phone: cleanPhone,
+          password: password,
           role: role,
           registeredAt: new Date().toISOString()
         }, { merge: true });
@@ -277,10 +359,46 @@ export function AuthProvider({ children }) {
       }
     }
 
+    // Sync to Server DB
+    try {
+      await fetch('/api/record-registered-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          email: cleanEmail,
+          phone: cleanPhone,
+          role: role
+        })
+      });
+      await fetch('/api/update-user-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: cleanEmail,
+          password: password
+        })
+      });
+    } catch (e) {}
+
     if (isFirebaseConfigured) {
-      const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
-      await updateProfile(cred.user, { displayName: name });
-      return cred.user;
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+        await updateProfile(cred.user, { displayName: name });
+        return cred.user;
+      } catch (authErr) {
+        console.warn('Firebase createUser note:', authErr.code);
+        const mockUser = {
+          uid: `user-${Date.now()}`,
+          email: cleanEmail,
+          displayName: name,
+          role: role,
+          photoURL: null
+        };
+        setCurrentUser(mockUser);
+        localStorage.setItem('smartdine_auth_user', JSON.stringify(mockUser));
+        return mockUser;
+      }
     } else {
       const mockUser = {
         uid: `demo-user-${Date.now()}`,
@@ -295,12 +413,34 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const sendRealResetEmail = async (emailAddress) => {
-    if (isFirebaseConfigured) {
-      await sendPasswordResetEmail(auth, emailAddress);
-      return { success: true, message: 'Password reset link sent to your real email!' };
-    } else {
-      return { success: true, message: 'Simulated email sent' };
+  const sendRealResetEmail = async (emailAddress, baseUrl = (typeof window !== 'undefined' ? window.location.origin : '')) => {
+    const cleanEmail = emailAddress.trim().toLowerCase();
+    
+    // 1. Send real email via our high-reliability Gmail SMTP serverless endpoint
+    try {
+      const res = await fetch('/api/send-password-reset-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, baseUrl })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to send reset link email.');
+      }
+      
+      // Also trigger Firebase Auth as secondary fallback
+      if (isFirebaseConfigured && auth) {
+        try { await sendPasswordResetEmail(auth, cleanEmail); } catch {}
+      }
+
+      return { success: true, message: data.message || 'Password reset link sent to your email!' };
+    } catch (apiErr) {
+      console.warn('API reset link error, attempting direct Firebase fallback:', apiErr);
+      if (isFirebaseConfigured && auth) {
+        await sendPasswordResetEmail(auth, cleanEmail);
+        return { success: true, message: 'Password reset link dispatched via Firebase.' };
+      }
+      throw apiErr;
     }
   };
 
@@ -309,23 +449,50 @@ export function AuthProvider({ children }) {
     const isEmail = cleanId.includes('@');
     const cleanDigits = cleanId.replace(/\D/g, '');
 
+    // 1. Update localStorage
     try {
       const list = getRegisteredAccounts();
+      let found = false;
       const updated = list.map(user => {
         if ((isEmail && user.email?.toLowerCase() === cleanId) ||
             (!isEmail && cleanDigits && user.phone && user.phone.replace(/\D/g, '') === cleanDigits)) {
+          found = true;
           return { ...user, password: newPassword, updatedAt: new Date().toISOString() };
         }
         return user;
       });
+      if (!found && isEmail) {
+        updated.push({
+          email: cleanId,
+          name: cleanId.split('@')[0],
+          password: newPassword,
+          role: 'customer',
+          updatedAt: new Date().toISOString()
+        });
+      }
       localStorage.setItem('smartdine_registered_users', JSON.stringify(updated));
     } catch (e) {
       console.warn('Error saving updated password locally:', e);
     }
 
+    // 2. Persist to server-side registry
+    if (isEmail) {
+      try {
+        await fetch('/api/update-user-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: cleanId, password: newPassword })
+        });
+      } catch (e) {
+        console.warn('Error updating password via server API:', e);
+      }
+    }
+
+    // 3. Update Firestore if configured
     if (isFirebaseConfigured && db && isEmail) {
       try {
         await setDoc(doc(db, 'registered_users', cleanId), {
+          password: newPassword,
           updatedAt: new Date().toISOString()
         }, { merge: true });
       } catch (e) {}
