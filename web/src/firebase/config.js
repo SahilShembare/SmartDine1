@@ -84,9 +84,34 @@ export const localStore = {
       setLocalData('tables', DEMO_TABLES);
       return DEMO_TABLES;
     }
-    return Array.isArray(data) ? data : [];
+    if (!Array.isArray(data)) return [];
+    // Auto-deduplicate by tableNumber so repeat tables never appear
+    const seen = new Set();
+    const unique = [];
+    for (const t of data) {
+      const num = String(t.tableNumber || '').trim().padStart(2, '0');
+      if (num && !seen.has(num)) {
+        seen.add(num);
+        unique.push({ ...t, tableNumber: num });
+      }
+    }
+    if (unique.length !== data.length) {
+      setLocalData('tables', unique);
+    }
+    return unique;
   },
-  saveTables: (tables) => setLocalData('tables', tables),
+  saveTables: (tables) => {
+    const seen = new Set();
+    const unique = [];
+    for (const t of (tables || [])) {
+      const num = String(t.tableNumber || '').trim().padStart(2, '0');
+      if (num && !seen.has(num)) {
+        seen.add(num);
+        unique.push({ ...t, tableNumber: num });
+      }
+    }
+    setLocalData('tables', unique);
+  },
   
   // Real orders start empty unless real customer orders have been placed
   getOrders: () => getLocalData('orders', []),

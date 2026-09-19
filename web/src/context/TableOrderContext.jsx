@@ -53,7 +53,19 @@ export function TableOrderProvider({ children }) {
   // Orders and Menu real-time data
   const [menuItems, setMenuItems] = useState(() => localStore.getMenuItems());
   const [categories, setCategories] = useState(() => localStore.getCategories());
-  const [tables, setTables] = useState(() => localStore.getTables());
+  const [tables, setTables] = useState(() => {
+    const raw = localStore.getTables();
+    const seen = new Set();
+    const unique = [];
+    for (const t of (raw || [])) {
+      const num = String(t.tableNumber || '').trim().padStart(2, '0');
+      if (num && !seen.has(num)) {
+        seen.add(num);
+        unique.push({ ...t, tableNumber: num });
+      }
+    }
+    return unique;
+  });
   
   const [orders, setOrders] = useState(() => {
     try {
@@ -172,7 +184,16 @@ export function TableOrderProvider({ children }) {
       // Tables listener
       const unsubTables = onSnapshot(collection(db, 'tables'), (snapshot) => {
         if (!snapshot.empty) {
-          const tbls = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const raw = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const seen = new Set();
+          const tbls = [];
+          for (const t of raw) {
+            const num = String(t.tableNumber || '').trim().padStart(2, '0');
+            if (num && !seen.has(num)) {
+              seen.add(num);
+              tbls.push({ ...t, tableNumber: num });
+            }
+          }
           tbls.sort((a, b) => parseInt(a.tableNumber || 0, 10) - parseInt(b.tableNumber || 0, 10));
           setTables(tbls);
           localStore.saveTables(tbls);
