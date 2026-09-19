@@ -23,6 +23,7 @@ import {
   ShieldAlert,
   ChevronUp
 } from 'lucide-react';
+import { formatOrderNumber } from '../utils/orderNumber';
 
 export default function OrderCard({ 
   order, 
@@ -209,7 +210,7 @@ export default function OrderCard({
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-mono font-extrabold text-slate-300">
-                  Order #{String(order?.id || '').slice(-6).toUpperCase()}
+                  Order #{formatOrderNumber(order?.orderNumber || order?.id)}
                 </span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase tracking-wider">
                   Dine-In

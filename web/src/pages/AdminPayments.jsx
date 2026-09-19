@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import { useTableOrder } from '../context/TableOrderContext';
 import toast from 'react-hot-toast';
+import { formatOrderNumber, formatInvoiceNumber } from '../utils/orderNumber';
 import { 
   CreditCard, 
   Search, 
@@ -324,9 +325,9 @@ export default function AdminPayments() {
                     <tr key={order.id} className="hover:bg-slate-800/30 transition">
                       <td className="px-4 py-3.5 font-mono text-xs">
                         <div className="font-bold text-slate-200">
-                          {paymentId || `SD-${order.id}`}
+                          {order.invoiceNumber ? formatInvoiceNumber(order.invoiceNumber) : (paid ? `INV-2026-${String(order.id).replace(/\D/g, '').slice(-4).padStart(4, '0') || '0001'}` : (paymentId || `ORD-${formatOrderNumber(order.id)}`))}
                         </div>
-                        <div className="text-[10px] text-slate-500">Order #{order.id}</div>
+                        <div className="text-[10px] text-slate-400">Order #{formatOrderNumber(order.orderNumber || order.id)}</div>
                       </td>
                       <td className="px-4 py-3.5">
                         <span className="px-2.5 py-1 rounded-xl bg-orange-500/20 text-orange-400 font-bold text-xs border border-orange-500/30">
@@ -469,7 +470,7 @@ export default function AdminPayments() {
                   <h3 className="font-black text-sm sm:text-base text-white flex items-center gap-2">
                     <span>Transaction Details</span>
                     <span className="font-mono text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-300">
-                      #SD-{selectedOrderDetails.id}
+                      #{formatOrderNumber(selectedOrderDetails.orderNumber || selectedOrderDetails.id)}
                     </span>
                   </h3>
                   <p className="text-xs text-slate-400">Table {selectedOrderDetails.tableNumber} • {selectedOrderDetails.customerName || 'Guest'}</p>

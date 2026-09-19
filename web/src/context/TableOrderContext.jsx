@@ -2,132 +2,27 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, localStore, isFirebaseConfigured } from '../firebase/config';
 import { DEMO_TABLES } from '../firebase/seed-data.js';
 import { collection, addDoc, onSnapshot, query, orderBy, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { getNextOrderNumber, getNextInvoiceNumber, getOrAssignInvoiceNumber, formatOrderNumber, formatInvoiceNumber } from '../utils/orderNumber';
 
 const TableOrderContext = createContext();
 
-export const CLEAN_INITIAL_ORDERS = [
-  {
-    id: 'ORD-1048',
-    tableNumber: '04',
-    customerName: 'Sahil Sharma',
-    customerPhone: '+91 98765 43210',
-    items: [
-      { itemId: 'pbm-01', name: 'Paneer Butter Masala', quantity: 2, price: 240, isVeg: true },
-      { itemId: 'bn-01', name: 'Butter Naan', quantity: 3, price: 40, isVeg: true },
-      { itemId: 'jr-01', name: 'Jeera Rice', quantity: 1, price: 120, isVeg: true }
-    ],
-    amount: 680,
-    total: 680,
-    subtotal: 647.62,
-    tax: 32.38,
-    status: 'pending',
-    paymentStatus: 'Pending',
-    paymentMethod: 'Cash',
-    createdAt: new Date(Date.now() - 8 * 60000).toISOString(),
-    updatedAt: new Date(Date.now() - 8 * 60000).toISOString()
-  },
-  {
-    id: 'ORD-1047',
-    tableNumber: '02',
-    customerName: 'Priya Patel',
-    customerPhone: '+91 98234 56789',
-    items: [
-      { itemId: 'gt-01', name: 'Special Gujarati Thali', quantity: 1, price: 320, isVeg: true },
-      { itemId: 'ml-01', name: 'Mango Lassi', quantity: 1, price: 70, isVeg: true }
-    ],
-    amount: 390,
-    total: 390,
-    subtotal: 371.43,
-    tax: 18.57,
-    status: 'preparing',
-    paymentStatus: 'Paid',
-    paymentMethod: 'UPI',
-    paidAt: new Date(Date.now() - 20 * 60000).toISOString(),
-    createdAt: new Date(Date.now() - 22 * 60000).toISOString(),
-    updatedAt: new Date(Date.now() - 15 * 60000).toISOString()
-  },
-  {
-    id: 'ORD-1046',
-    tableNumber: '07',
-    customerName: 'Rahul Verma',
-    customerPhone: '+91 97112 34567',
-    items: [
-      { itemId: 'cp-01', name: 'Crispy Chilli Paneer', quantity: 2, price: 210, isVeg: true },
-      { itemId: 'fr-01', name: 'Veg Fried Rice', quantity: 1, price: 180, isVeg: true },
-      { itemId: 'ls-01', name: 'Fresh Lime Soda', quantity: 2, price: 60, isVeg: true }
-    ],
-    amount: 720,
-    total: 720,
-    subtotal: 685.71,
-    tax: 34.29,
-    status: 'ready',
-    paymentStatus: 'Paid',
-    paymentMethod: 'Card',
-    paidAt: new Date(Date.now() - 32 * 60000).toISOString(),
-    createdAt: new Date(Date.now() - 35 * 60000).toISOString(),
-    updatedAt: new Date(Date.now() - 5 * 60000).toISOString()
-  },
-  {
-    id: 'ORD-1045',
-    tableNumber: '11',
-    customerName: 'Ananya Iyer',
-    customerPhone: '+91 99456 78123',
-    items: [
-      { itemId: 'dm-01', name: 'Dal Makhani', quantity: 1, price: 220, isVeg: true },
-      { itemId: 'gn-01', name: 'Garlic Naan', quantity: 2, price: 55, isVeg: true },
-      { itemId: 'gj-01', name: 'Gulab Jamun (2 pcs)', quantity: 1, price: 90, isVeg: true }
-    ],
-    amount: 420,
-    total: 420,
-    subtotal: 400.00,
-    tax: 20.00,
-    status: 'served',
-    paymentStatus: 'Paid',
-    paymentMethod: 'UPI',
-    paidAt: new Date(Date.now() - 50 * 60000).toISOString(),
-    createdAt: new Date(Date.now() - 55 * 60000).toISOString(),
-    updatedAt: new Date(Date.now() - 10 * 60000).toISOString()
-  },
-  {
-    id: 'ORD-1044',
-    tableNumber: '01',
-    customerName: 'Vikram Malhotra',
-    customerPhone: '+91 98333 44555',
-    items: [
-      { itemId: 'tp-01', name: 'Tandoori Paneer Tikka', quantity: 1, price: 260, isVeg: true },
-      { itemId: 'br-01', name: 'Butter Roti', quantity: 2, price: 25, isVeg: true },
-      { itemId: 'cc-01', name: 'Cold Coffee with Ice Cream', quantity: 2, price: 150, isVeg: true }
-    ],
-    amount: 610,
-    total: 610,
-    subtotal: 580.95,
-    tax: 29.05,
-    status: 'served',
-    paymentStatus: 'Paid',
-    paymentMethod: 'Cash',
-    paidAt: new Date(Date.now() - 65 * 60000).toISOString(),
-    createdAt: new Date(Date.now() - 70 * 60000).toISOString(),
-    updatedAt: new Date(Date.now() - 25 * 60000).toISOString()
-  },
-  {
-    id: 'ORD-1043',
-    tableNumber: '09',
-    customerName: 'Meera Joshi',
-    customerPhone: '+91 98123 45670',
-    items: [
-      { itemId: 'sk-01', name: 'Sabudana Khichdi', quantity: 1, price: 160, isVeg: true }
-    ],
-    amount: 160,
-    total: 160,
-    subtotal: 152.38,
-    tax: 7.62,
-    status: 'cancelled',
-    paymentStatus: 'Cancelled',
-    paymentMethod: 'None',
-    createdAt: new Date(Date.now() - 120 * 60000).toISOString(),
-    updatedAt: new Date(Date.now() - 110 * 60000).toISOString()
-  }
-];
+export const isRealOrder = (order) => {
+  if (!order) return false;
+  if (order.isDemo === true || order.demo === true) return false;
+  if (!order.items || !Array.isArray(order.items) || order.items.length === 0) return false;
+  if (!order.tableNumber || String(order.tableNumber).trim() === '' || order.tableNumber === 'undefined') return false;
+  
+  const DEMO_IDS = new Set(['ORD-1048', 'ORD-1047', 'ORD-1046', 'ORD-1045', 'ORD-1044', 'ORD-1043', 'ORD-9821', 'ORD-9822', 'ORD-9823']);
+  if (DEMO_IDS.has(order.id) || DEMO_IDS.has(order.orderNumber)) return false;
+  
+  const DEMO_NAMES = new Set(['vip diner', 'rahul sharma (customer)', 'guest (table 01)']);
+  const name = String(order.customerName || '').trim().toLowerCase();
+  if (DEMO_NAMES.has(name)) return false;
+
+  return true;
+};
+
+export const CLEAN_INITIAL_ORDERS = [];
 
 export function TableOrderProvider({ children }) {
   // Table session
@@ -162,20 +57,12 @@ export function TableOrderProvider({ children }) {
   
   const [orders, setOrders] = useState(() => {
     try {
-      const isCleanV2 = localStorage.getItem('smartdine_clean_admin_v2');
-      if (!isCleanV2) {
-        localStorage.setItem('smartdine_clean_admin_v2', 'true');
-        localStore.saveOrders(CLEAN_INITIAL_ORDERS);
-        return CLEAN_INITIAL_ORDERS;
-      }
       const existing = localStore.getOrders();
-      if (!Array.isArray(existing) || existing.length === 0) {
-        localStore.saveOrders(CLEAN_INITIAL_ORDERS);
-        return CLEAN_INITIAL_ORDERS;
-      }
-      return existing;
+      const realOrders = Array.isArray(existing) ? existing.filter(isRealOrder) : [];
+      localStore.saveOrders(realOrders);
+      return realOrders;
     } catch {
-      return CLEAN_INITIAL_ORDERS;
+      return [];
     }
   });
 
@@ -183,54 +70,13 @@ export function TableOrderProvider({ children }) {
     return localStorage.getItem('smartdine_last_order_id') || null;
   });
 
-  // Customer Feedbacks (Initial seed + localStorage)
+  // Customer Feedbacks (Only real submitted feedbacks + localStorage)
   const [customerFeedbacks, setCustomerFeedbacks] = useState(() => {
     try {
       const saved = localStorage.getItem('smartdine_customer_feedbacks');
       if (saved) return JSON.parse(saved);
     } catch {}
-    return [
-      {
-        id: 'fb-101',
-        orderId: 'SD1024',
-        tableNumber: '04',
-        overallRating: 5,
-        itemRatings: { 'Paneer Pizza': 5, 'Cold Coffee': 5 },
-        selectedTags: ['😋 Taste', '🍽️ Food Quality', '⚡ Fast Service'],
-        writtenText: 'Paneer Pizza was loaded with toppings and had a fresh crunchy crust. Chilled cold coffee was perfect!',
-        aiAnalysis: {
-          sentiment: 'Positive',
-          sentimentIcon: '😊',
-          avgFoodScore: '5.0',
-          serviceStatus: '⚡ Exceptional Speed',
-          praisePoints: ['Taste', 'Food Quality', 'Fast Service'],
-          complaintPoints: [],
-          aiSummary: 'Customer gave 5⭐ rating. Praised: Taste, Food Quality, Fast Service. Delightful dining experience.'
-        },
-        date: 'Today, 2:15 PM',
-        restaurantResponse: 'Thank you! Our Chef has noted your love for the Paneer Pizza. We look forward to serving you again!'
-      },
-      {
-        id: 'fb-102',
-        orderId: 'SD1018',
-        tableNumber: '02',
-        overallRating: 4,
-        itemRatings: { 'Butter Chicken': 5, 'Garlic Naan': 4 },
-        selectedTags: ['😋 Taste', '🍽️ Food Quality'],
-        writtenText: 'Rich creamy gravy with tender chicken. Naan was hot and buttery.',
-        aiAnalysis: {
-          sentiment: 'Positive',
-          sentimentIcon: '😊',
-          avgFoodScore: '4.5',
-          serviceStatus: 'Normal',
-          praisePoints: ['Taste', 'Food Quality'],
-          complaintPoints: [],
-          aiSummary: 'Customer gave 4⭐ rating. Praised: Taste, Food Quality.'
-        },
-        date: 'Yesterday, 8:45 PM',
-        restaurantResponse: 'Thank you for dining with us! Glad you enjoyed our Royal Butter Chicken.'
-      }
-    ];
+    return [];
   });
 
   // Save feedbacks
@@ -274,11 +120,20 @@ export function TableOrderProvider({ children }) {
           const ordQuery = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
           const ordSnap = await getDocs(ordQuery);
           if (!ordSnap.empty) {
-            const ords = ordSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            const ords = ordSnap.docs.map(doc => {
+              const data = doc.data();
+              const cleanOrderNum = data.orderNumber || data.id || formatOrderNumber(doc.id);
+              return {
+                ...data,
+                id: cleanOrderNum,
+                firestoreDocId: doc.id,
+                orderNumber: cleanOrderNum
+              };
+            }).filter(isRealOrder);
             setOrders(ords);
           }
         } else {
-          setOrders(localStore.getOrders());
+          setOrders(localStore.getOrders().filter(isRealOrder));
           setMenuItems(localStore.getMenuItems());
           setCategories(localStore.getCategories());
           setTables(localStore.getTables());
@@ -337,7 +192,16 @@ export function TableOrderProvider({ children }) {
       const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
       const unsubOrders = onSnapshot(q, (snapshot) => {
         if (!snapshot.empty) {
-          const ords = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const ords = snapshot.docs.map(doc => {
+            const data = doc.data();
+            const cleanOrderNum = data.orderNumber || data.id || formatOrderNumber(doc.id);
+            return {
+              ...data,
+              id: cleanOrderNum,
+              firestoreDocId: doc.id,
+              orderNumber: cleanOrderNum
+            };
+          }).filter(isRealOrder);
           setOrders(ords);
         }
       });
@@ -351,7 +215,7 @@ export function TableOrderProvider({ children }) {
     } else {
       // Listen to cross-tab local updates
       const handleLocalUpdate = (e) => {
-        if (e.detail?.collection === 'orders') setOrders(e.detail.data);
+        if (e.detail?.collection === 'orders') setOrders((e.detail.data || []).filter(isRealOrder));
         if (e.detail?.collection === 'menuItems') setMenuItems(e.detail.data);
         if (e.detail?.collection === 'categories') setCategories(e.detail.data);
         if (e.detail?.collection === 'tables') setTables(e.detail.data);
@@ -535,7 +399,14 @@ export function TableOrderProvider({ children }) {
     const finalPaidAt = (finalPaymentStatus === 'PAID' || isOnlineMethod) ? (paidAt || new Date().toISOString()) : null;
     const finalTxnId = transactionId || razorpay_payment_id || (finalPaymentStatus === 'PAID' ? `TXN-${Date.now().toString().slice(-6)}` : null);
 
+    const allKnownOrders = (orders && orders.length > 0) ? orders : localStore.getOrders();
+    const nextOrdNum = getNextOrderNumber(allKnownOrders);
+    const assignedInvoiceNumber = finalPaymentStatus === 'PAID' ? getNextInvoiceNumber(allKnownOrders) : null;
+
     const orderData = {
+      id: nextOrdNum,
+      orderNumber: nextOrdNum,
+      invoiceNumber: assignedInvoiceNumber,
       tableNumber: effectiveTable || 'Waiting for Table',
       customerName: customerName || (effectiveTable ? `Table ${effectiveTable} Guest` : `Waiting Guest #${queuePos}`),
       customerPhone: customerPhone || '',
@@ -577,24 +448,28 @@ export function TableOrderProvider({ children }) {
       updatedAt: new Date().toISOString()
     };
 
-    let orderId = '';
+    let orderId = nextOrdNum;
 
     if (isFirebaseConfigured) {
       try {
-        const docRef = await addDoc(collection(db, 'orders'), orderData);
-        orderId = docRef.id;
+        await addDoc(collection(db, 'orders'), orderData);
       } catch (err) {
         console.warn('Firebase addDoc order error, using local fallback:', err);
-        const created = localStore.addOrder(orderData);
-        orderId = created.id;
       }
-    } else {
-      const created = localStore.addOrder(orderData);
-      orderId = created.id;
     }
+    const created = localStore.addOrder(orderData);
+    orderId = created.id || nextOrdNum;
 
     setLatestPlacedOrderId(orderId);
     localStorage.setItem('smartdine_last_order_id', orderId);
+    try {
+      const raw = localStorage.getItem('smartdine_customer_order_ids');
+      const ids = raw ? JSON.parse(raw) : [];
+      if (!ids.includes(orderId)) {
+        ids.unshift(orderId);
+        localStorage.setItem('smartdine_customer_order_ids', JSON.stringify(ids));
+      }
+    } catch {}
     clearCart();
     return orderId;
   };
@@ -668,6 +543,8 @@ export function TableOrderProvider({ children }) {
     const isPaid = activeOrders.length === 0;
 
     const totalClearedAmount = clearedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
+    const existingTableInvoice = clearedOrders.find(o => o.invoiceNumber)?.invoiceNumber || 
+      activeOrders.find(o => o.invoiceNumber)?.invoiceNumber || null;
 
     return {
       tableNumber: tableNum,
@@ -676,7 +553,8 @@ export function TableOrderProvider({ children }) {
       clearedOrderCount: clearedOrders.length,
       totalClearedAmount,
       orderCount: activeOrders.length,
-      orderIds: activeOrders.map(o => o.id),
+      orderIds: activeOrders.map(o => o.orderNumber || o.id),
+      invoiceNumber: existingTableInvoice,
       consolidatedItems,
       subtotal,
       discountAmount,
@@ -729,10 +607,18 @@ export function TableOrderProvider({ children }) {
     paymentMethod = 'UPI',
     transactionId = `TXN-${Date.now().toString().slice(-6)}`,
     discountAmount = 0,
-    couponCode = null
+    couponCode = null,
+    invoiceNumber = null
   }) => {
     if (!tableNum) throw new Error('No active table found');
     const formatted = String(tableNum).padStart(2, '0');
+
+    const tableOrders = orders.filter(o => 
+      String(o.tableNumber).padStart(2, '0') === formatted && 
+      !isOrderPaid(o) && 
+      o.status !== 'cancelled'
+    );
+    const assignedInvoice = invoiceNumber || getOrAssignInvoiceNumber(tableOrders, orders);
 
     const paidPayload = {
       paymentStatus: 'Paid',
@@ -741,6 +627,7 @@ export function TableOrderProvider({ children }) {
       transactionId,
       discountAmount,
       couponCode,
+      invoiceNumber: assignedInvoice,
       paidAt: new Date().toISOString()
     };
 
@@ -752,6 +639,7 @@ export function TableOrderProvider({ children }) {
     return {
       tableNumber: formatted,
       transactionId,
+      invoiceNumber: assignedInvoice,
       paymentMethod,
       paidAt: paidPayload.paidAt,
       status: 'Paid'
@@ -937,14 +825,23 @@ export function TableOrderProvider({ children }) {
         const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
         const snap = await getDocs(q);
         if (!snap.empty) {
-          const ords = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const ords = snap.docs.map(doc => {
+            const data = doc.data();
+            const cleanOrderNum = data.orderNumber || data.id || formatOrderNumber(doc.id);
+            return {
+              ...data,
+              id: cleanOrderNum,
+              firestoreDocId: doc.id,
+              orderNumber: cleanOrderNum
+            };
+          }).filter(isRealOrder);
           setOrders(ords);
         }
       } catch (e) {
         console.warn('Error refreshing orders', e);
       }
     } else {
-      const latest = localStore.getOrders();
+      const latest = localStore.getOrders().filter(isRealOrder);
       setOrders([...latest]);
     }
   };
@@ -954,7 +851,7 @@ export function TableOrderProvider({ children }) {
       setMenuItems(localStore.getMenuItems());
       setCategories(localStore.getCategories());
       setTables(localStore.getTables());
-      setOrders(localStore.getOrders());
+      setOrders(localStore.getOrders().filter(isRealOrder));
     } catch (e) {
       console.warn('Reload menu error', e);
     }

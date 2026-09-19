@@ -21,6 +21,7 @@ import {
   CreditCard,
   Smile
 } from 'lucide-react';
+import { formatOrderNumber } from '../utils/orderNumber';
 
 export default function CustomerWebTrack() {
   const { orderId } = useParams();
@@ -280,7 +281,7 @@ export default function CustomerWebTrack() {
           </div>
 
           <div>
-            <span className="text-xs font-mono font-bold text-slate-500">ORDER #{order.id}</span>
+            <span className="text-xs font-mono font-bold text-slate-500">ORDER #{formatOrderNumber(order.orderNumber || order.id)}</span>
             <h1 className="text-2xl font-black text-white mt-1">
               {normStatus === 'placed' && 'Order Received at Kitchen 🎉'}
               {normStatus === 'preparing' && 'Food is Being Prepared! 🔥'}
@@ -424,7 +425,7 @@ export default function CustomerWebTrack() {
         {/* 7. ACTION BUTTONS: VIEW BILL RECEIPT & ORDER MORE */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Link
-            to={isTableAssigned ? `/bill?table=${order.tableNumber}` : `/bill?orderId=${order.id}`}
+            to={isTableAssigned ? `/bill?table=${order.tableNumber}&orderId=${order.id}&view=receipt` : `/bill?orderId=${order.id}&view=receipt`}
             className="py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-white border border-amber-500/40 font-black text-sm transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
           >
             <Receipt className="w-4 h-4 text-amber-400" />

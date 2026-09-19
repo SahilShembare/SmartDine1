@@ -11,6 +11,7 @@ import {
   showOrderNotification, 
   requestNotificationPermission 
 } from '../utils/notificationSound';
+import { formatOrderNumber } from '../utils/orderNumber';
 import { 
   ChefHat, 
   Bell, 
@@ -178,38 +179,80 @@ export default function KitchenDashboard() {
     }
   };
 
-  const prevOrderIdsRef = useRef(new Set(orders.map(o => o.id)));
+  // Persistent tracking to guarantee an order is notified EXACTLY ONCE (no repeats)
+  const notifiedOrderIdsRef = useRef(new Set());
+  const isInitialMountRef = useRef(true);
+
+  // Initialize with existing orders so opening dashboard doesn't re-alert old orders
+  useEffect(() => {
+    if (orders && orders.length > 0) {
+      orders.forEach(o => {
+        const key = o.id || o.orderNumber;
+        if (key) notifiedOrderIdsRef.current.add(key);
+      });
+      // Allow new orders after initial load settles
+      setTimeout(() => {
+        isInitialMountRef.current = false;
+      }, 1000);
+    }
+  }, []);
 
   // 3-Second Active Auto-Refresh Interval
   useEffect(() => {
     const syncTimer = setInterval(async () => {
       setIsRefreshing(true);
-      if (refreshOrders) {
-        await refreshOrders();
-      }
       setLastSyncTime(new Date().toLocaleTimeString());
       setTimeout(() => setIsRefreshing(false), 500);
     }, 3000);
 
     return () => clearInterval(syncTimer);
-  }, [refreshOrders]);
+  }, []);
 
-  // Detect newly arrived orders and trigger audio chime
+  // Detect newly arrived orders and trigger audio chime EXACTLY ONCE per order
   useEffect(() => {
-    const currentIds = new Set(orders.map(o => o.id));
-    const newOrders = orders.filter(o => !prevOrderIdsRef.current.has(o.id));
+    if (isInitialMountRef.current) return;
+    if (!orders || orders.length === 0) return;
 
-    if (newOrders.length > 0) {
-      const latest = newOrders[0];
+    // Find orders that have not been notified yet and are active
+    const unnotified = orders.filter(o => {
+      const key = o.id || o.orderNumber;
+      if (!key) return false;
+      if (notifiedOrderIdsRef.current.has(key)) return false;
+      // Also check sessionStorage
+      try {
+        if (sessionStorage.getItem(`smartdine_notified_kot_${key}`)) {
+          notifiedOrderIdsRef.current.add(key);
+          return false;
+        }
+      } catch {}
+      // Only alert on active/new orders
+      return o.status !== 'completed' && o.status !== 'cancelled';
+    });
+
+    if (unnotified.length > 0) {
+      // Pick the latest order
+      const latest = unnotified[0];
+      const orderKey = latest.id || latest.orderNumber;
+      const cleanOrderNo = formatOrderNumber(latest.orderNumber || latest.id);
+
+      // Mark ALL unnotified as notified IMMEDIATELY to prevent repeat loops
+      unnotified.forEach(o => {
+        const k = o.id || o.orderNumber;
+        if (k) {
+          notifiedOrderIdsRef.current.add(k);
+          try { sessionStorage.setItem(`smartdine_notified_kot_${k}`, 'true'); } catch {}
+        }
+      });
+
       if (soundEnabled) {
         showOrderNotification(
           `🔔 New Order: Table ${latest.tableNumber || '01'}!`,
-          `Order #${latest.id} • ${latest.items?.length || 0} items`
+          `Order #${cleanOrderNo} • ${latest.items?.length || 0} items`
         );
       }
       setNewOrderAlert(latest);
 
-      // Pop-up Toast Alert
+      // Pop-up Toast Alert (fired only once)
       toast.custom((t) => (
         <div className="p-4 rounded-2xl bg-slate-900 border-2 border-orange-500 shadow-[0_10px_35px_rgba(232,117,42,0.45)] text-white flex items-center gap-3.5 max-w-md w-full animate-in slide-in-from-top duration-300">
           <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-black shrink-0 animate-bounce">
@@ -219,7 +262,7 @@ export default function KitchenDashboard() {
             <div className="flex items-center gap-2">
               <span className="font-black text-sm text-white">Table {latest.tableNumber || '01'}</span>
               <span className="text-[10px] font-mono font-bold bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded border border-orange-500/30">
-                #{latest.id}
+                #{cleanOrderNo}
               </span>
             </div>
             <p className="text-xs text-slate-300 truncate mt-0.5">
@@ -249,12 +292,10 @@ export default function KitchenDashboard() {
             </button>
           </div>
         </div>
-      ), { duration: 8000, id: `kot-${latest.id}` });
+      ), { duration: 8000, id: `kot-${orderKey}` });
 
       setTimeout(() => setNewOrderAlert(null), 9000);
     }
-
-    prevOrderIdsRef.current = currentIds;
   }, [orders, soundEnabled]);
 
   const handleTestSound = () => {
@@ -1211,7 +1252,7 @@ export default function KitchenDashboard() {
                   <div className="py-2.5 border-b border-dashed border-slate-400 space-y-1 text-[11px]">
                     <div className="flex justify-between">
                       <span className="text-slate-600">Order #:</span>
-                      <span className="font-bold">ORD-{String(kotSlipOrder.id || '').slice(-6).toUpperCase()}</span>
+                      <span className="font-bold font-mono">{formatOrderNumber(kotSlipOrder.orderNumber || kotSlipOrder.id)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-600">Time:</span>

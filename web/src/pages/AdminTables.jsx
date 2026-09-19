@@ -4,6 +4,7 @@ import { useTableOrder } from '../context/TableOrderContext';
 import { localStore, isFirebaseConfigured, db } from '../firebase/config';
 import { collection, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
+import { formatOrderNumber } from '../utils/orderNumber';
 import { 
   Plus, 
   QrCode, 
@@ -358,7 +359,7 @@ export default function AdminTables() {
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-400 mt-1 font-mono">
-                          Order #{order.id ? order.id.slice(-6) : '---'} • {order.items?.length || 0} items
+                          Order #{formatOrderNumber(order.orderNumber || order.id)} • {order.items?.length || 0} items
                         </p>
                       </div>
 
@@ -485,7 +486,7 @@ export default function AdminTables() {
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                         <div>
-                          <span className="text-amber-300 font-bold block">Occupied • Order #{occupant.id.slice(-6)}</span>
+                          <span className="text-amber-300 font-bold block">Occupied • Order #{formatOrderNumber(occupant.orderNumber || occupant.id)}</span>
                           <span className="text-[10px] text-slate-400">{occupant.customerName || 'Dine-In Guest'}</span>
                         </div>
                       </div>

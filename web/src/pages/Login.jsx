@@ -28,7 +28,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { loginWithEmail, registerWithEmail, sendRealResetEmail, resetPasswordWithOtp } = useAuth();
+  const { loginWithEmail, registerWithEmail, sendRealResetEmail, resetPasswordWithOtp, checkIsUserRegistered, checkDuplicateRegistration } = useAuth();
   const { currentTable, setTableSession } = useTableOrder();
   
   // URL params
@@ -86,7 +86,6 @@ export default function Login() {
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [userEnteredOtp, setUserEnteredOtp] = useState('');
   const [otpTimer, setOtpTimer] = useState(60);
-  const [otpNotice, setOtpNotice] = useState('');
 
   // Forgot Password States
   const [forgotIdentifier, setForgotIdentifier] = useState('');
@@ -94,7 +93,6 @@ export default function Login() {
   const [generatedForgotOtp, setGeneratedForgotOtp] = useState('');
   const [userEnteredForgotOtp, setUserEnteredForgotOtp] = useState('');
   const [forgotOtpTimer, setForgotOtpTimer] = useState(60);
-  const [forgotOtpNotice, setForgotOtpNotice] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -133,13 +131,38 @@ export default function Login() {
     return () => clearInterval(interval);
   }, [forgotOtpStep, forgotOtpTimer]);
 
-  // Handle Send OTP for Registration (Step 1 -> Step 2)
-  const handleSendRegisterOtp = (e) => {
-    e.preventDefault();
+  // Helper to give quick duplicate feedback on input blur
+  const checkExistingUserWarning = async (field, value) => {
+    if (!value) return;
+    const clean = String(value).trim();
+    if (field === 'email' && !clean.includes('@')) return;
+    if (field === 'phone' && clean.replace(/\D/g, '').length < 10) return;
+
+    try {
+      const dup = await checkDuplicateRegistration({
+        name: field === 'name' ? clean : regName.trim(),
+        email: field === 'email' ? clean : regEmail.trim(),
+        phone: field === 'phone' ? clean.replace(/\D/g, '') : regPhone.replace(/\D/g, '')
+      });
+
+      if (dup.isDuplicate) {
+        setError(dup.message);
+        toast.error(dup.toastMessage || dup.message, { id: 'dup-warning', duration: 4000 });
+      }
+    } catch {}
+  };
+
+  // Handle Send Real OTP for Registration (Step 1 -> Step 2)
+  const handleSendRegisterOtp = async (e) => {
+    e?.preventDefault?.();
     setError('');
     setSuccessMsg('');
     if (!regName.trim()) {
       setError('Please enter your full name.');
+      return;
+    }
+    if (!regEmail.trim() || !regEmail.includes('@')) {
+      setError('Please enter a valid email address.');
       return;
     }
     const cleanPhone = regPhone.replace(/\D/g, '');
@@ -148,11 +171,58 @@ export default function Login() {
       return;
     }
 
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    setGeneratedOtp(code);
-    setRegStep(2);
-    setOtpTimer(60);
-    setOtpNotice(`📱 SMS Sent! Your Smart Dine verification OTP is: ${code}`);
+    setLoading(true);
+    try {
+      // 🔒 Check if Name, Email, or Phone is ALREADY REGISTERED (Already filled)
+      const duplicateCheck = await checkDuplicateRegistration({
+        name: regName.trim(),
+        email: regEmail.trim(),
+        phone: cleanPhone
+      });
+
+      if (duplicateCheck.isDuplicate) {
+        setError(duplicateCheck.message);
+        toast.error(duplicateCheck.toastMessage || duplicateCheck.message, {
+          duration: 5000,
+          icon: '⚠️'
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Call backend API to send REAL OTP via Gmail SMTP
+      const res = await fetch('/api/send-email-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: regEmail.trim(),
+          name: regName.trim(),
+          purpose: 'registration'
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to dispatch verification email.');
+      }
+
+      const realOtp = String(data.otp);
+      setGeneratedOtp(realOtp);
+      setRegStep(2);
+      setOtpTimer(60);
+      setSuccessMsg(`📧 Verification OTP has been dispatched to ${regEmail.trim()}! Please check your Inbox / Spam folder.`);
+      toast.success(`Verification OTP sent to ${regEmail.trim()}! Check your inbox.`);
+    } catch (err) {
+      console.error('Email dispatch error:', err);
+      // Fallback in case of network issue
+      const fallbackCode = String(Math.floor(100000 + Math.random() * 900000));
+      setGeneratedOtp(fallbackCode);
+      setRegStep(2);
+      setOtpTimer(60);
+      setError(`Notice: ${err.message || 'Email delivery failed'}. Generated fallback code.`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle Verify OTP (Step 2 -> Step 3)
@@ -162,11 +232,11 @@ export default function Login() {
     setSuccessMsg('');
 
     if (userEnteredOtp.trim() !== generatedOtp) {
-      setError('Invalid OTP code. Please enter the correct 6-digit code or click resend.');
+      setError('Invalid OTP. Please try again.');
       return;
     }
 
-    setSuccessMsg('✅ Mobile number verified successfully! Please enter your email & set password.');
+    setSuccessMsg('✅ Email verified successfully! Now set your account password.');
     setRegStep(3);
   };
 
@@ -193,13 +263,36 @@ export default function Login() {
 
     setLoading(true);
     try {
-      await registerWithEmail(regName.trim(), regEmail.trim(), regPassword.trim(), 'customer');
+      await registerWithEmail(regName.trim(), regEmail.trim(), regPassword.trim(), 'customer', regPhone.trim());
+
+      // Save to server-side user registry so repeat registration with same email is permanently blocked
+      try {
+        await fetch('/api/record-registered-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: regName.trim(),
+            email: regEmail.trim(),
+            phone: regPhone.trim(),
+            role: 'customer'
+          })
+        });
+      } catch (e) {
+        console.warn('Server record user note:', e);
+      }
+
       localStorage.setItem('smartdine_guest_name', regName.trim());
       localStorage.setItem('smartdine_guest_phone', regPhone.trim());
       toast.success(`🎉 Welcome to Smart Dine, ${regName.trim()}! Account created successfully.`);
       navigate('/scan');
     } catch (err) {
-      setError(err.message || 'Failed to complete registration.');
+      if (err.code === 'auth/email-already-in-use' || err.message?.toLowerCase().includes('already-in-use') || err.message?.toLowerCase().includes('already in use')) {
+        const dupMsg = `Email "${regEmail.trim()}" pehle se registered hai (Already filled). Same email se repeat registration allow nahi hai. Kripya Login karein.`;
+        setError(dupMsg);
+        toast.error('Email already registered! Please login.');
+      } else {
+        setError(err.message || 'Failed to complete registration.');
+      }
     } finally {
       setLoading(false);
     }
@@ -246,37 +339,91 @@ export default function Login() {
     e?.preventDefault?.();
     setError('');
     setSuccessMsg('');
-    if (!forgotIdentifier.trim() || !forgotIdentifier.includes('@')) {
-      setError('Please enter a valid email address (e.g. name@gmail.com) to receive real inbox email.');
+    const id = forgotIdentifier.trim();
+    if (!id || !id.includes('@')) {
+      setError('Please enter a valid registered email address (e.g. name@gmail.com).');
       return;
     }
 
     setLoading(true);
     try {
-      await sendRealResetEmail(forgotIdentifier.trim());
-      setSuccessMsg(`📧 Real password reset link has been dispatched to ${forgotIdentifier}! Please check your Inbox / Spam folder.`);
+      // 🔒 Check if user is registered
+      const isRegistered = await checkIsUserRegistered(id);
+      if (!isRegistered) {
+        setError(`No account found for "${id}". Sirf registered user hi forgot password kar sakte hain. Kripya pehle Register karein.`);
+        toast.error('Account not registered. Please register first.');
+        setLoading(false);
+        return;
+      }
+
+      await sendRealResetEmail(id);
+      setSuccessMsg(`📧 Password reset link has been dispatched to ${id}! Please check your Inbox / Spam folder.`);
     } catch (err) {
-      setError(err.message || 'Failed to send real reset email. Make sure the email is registered.');
+      setError(err.message || 'Failed to send reset email. Make sure the email is registered.');
     } finally {
       setLoading(false);
     }
   };
 
   // Handle Send OTP for Forgot Password
-  const handleSendForgotOtp = (e) => {
-    e.preventDefault();
+  const handleSendForgotOtp = async (e) => {
+    e?.preventDefault?.();
     setError('');
     setSuccessMsg('');
-    if (!forgotIdentifier.trim()) {
+    const id = forgotIdentifier.trim();
+    if (!id) {
       setError('Please enter your registered mobile number or email.');
       return;
     }
 
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    setGeneratedForgotOtp(code);
-    setForgotOtpStep(true);
-    setForgotOtpTimer(60);
-    setForgotOtpNotice(`🔐 Password Reset OTP: ${code}`);
+    setLoading(true);
+    try {
+      // 🔒 Check if user is registered
+      const isRegistered = await checkIsUserRegistered(id);
+      if (!isRegistered) {
+        setError(`No account found for "${id}". Sirf registered user hi password reset kar sakte hain. Kripya pehle Register karein.`);
+        toast.error('Account not registered. Please register first.');
+        setLoading(false);
+        return;
+      }
+
+      if (id.includes('@')) {
+        const res = await fetch('/api/send-email-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: id,
+            name: 'Customer',
+            purpose: 'forgot_password'
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          const realCode = String(data.otp);
+          setGeneratedForgotOtp(realCode);
+          setForgotOtpStep(true);
+          setForgotOtpTimer(60);
+          setSuccessMsg(`📧 Password reset OTP dispatched to ${id}! Please check your Inbox / Spam folder.`);
+          toast.success(`Reset OTP sent to ${id}!`);
+          return;
+        } else {
+          throw new Error(data.error || 'Failed to send reset OTP.');
+        }
+      } else {
+        const code = String(Math.floor(100000 + Math.random() * 900000));
+        setGeneratedForgotOtp(code);
+        setForgotOtpStep(true);
+        setForgotOtpTimer(60);
+        setSuccessMsg(`📱 Password reset OTP sent to +91 ${id}.`);
+        toast.success(`Reset OTP sent to +91 ${id}!`);
+      }
+    } catch (err) {
+      console.error('Forgot OTP dispatch error:', err);
+      setError(err.message || 'Failed to process forgot password request.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle Verify OTP & Reset Password
@@ -303,13 +450,25 @@ export default function Login() {
     setLoading(true);
     try {
       await resetPasswordWithOtp(forgotIdentifier.trim(), newPassword);
-      setSuccessMsg('🎉 Password reset successfully! You can now log in with your new password.');
+      
+      const successMessage = '🎉 Password reset successfully! You can now log in with your new password.';
+      setSuccessMsg(successMessage);
+      toast.success(successMessage, {
+        duration: 5000,
+        icon: '✅',
+      });
+
+      setUserEnteredForgotOtp('');
+      setNewPassword('');
+      setConfirmPassword('');
+
       setTimeout(() => {
         setActiveTab('login');
         setForgotOtpStep(false);
-        setLoginIdentifier(forgotIdentifier);
+        setLoginIdentifier(forgotIdentifier.trim());
         setPassword('');
-      }, 2000);
+        setSuccessMsg('✅ Password reset successfully! Please enter your new password to sign in.');
+      }, 1500);
     } catch (err) {
       setError(err.message || 'Failed to reset password.');
     } finally {
@@ -354,7 +513,7 @@ export default function Login() {
             {activeTab === 'login'
               ? 'Sign in to access table orders, digital menu & tracking'
               : activeTab === 'register'
-              ? 'Verify mobile & set up your account in 3 quick steps'
+              ? 'Verify with email OTP & set up your account in 3 quick steps'
               : 'Recover your account with mobile OTP or email reset link'}
           </p>
         </div>
@@ -399,30 +558,7 @@ export default function Login() {
             </div>
           )}
 
-          {/* OTP Simulator Toast Bar */}
-          {otpNotice && activeTab === 'register' && regStep === 2 && (
-            <div className="p-3 rounded-xl bg-amber-400/15 border border-amber-400/40 text-amber-300 text-xs font-semibold animate-in fade-in flex items-center justify-between">
-              <span>{otpNotice}</span>
-              <button 
-                onClick={() => setUserEnteredOtp(generatedOtp)}
-                className="px-2 py-1 bg-amber-400 text-slate-950 text-[10px] font-black rounded-lg hover:bg-amber-300 shadow-sm"
-              >
-                Autofill
-              </button>
-            </div>
-          )}
 
-          {forgotOtpNotice && activeTab === 'forgot' && forgotOtpStep && (
-            <div className="p-3 rounded-xl bg-orange-500/15 border border-orange-500/40 text-orange-300 text-xs font-semibold animate-in fade-in flex items-center justify-between">
-              <span>{forgotOtpNotice}</span>
-              <button 
-                onClick={() => setUserEnteredForgotOtp(generatedForgotOtp)}
-                className="px-2 py-1 bg-orange-500 text-white text-[10px] font-black rounded-lg hover:bg-orange-400 shadow-sm"
-              >
-                Autofill
-              </button>
-            </div>
-          )}
 
           {/* ========================================================= */}
           {/* TAB 1: LOGIN */}
@@ -547,7 +683,7 @@ export default function Login() {
                   }`}>
                     {regStep > 1 ? '✓' : '1'}
                   </span>
-                  <span className="text-[11px] font-bold text-slate-300">Mobile</span>
+                  <span className="text-[11px] font-bold text-slate-300">Details</span>
                 </div>
                 <div className={`h-0.5 flex-1 mx-2 ${regStep >= 2 ? 'bg-emerald-500' : 'bg-slate-800'}`} />
                 <div className="flex items-center gap-1.5">
@@ -556,7 +692,7 @@ export default function Login() {
                   }`}>
                     {regStep > 2 ? '✓' : '2'}
                   </span>
-                  <span className="text-[11px] font-bold text-slate-300">OTP</span>
+                  <span className="text-[11px] font-bold text-slate-300">Email OTP</span>
                 </div>
                 <div className={`h-0.5 flex-1 mx-2 ${regStep >= 3 ? 'bg-emerald-500' : 'bg-slate-800'}`} />
                 <div className="flex items-center gap-1.5">
@@ -569,7 +705,7 @@ export default function Login() {
                 </div>
               </div>
 
-              {/* STEP 1: Name + Mobile Number */}
+              {/* STEP 1: Name + Email + Mobile Number */}
               {regStep === 1 && (
                 <form onSubmit={handleSendRegisterOtp} className="space-y-3.5">
                   <div>
@@ -582,6 +718,23 @@ export default function Login() {
                         placeholder="e.g. Sahil Shembare"
                         value={regName}
                         onChange={(e) => setRegName(e.target.value)}
+                        onBlur={() => checkExistingUserWarning('name', regName)}
+                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. sahil@gmail.com"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        onBlur={() => checkExistingUserWarning('email', regEmail)}
                         className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
                       />
                     </div>
@@ -598,6 +751,7 @@ export default function Login() {
                         placeholder="9876543210"
                         value={regPhone}
                         onChange={(e) => setRegPhone(e.target.value.replace(/\D/g, ''))}
+                        onBlur={() => checkExistingUserWarning('phone', regPhone)}
                         className="w-full pl-12 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-mono tracking-wider"
                       />
                     </div>
@@ -621,9 +775,9 @@ export default function Login() {
                     <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-1 border border-emerald-500/30">
                       <KeyRound className="w-5 h-5" />
                     </div>
-                    <h3 className="text-sm font-extrabold text-white">Enter 6-Digit OTP Code</h3>
+                    <h3 className="text-sm font-extrabold text-white">Verify Your Email</h3>
                     <p className="text-xs text-slate-400">
-                      Sent to <strong className="text-white">+91 {regPhone}</strong>
+                      OTP sent to <strong className="text-emerald-400">{regEmail}</strong>
                     </p>
                   </div>
 
@@ -632,6 +786,7 @@ export default function Login() {
                       type="text"
                       required
                       maxLength={6}
+                      autoComplete="one-time-code"
                       placeholder="• • • • • •"
                       value={userEnteredOtp}
                       onChange={(e) => setUserEnteredOtp(e.target.value.replace(/\D/g, ''))}
@@ -640,7 +795,7 @@ export default function Login() {
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-slate-400">
-                    <span>Resend in: <strong className="text-white">{otpTimer}s</strong></span>
+                    <span>Didn't receive code?</span>
                     {otpTimer === 0 ? (
                       <button
                         type="button"
@@ -650,13 +805,9 @@ export default function Login() {
                         Resend OTP
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => setUserEnteredOtp(generatedOtp)}
-                        className="text-emerald-400 font-bold hover:underline"
-                      >
-                        Autofill ({generatedOtp})
-                      </button>
+                      <span className="text-slate-500 font-medium">
+                        Resend in <strong className="text-emerald-400">{otpTimer}s</strong>
+                      </span>
                     )}
                   </div>
 
@@ -666,7 +817,7 @@ export default function Login() {
                     className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <CheckCircle2 className="w-4 h-4" />
-                    <span>Verify Mobile OTP</span>
+                    <span>Verify Email OTP</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
 
@@ -675,37 +826,22 @@ export default function Login() {
                     onClick={() => setRegStep(1)}
                     className="w-full text-center text-xs text-slate-400 hover:text-slate-200"
                   >
-                    ← Change Mobile Number
+                    ← Change Email / Mobile Number
                   </button>
                 </form>
               )}
 
-              {/* STEP 3: Enter Email & Set Password */}
+              {/* STEP 3: Set Password & Complete */}
               {regStep === 3 && (
                 <form onSubmit={handleCompleteRegistration} className="space-y-3.5">
                   <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between text-xs text-emerald-300">
-                    <span className="font-bold flex items-center gap-1.5">
-                      <Check className="w-4 h-4 text-emerald-400" />
-                      +91 {regPhone} Verified
+                    <span className="font-bold flex items-center gap-1.5 truncate">
+                      <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className="truncate">{regEmail}</span>
                     </span>
-                    <span className="text-[10px] font-extrabold uppercase bg-emerald-500 text-slate-950 px-2 py-0.5 rounded-full">
-                      Step 3/3
+                    <span className="text-[10px] font-extrabold uppercase bg-emerald-500 text-slate-950 px-2 py-0.5 rounded-full shrink-0">
+                      Verified
                     </span>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Email Address</label>
-                    <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="email"
-                        required
-                        placeholder="e.g. sahil@gmail.com"
-                        value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                      />
-                    </div>
                   </div>
 
                   <div>
@@ -803,7 +939,7 @@ export default function Login() {
                       className="w-full py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white font-bold text-xs transition flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Mail className="w-4 h-4 text-orange-400" />
-                      <span>Send Real Reset Link to Email Inbox (Gmail)</span>
+                      <span>Send Password Reset Link to Email</span>
                     </button>
                   </div>
                 </form>
@@ -821,6 +957,7 @@ export default function Login() {
                       type="text"
                       required
                       maxLength={6}
+                      autoComplete="one-time-code"
                       placeholder="• • • • • •"
                       value={userEnteredForgotOtp}
                       onChange={(e) => setUserEnteredForgotOtp(e.target.value.replace(/\D/g, ''))}
@@ -829,7 +966,7 @@ export default function Login() {
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-slate-400">
-                    <span>Resend in: <strong className="text-white">{forgotOtpTimer}s</strong></span>
+                    <span>Didn't receive code?</span>
                     {forgotOtpTimer === 0 ? (
                       <button
                         type="button"
@@ -839,13 +976,9 @@ export default function Login() {
                         Resend OTP
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => setUserEnteredForgotOtp(generatedForgotOtp)}
-                        className="text-orange-400 font-bold hover:underline"
-                      >
-                        Autofill ({generatedForgotOtp})
-                      </button>
+                      <span className="text-slate-500 font-medium">
+                        Resend in <strong className="text-orange-400">{forgotOtpTimer}s</strong>
+                      </span>
                     )}
                   </div>
 

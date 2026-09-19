@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import { useTableOrder } from '../context/TableOrderContext';
 import toast from 'react-hot-toast';
+import { formatOrderNumber } from '../utils/orderNumber';
 import { 
   Flame, 
   Search, 
@@ -49,7 +50,7 @@ export default function AdminOrders() {
 
   const handleStatusChange = (orderId, newStatus) => {
     updateOrderStatus(orderId, newStatus);
-    toast.success(`Order #${orderId} marked as ${newStatus.toUpperCase()}`, { icon: '⚡' });
+    toast.success(`Order #${formatOrderNumber(orderId)} marked as ${newStatus.toUpperCase()}`, { icon: '⚡' });
   };
 
   const isOrderPaid = (o) => {
@@ -173,7 +174,7 @@ export default function AdminOrders() {
                   <div>
                     <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-sm text-slate-200">#{order.id}</span>
+                        <span className="font-mono font-bold text-sm text-slate-200">#{formatOrderNumber(order.orderNumber || order.id)}</span>
                         <span className="px-2.5 py-0.5 rounded-lg bg-orange-500/20 text-orange-400 font-bold text-xs border border-orange-500/30">
                           Table {order.tableNumber}
                         </span>

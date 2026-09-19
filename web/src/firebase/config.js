@@ -3,6 +3,7 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { DEMO_CATEGORIES, DEMO_MENU_ITEMS, DEMO_TABLES, DEMO_ORDERS } from './seed-data.js';
+import { getNextOrderNumber } from '../utils/orderNumber.js';
 
 // Firebase configuration from environment or fallback
 const firebaseConfig = {
@@ -105,8 +106,10 @@ export const localStore = {
   addOrder: (orderData) => {
     const orders = getLocalData('orders', []);
     const estMinutes = orderData.estimatedPrepMinutes || 20;
+    const orderNumber = orderData.orderNumber || orderData.id || getNextOrderNumber(orders);
     const newOrder = {
-      id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: orderNumber,
+      orderNumber: orderNumber,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       prepStartedAt: orderData.prepStartedAt || new Date().toISOString(),
@@ -117,7 +120,9 @@ export const localStore = {
       estimatedWaitingMinutes: orderData.estimatedWaitingMinutes || null,
       status: orderData.status || 'pending',
       paymentStatus: 'pending',
-      ...orderData
+      ...orderData,
+      id: orderNumber,
+      orderNumber: orderNumber
     };
     orders.unshift(newOrder);
     setLocalData('orders', orders);

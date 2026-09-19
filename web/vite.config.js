@@ -65,6 +65,15 @@ function razorpayDevApiPlugin() {
           } else if (url === '/api/refund-payment') {
             const handler = await getHandler('./api/refund-payment.js');
             return handler(req, res);
+          } else if (url === '/api/send-email-otp') {
+            const handler = await getHandler('./api/send-email-otp.js');
+            return handler(req, res);
+          } else if (url === '/api/check-duplicate-user') {
+            const handler = await getHandler('./api/check-duplicate-user.js');
+            return handler(req, res);
+          } else if (url === '/api/record-registered-user') {
+            const handler = await getHandler('./api/record-registered-user.js');
+            return handler(req, res);
           } else {
             return next();
           }

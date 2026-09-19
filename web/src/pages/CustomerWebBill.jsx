@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTableOrder } from '../context/TableOrderContext';
 import { useAuth } from '../context/AuthContext';
@@ -34,12 +34,14 @@ import {
 } from 'lucide-react';
 import { openRazorpayPayment } from '../utils/razorpay';
 import CustomerFeedbackModal from '../components/CustomerFeedbackModal';
+import { formatOrderNumber, formatInvoiceNumber, getOrAssignInvoiceNumber, getNextInvoiceNumber } from '../utils/orderNumber';
 
 export default function CustomerWebBill() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { currentUser } = useAuth();
   const { 
+    orders = [],
     currentTable, 
     getCombinedTableBill, 
     requestTableBill, 
@@ -47,7 +49,14 @@ export default function CustomerWebBill() {
     payTableBill 
   } = useTableOrder();
 
-  const tableParam = searchParams.get('table') || currentTable || '01';
+  const orderIdParam = searchParams.get('orderId');
+  const viewReceiptParam = searchParams.get('view') === 'receipt';
+  
+  // Resolve target order: check URL orderId first, then last order placed from this browser session
+  const lastPlacedOrderId = localStorage.getItem('smartdine_last_order_id');
+  const effectiveOrderId = orderIdParam || (viewReceiptParam ? lastPlacedOrderId : null);
+  const targetOrder = effectiveOrderId ? orders.find(o => o.id === effectiveOrderId) : null;
+  const tableParam = searchParams.get('table') || targetOrder?.tableNumber || currentTable || '01';
   const formattedTable = String(tableParam).padStart(2, '0');
 
   // Coupon state
@@ -77,11 +86,187 @@ export default function CustomerWebBill() {
   const [isPaying, setIsPaying] = useState(false);
   const [cashRequested, setCashRequested] = useState(false);
   const [paymentSuccessData, setPaymentSuccessData] = useState(null);
-  const [showBillFeedback, setShowBillFeedback] = useState(true);
+  const [showBillFeedback, setShowBillFeedback] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
-  const [invoiceNumber] = useState(() => `INV-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`);
 
   const billData = getCombinedTableBill(formattedTable, discountAmount);
+
+  // Deterministic, persistent GST Tax Invoice Number for this session/table
+  const sessionInvoiceNumber = useMemo(() => {
+    if (targetOrder?.invoiceNumber) return formatInvoiceNumber(targetOrder.invoiceNumber);
+    if (billData.invoiceNumber) return formatInvoiceNumber(billData.invoiceNumber);
+    const existingPaid = (orders || []).find(o => 
+      String(o.tableNumber).padStart(2, '0') === formattedTable && o.invoiceNumber
+    );
+    if (existingPaid?.invoiceNumber) return formatInvoiceNumber(existingPaid.invoiceNumber);
+    return getOrAssignInvoiceNumber(targetOrder || billData.activeOrders, orders);
+  }, [targetOrder, billData.invoiceNumber, billData.activeOrders, orders, formattedTable]);
+
+  // Helper to check if order is paid
+  const isOrderPaid = (order) => {
+    if (!order) return false;
+    const pStatus = String(order.paymentStatus || order.payment_status || '').trim().toLowerCase();
+    if (pStatus === 'unpaid' || pStatus === 'pending' || pStatus.includes('requested') || pStatus.includes('awaiting')) {
+      return false;
+    }
+    if (pStatus === 'paid' || pStatus === 'cash paid' || pStatus === 'online paid') {
+      return true;
+    }
+    if ((order.paidAt || order.paid_at) && (order.transactionId || order.razorpay_payment_id)) {
+      return true;
+    }
+    return false;
+  };
+
+  // Compute settled receipt data for table or target order
+  const receiptData = useMemo(() => {
+    if (paymentSuccessData) return paymentSuccessData;
+
+    // 1. If targetOrder is specifically requested (by URL orderId or customer's placed order)
+    if (targetOrder) {
+      const items = (targetOrder.items || []).map(i => ({
+        itemId: i.itemId || i.id,
+        name: i.name,
+        price: Number(i.price) || 0,
+        quantity: Number(i.quantity) || 1,
+        totalPrice: (Number(i.price) || 0) * (Number(i.quantity) || 1),
+        isVeg: i.isVeg !== false
+      }));
+      const total = Number(targetOrder.total || targetOrder.amount || 0);
+      const subtotal = Number(targetOrder.subtotal) || (total * 0.95);
+      const tax = Number(targetOrder.tax) || (total * 0.05);
+      const targetInvNo = targetOrder.invoiceNumber || sessionInvoiceNumber;
+      const targetOrdNo = formatOrderNumber(targetOrder.orderNumber || targetOrder.id);
+
+      return {
+        invoiceNumber: formatInvoiceNumber(targetInvNo),
+        orderNumber: targetOrdNo,
+        orderId: targetOrder.id,
+        transactionId: targetOrder.transactionId || targetOrder.razorpay_payment_id || `TXN-${targetOrdNo}`,
+        tableNumber: targetOrder.tableNumber || formattedTable,
+        paymentMethod: targetOrder.paymentMethod || targetOrder.payment_method || 'Online Verified (Paid)',
+        amount: total,
+        discount: Number(targetOrder.discountAmount) || 0,
+        subtotal: subtotal,
+        tax: tax,
+        items: items,
+        paidAt: targetOrder.paidAt ? new Date(targetOrder.paidAt).toLocaleString() : (targetOrder.createdAt ? new Date(targetOrder.createdAt).toLocaleString() : new Date().toLocaleString()),
+        orderCount: 1,
+        customerName: targetOrder.customerName || currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || `Table ${formattedTable} Guest`
+      };
+    }
+
+    // 2. Fallback: If no target order is specified, get the latest settled transaction for this table
+    const allTablePaid = orders.filter(o => 
+      String(o.tableNumber).padStart(2, '0') === formattedTable && isOrderPaid(o)
+    );
+
+    if (allTablePaid.length > 0) {
+      // Sort newest first
+      const sortedPaid = [...allTablePaid].sort((a, b) => {
+        const timeA = new Date(a.paidAt || a.createdAt || 0).getTime();
+        const timeB = new Date(b.paidAt || b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+
+      const latestOrder = sortedPaid[0];
+      const targetTxnId = latestOrder.transactionId || latestOrder.razorpay_payment_id;
+
+      // Group ONLY orders that share the EXACT same settlement transaction ID (e.g. combined table payment)
+      // DO NOT combine orders that were settled in different transactions!
+      const sameBatchOrders = (targetTxnId && !targetTxnId.startsWith('TXN-'))
+        ? sortedPaid.filter(o => (o.transactionId || o.razorpay_payment_id) === targetTxnId)
+        : [latestOrder];
+
+      const itemMap = new Map();
+      sameBatchOrders.forEach(ord => {
+        (ord.items || []).forEach(item => {
+          const key = item.itemId || item.name;
+          if (itemMap.has(key)) {
+            const exist = itemMap.get(key);
+            exist.quantity += (Number(item.quantity) || 1);
+            exist.totalPrice += ((Number(item.price) || 0) * (Number(item.quantity) || 1));
+          } else {
+            itemMap.set(key, {
+              itemId: item.itemId || item.id,
+              name: item.name,
+              price: Number(item.price) || 0,
+              quantity: Number(item.quantity) || 1,
+              totalPrice: (Number(item.price) || 0) * (Number(item.quantity) || 1),
+              isVeg: item.isVeg !== false
+            });
+          }
+        });
+      });
+
+      const items = Array.from(itemMap.values());
+      const total = sameBatchOrders.reduce((sum, o) => sum + (Number(o.total || o.amount) || 0), 0);
+      const subtotal = sameBatchOrders.reduce((sum, o) => sum + (Number(o.subtotal) || ((Number(o.total || o.amount) || 0) * 0.95) || 0), 0);
+      const tax = sameBatchOrders.reduce((sum, o) => sum + (Number(o.tax) || ((Number(o.total || o.amount) || 0) * 0.05) || 0), 0);
+      const discount = sameBatchOrders.reduce((sum, o) => sum + (Number(o.discountAmount) || 0), 0);
+      const batchInvNo = latestOrder.invoiceNumber || sessionInvoiceNumber;
+      const batchOrdNos = sameBatchOrders.map(o => formatOrderNumber(o.orderNumber || o.id)).join(', ');
+
+      return {
+        invoiceNumber: formatInvoiceNumber(batchInvNo),
+        orderNumber: batchOrdNos,
+        orderId: latestOrder.id,
+        transactionId: targetTxnId || `TXN-${formatOrderNumber(latestOrder.id)}`,
+        tableNumber: formattedTable,
+        paymentMethod: latestOrder.paymentMethod || 'Online / Settle at Counter (Paid)',
+        amount: total,
+        discount: discount,
+        subtotal: subtotal,
+        tax: tax,
+        items: items,
+        paidAt: latestOrder.paidAt ? new Date(latestOrder.paidAt).toLocaleString() : (latestOrder.createdAt ? new Date(latestOrder.createdAt).toLocaleString() : new Date().toLocaleString()),
+        orderCount: sameBatchOrders.length,
+        customerName: latestOrder.customerName || currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || `Table ${formattedTable} Guest`
+      };
+    }
+
+    return null;
+  }, [paymentSuccessData, targetOrder, orders, formattedTable, currentUser, sessionInvoiceNumber]);
+
+  // Display mode: show receipt if view=receipt OR table has zero unpaid dishes but has settled orders
+  const [showReceiptView, setShowReceiptView] = useState(() => {
+    return Boolean(
+      viewReceiptParam || 
+      (billData.activeOrders.length === 0 && (billData.clearedOrders || []).length > 0) ||
+      (targetOrder && isOrderPaid(targetOrder))
+    );
+  });
+
+  const effectiveReceipt = paymentSuccessData || receiptData;
+  const hasSettledReceipt = Boolean(effectiveReceipt && ((effectiveReceipt.items && effectiveReceipt.items.length > 0) || Number(effectiveReceipt.amount) > 0));
+
+  // Determine if viewing receipt:
+  // Show receipt when:
+  // - paymentSuccessData is set (just finished payment)
+  // - URL explicitly has view=receipt
+  // - showReceiptView is true (user clicked view receipt)
+  // - There are 0 active unpaid orders on table and a settled receipt exists
+  const isViewingReceipt = Boolean(
+    paymentSuccessData || 
+    viewReceiptParam || 
+    (showReceiptView && hasSettledReceipt) ||
+    (billData.activeOrders.length === 0 && hasSettledReceipt)
+  );
+
+  const activeReceipt = effectiveReceipt || {
+    invoiceNumber: sessionInvoiceNumber,
+    orderNumber: billData.orderIds?.map(formatOrderNumber).join(', ') || 'ORD-1001',
+    transactionId: 'TXN-DIRECT',
+    tableNumber: formattedTable,
+    paymentMethod: paymentMode.toUpperCase(),
+    amount: billData.total,
+    subtotal: billData.subtotal,
+    tax: billData.tax,
+    discount: discountAmount,
+    items: billData.consolidatedItems,
+    paidAt: new Date().toLocaleString(),
+    customerName: currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || `Table ${formattedTable} Guest`
+  };
 
   // Format Card Number
   const handleCardNumberChange = (e) => {
@@ -242,11 +427,13 @@ export default function CustomerWebBill() {
 
   const executeBillPaymentSuccess = async ({ paymentLabel, transactionId }) => {
     try {
+      const settledInvoice = sessionInvoiceNumber;
       await payTableBill(formattedTable, {
         paymentMethod: paymentLabel,
         transactionId: transactionId,
         discountAmount: discountAmount,
-        couponCode: appliedCoupon?.code || null
+        couponCode: appliedCoupon?.code || null,
+        invoiceNumber: settledInvoice
       });
 
       try {
@@ -254,7 +441,8 @@ export default function CustomerWebBill() {
       } catch {}
 
       setPaymentSuccessData({
-        invoiceNumber,
+        invoiceNumber: settledInvoice,
+        orderNumber: billData.orderIds?.map(formatOrderNumber).join(', ') || 'ORD-1001',
         transactionId: transactionId,
         tableNumber: formattedTable,
         paymentMethod: paymentLabel,
@@ -282,12 +470,25 @@ export default function CustomerWebBill() {
       return;
     }
 
+    const receipt = activeReceipt;
+    const items = (receipt.items && receipt.items.length > 0) ? receipt.items : billData.consolidatedItems;
+    const totalAmt = Number(receipt.amount ?? billData.total);
+    const subtotalAmt = Number(receipt.subtotal ?? billData.subtotal);
+    const taxAmt = Number(receipt.tax ?? billData.tax);
+    const discAmt = Number(receipt.discount ?? discountAmount);
+    const invNo = formatInvoiceNumber(receipt.invoiceNumber || sessionInvoiceNumber);
+    const ordNo = receipt.orderNumber || billData.orderIds?.map(formatOrderNumber).join(', ') || 'ORD-1001';
+    const txnId = receipt.transactionId || 'TXN-DIRECT';
+    const payMethod = receipt.paymentMethod || paymentMode.toUpperCase();
+    const paidTime = receipt.paidAt || new Date().toLocaleString();
+    const tblNo = receipt.tableNumber || formattedTable;
+
     const htmlContent = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SmartDine Tax Invoice - Table ${formattedTable} - ${invoiceNumber}</title>
+  <title>SmartDine Tax Invoice - Table ${tblNo} - ${invNo}</title>
   <style>
     @page { margin: 12mm; }
     body {
@@ -438,17 +639,27 @@ export default function CustomerWebBill() {
 
     <div class="meta-grid">
       <div class="meta-box">
-        <span>Invoice No</span>
-        <strong>${invoiceNumber}</strong>
+        <span>Tax Invoice No</span>
+        <strong style="font-family: monospace; font-size: 13px; color: #0F172A;">${invNo}</strong>
+      </div>
+      <div class="meta-box">
+        <span>Order Token</span>
+        <strong style="font-family: monospace; font-size: 13px; color: #EA580C;">${ordNo}</strong>
       </div>
       <div class="meta-box">
         <span>Dining Table</span>
-        <div class="table-badge">Table ${formattedTable}</div>
+        <div class="table-badge">Table ${tblNo}</div>
       </div>
       <div class="meta-box" style="text-align: right;">
         <span>Date & Time</span>
-        <strong>${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</strong>
+        <strong>${paidTime}</strong>
       </div>
+    </div>
+
+    <div style="background: #FFFBEB; border-bottom: 1px dashed #FDE68A; padding: 6px 20px; font-size: 9.5px; color: #92400E; display: flex; justify-content: space-between;">
+      <span><strong>GSTIN:</strong> 27AABCS1429B1Z8</span>
+      <span><strong>SAC:</strong> 996331 (Restaurant Dining)</span>
+      <span><strong>FSSAI Lic:</strong> 11522036000412</span>
     </div>
 
     <table class="items-table">
@@ -461,15 +672,15 @@ export default function CustomerWebBill() {
         </tr>
       </thead>
       <tbody>
-        ${billData.consolidatedItems.map(item => `
+        ${items.map(item => `
           <tr>
             <td>
-              <span class="${item.isVeg ? 'veg-dot' : 'nonveg-dot'}"></span>
+              <span class="${item.isVeg !== false ? 'veg-dot' : 'nonveg-dot'}"></span>
               <strong>${item.name}</strong>
             </td>
             <td style="text-align: center; color: #EA580C; font-weight: 800;">${item.quantity}x</td>
-            <td style="text-align: right; color: #64748B;">₹${item.price.toFixed(0)}</td>
-            <td style="text-align: right; font-weight: 800; color: #0F172A;">₹${item.totalPrice.toFixed(2)}</td>
+            <td style="text-align: right; color: #64748B;">₹${(Number(item.price) || 0).toFixed(0)}</td>
+            <td style="text-align: right; font-weight: 800; color: #0F172A;">₹${(Number(item.totalPrice) || (Number(item.price) * Number(item.quantity)) || 0).toFixed(2)}</td>
           </tr>
         `).join('')}
       </tbody>
@@ -477,31 +688,31 @@ export default function CustomerWebBill() {
 
     <div class="calc-section">
       <div class="calc-row">
-        <span>Subtotal (${billData.consolidatedItems.length} items)</span>
-        <strong style="color: #0F172A;">₹${billData.subtotal.toFixed(2)}</strong>
+        <span>Subtotal (${items.length} items)</span>
+        <strong style="color: #0F172A;">₹${subtotalAmt.toFixed(2)}</strong>
       </div>
-      ${discountAmount > 0 ? `
+      ${discAmt > 0 ? `
       <div class="calc-row discount">
         <span>Discount Applied (${appliedCoupon?.code || 'COUPON'})</span>
-        <span>-₹${discountAmount.toFixed(2)}</span>
+        <span>-₹${discAmt.toFixed(2)}</span>
       </div>` : ''}
       <div class="calc-row">
         <span>CGST (2.5%)</span>
-        <strong style="color: #0F172A;">₹${(billData.tax / 2).toFixed(2)}</strong>
+        <strong style="color: #0F172A;">₹${(taxAmt / 2).toFixed(2)}</strong>
       </div>
       <div class="calc-row">
         <span>SGST (2.5%)</span>
-        <strong style="color: #0F172A;">₹${(billData.tax / 2).toFixed(2)}</strong>
+        <strong style="color: #0F172A;">₹${(taxAmt / 2).toFixed(2)}</strong>
       </div>
       <div class="grand-total">
         <span>GRAND TOTAL PAID</span>
-        <span class="amount">₹${billData.total.toFixed(2)}</span>
+        <span class="amount">₹${totalAmt.toFixed(2)}</span>
       </div>
     </div>
 
     <div class="paid-stamp">
-      PAID & VERIFIED ONLINE ✅ (${paymentSuccessData?.paymentMethod || paymentMode.toUpperCase()})<br>
-      <small style="font-size: 10px; font-weight: 600; color: #047857;">Txn ID: ${paymentSuccessData?.transactionId || 'TXN-DIRECT'}</small>
+      PAID & VERIFIED OFFICIAL INVOICE ✅ (${payMethod})<br>
+      <small style="font-size: 10px; font-weight: 600; color: #047857;">Txn ID: ${txnId}</small>
     </div>
 
     <div class="footer">
@@ -534,8 +745,20 @@ export default function CustomerWebBill() {
   const handleDownloadImage = () => {
     const canvas = document.createElement('canvas');
     const width = 600;
-    const items = billData.consolidatedItems;
-    const height = 450 + (items.length * 36);
+    const receipt = activeReceipt;
+    const items = (receipt.items && receipt.items.length > 0) ? receipt.items : billData.consolidatedItems;
+    const totalAmt = Number(receipt.amount ?? billData.total);
+    const subtotalAmt = Number(receipt.subtotal ?? billData.subtotal);
+    const taxAmt = Number(receipt.tax ?? billData.tax);
+    const discAmt = Number(receipt.discount ?? discountAmount);
+    const invNo = formatInvoiceNumber(receipt.invoiceNumber || sessionInvoiceNumber);
+    const ordNo = receipt.orderNumber || billData.orderIds?.map(formatOrderNumber).join(', ') || 'ORD-1001';
+    const txnId = receipt.transactionId || 'TXN-DIRECT';
+    const payMethod = receipt.paymentMethod || paymentMode.toUpperCase();
+    const paidTime = receipt.paidAt || new Date().toLocaleString();
+    const tblNo = receipt.tableNumber || formattedTable;
+
+    const height = Math.max(520, 440 + (items.length * 32));
 
     canvas.width = width * 2; // High-DPI 2x Retina scale
     canvas.height = height * 2;
@@ -547,9 +770,6 @@ export default function CustomerWebBill() {
     ctx.fillRect(0, 0, width, height);
 
     // 2. Outer Card Border
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, width, height);
-
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#F59E0B';
     ctx.strokeRect(15, 15, width - 30, height - 30);
@@ -576,24 +796,31 @@ export default function CustomerWebBill() {
     ctx.textAlign = 'left';
     ctx.fillStyle = '#64748B';
     ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText('INVOICE NO', 35, 120);
+    ctx.fillText('INVOICE NO', 35, 118);
     ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 12px monospace';
-    ctx.fillText(invoiceNumber, 35, 138);
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText(invNo, 35, 134);
 
     ctx.fillStyle = '#64748B';
     ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText('DINING TABLE', width / 2 - 35, 120);
+    ctx.fillText('ORDER TOKEN', 175, 118);
     ctx.fillStyle = '#EA580C';
-    ctx.font = 'bold 13px system-ui, sans-serif';
-    ctx.fillText(`Table ${formattedTable}`, width / 2 - 35, 138);
+    ctx.font = 'bold 11px monospace';
+    ctx.fillText(ordNo, 175, 134);
 
     ctx.fillStyle = '#64748B';
     ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText('DATE & TIME', width - 155, 120);
+    ctx.fillText('DINING TABLE', width / 2 + 50, 118);
     ctx.fillStyle = '#0F172A';
     ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.fillText(new Date().toLocaleDateString(), width - 155, 138);
+    ctx.fillText(`Table ${tblNo}`, width / 2 + 50, 134);
+
+    ctx.fillStyle = '#64748B';
+    ctx.font = '10px system-ui, sans-serif';
+    ctx.fillText('DATE & TIME', width - 150, 118);
+    ctx.fillStyle = '#0F172A';
+    ctx.font = 'bold 10px system-ui, sans-serif';
+    ctx.fillText(paidTime, width - 150, 134);
 
     // Divider
     ctx.strokeStyle = '#E2E8F0';
@@ -626,12 +853,12 @@ export default function CustomerWebBill() {
     items.forEach((item) => {
       ctx.textAlign = 'left';
       // Veg/Non-Veg dot
-      ctx.fillStyle = item.isVeg ? '#16A34A' : '#E11D48';
+      ctx.fillStyle = item.isVeg !== false ? '#16A34A' : '#E11D48';
       ctx.fillRect(40, y - 8, 8, 8);
 
       ctx.fillStyle = '#0F172A';
       ctx.font = 'bold 12px system-ui, sans-serif';
-      ctx.fillText(item.name.substring(0, 24), 56, y);
+      ctx.fillText((item.name || 'Delicacy').substring(0, 24), 56, y);
 
       ctx.fillStyle = '#EA580C';
       ctx.font = 'bold 12px system-ui, sans-serif';
@@ -639,7 +866,7 @@ export default function CustomerWebBill() {
 
       ctx.textAlign = 'right';
       ctx.fillStyle = '#0F172A';
-      ctx.fillText(`₹${item.totalPrice.toFixed(2)}`, width - 40, y);
+      ctx.fillText(`₹${(Number(item.totalPrice) || (Number(item.price) * Number(item.quantity)) || 0).toFixed(2)}`, width - 40, y);
       y += 26;
     });
 
@@ -660,15 +887,15 @@ export default function CustomerWebBill() {
     ctx.fillText('Subtotal', 40, y);
     ctx.textAlign = 'right';
     ctx.fillStyle = '#0F172A';
-    ctx.fillText(`₹${billData.subtotal.toFixed(2)}`, width - 40, y);
+    ctx.fillText(`₹${subtotalAmt.toFixed(2)}`, width - 40, y);
 
-    if (discountAmount > 0) {
+    if (discAmt > 0) {
       y += 20;
       ctx.textAlign = 'left';
       ctx.fillStyle = '#16A34A';
       ctx.fillText(`Discount (${appliedCoupon?.code || 'COUPON'})`, 40, y);
       ctx.textAlign = 'right';
-      ctx.fillText(`-₹${discountAmount.toFixed(2)}`, width - 40, y);
+      ctx.fillText(`-₹${discAmt.toFixed(2)}`, width - 40, y);
     }
 
     y += 20;
@@ -677,7 +904,7 @@ export default function CustomerWebBill() {
     ctx.fillText('GST (5% SGST + CGST)', 40, y);
     ctx.textAlign = 'right';
     ctx.fillStyle = '#0F172A';
-    ctx.fillText(`₹${billData.tax.toFixed(2)}`, width - 40, y);
+    ctx.fillText(`₹${taxAmt.toFixed(2)}`, width - 40, y);
 
     // Grand total
     y += 26;
@@ -695,7 +922,7 @@ export default function CustomerWebBill() {
     ctx.fillStyle = '#EA580C';
     ctx.font = 'bold 20px system-ui, sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(`₹${billData.total.toFixed(2)}`, width - 40, y + 10);
+    ctx.fillText(`₹${totalAmt.toFixed(2)}`, width - 40, y + 10);
 
     // 8. Paid Stamp Box
     y += 36;
@@ -708,10 +935,10 @@ export default function CustomerWebBill() {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#059669';
     ctx.font = 'bold 12px system-ui, sans-serif';
-    ctx.fillText(`PAID & VERIFIED ONLINE ✅ (${paymentSuccessData?.paymentMethod || paymentMode.toUpperCase()})`, width / 2, y + 20);
+    ctx.fillText(`PAID & VERIFIED OFFICIAL INVOICE ✅ (${payMethod})`, width / 2, y + 20);
     ctx.font = '10px monospace';
     ctx.fillStyle = '#1B5E20';
-    ctx.fillText(`Txn ID: ${paymentSuccessData?.transactionId || 'TXN-DIRECT'}`, width / 2, y + 34);
+    ctx.fillText(`Txn ID: ${txnId}`, width / 2, y + 34);
 
     // 9. Export as 100% clean white background JPG
     canvas.toBlob((blob) => {
@@ -719,7 +946,7 @@ export default function CustomerWebBill() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `SmartDine_Invoice_Table${formattedTable}_${invoiceNumber}.jpg`;
+      link.download = `SmartDine_Invoice_Table${tblNo}_${invNo}.jpg`;
       link.click();
       URL.revokeObjectURL(url);
       setShowDownloadModal(false);
@@ -727,10 +954,24 @@ export default function CustomerWebBill() {
     }, 'image/jpeg', 1.0);
   };
 
-  // ================= PAYMENT SUCCESS VIEW =================
-  if (paymentSuccessData) {
+  // ================= PAID TAX INVOICE & BILL RECEIPT VIEW =================
+  if (isViewingReceipt && effectiveReceipt) {
+    const receipt = effectiveReceipt;
+    const items = (receipt.items && receipt.items.length > 0) ? receipt.items : [];
+    const totalAmt = Number(receipt.amount ?? 0);
+    const subtotalAmt = Number(receipt.subtotal ?? (totalAmt * 0.95));
+    const taxAmt = Number(receipt.tax ?? (totalAmt * 0.05));
+    const discAmt = Number(receipt.discount ?? 0);
+    const invNo = formatInvoiceNumber(receipt.invoiceNumber || sessionInvoiceNumber);
+    const ordNo = receipt.orderNumber || billData.orderIds?.map(formatOrderNumber).join(', ') || 'ORD-1001';
+    const txnId = receipt.transactionId || 'TXN-SETTLED';
+    const payMethod = receipt.paymentMethod || 'Online / Counter Settle (Paid)';
+    const paidTime = receipt.paidAt || new Date().toLocaleString();
+    const tblNo = receipt.tableNumber || formattedTable;
+    const customerName = receipt.customerName || currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || `Table ${tblNo} Guest`;
+
     return (
-      <div className="min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans relative selection:bg-orange-500 selection:text-white">
+      <div className="min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-100 flex items-center justify-center p-3 sm:p-5 font-sans relative selection:bg-orange-500 selection:text-white">
         
         {/* Download Format Selector Modal (PDF vs Image) */}
         {showDownloadModal && (
@@ -794,39 +1035,114 @@ export default function CustomerWebBill() {
           </div>
         )}
 
-        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-6 space-y-5 animate-in zoom-in-95 duration-300">
+        <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-6 space-y-4 animate-in zoom-in-95 duration-200">
           
-          <div className="text-center space-y-1.5">
-            <div className="w-14 h-14 rounded-full bg-emerald-950/60 text-emerald-400 border-2 border-emerald-500 flex items-center justify-center mx-auto shadow-glow">
-              <Check className="w-8 h-8 stroke-[3]" />
+          {/* Header with Verified Badge */}
+          <div className="text-center space-y-1">
+            <div className="w-12 h-12 rounded-full bg-emerald-950/80 text-emerald-400 border-2 border-emerald-500 flex items-center justify-center mx-auto shadow-glow">
+              <Check className="w-7 h-7 stroke-[3]" />
             </div>
-            <h1 className="text-xl font-black text-white">Payment Successful!</h1>
+            <h1 className="text-xl font-black text-white tracking-tight flex items-center justify-center gap-1.5">
+              <span>Bill Settled & Paid</span>
+              <span className="text-emerald-400">✅</span>
+            </h1>
             <p className="text-xs text-slate-400">
-              Table {paymentSuccessData.tableNumber} bill settled cleanly.
+              Official Tax Invoice for Table #{tblNo}
             </p>
           </div>
 
           {/* Color-Rich Digital Invoice Card */}
-          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 font-mono text-xs shadow-inner">
-            <div className="flex justify-between text-slate-400">
-              <span>Invoice</span>
-              <span className="font-bold text-slate-200">{paymentSuccessData.invoiceNumber}</span>
+          <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 shadow-inner">
+            
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
+              <div>
+                <div className="text-[10px] uppercase font-bold text-slate-500">Tax Invoice Number</div>
+                <div className="font-mono text-xs font-bold text-amber-400">{invNo}</div>
+              </div>
+              <div>
+                <div className="text-[10px] uppercase font-bold text-slate-500">Order Token</div>
+                <div className="font-mono text-xs font-bold text-slate-200">{ordNo}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] uppercase font-bold text-slate-500">Dining Table</div>
+                <div className="text-xs font-black text-amber-400">Table #{tblNo}</div>
+              </div>
             </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Txn ID</span>
-              <span className="font-bold text-amber-400">{paymentSuccessData.transactionId}</span>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Payment Mode</span>
+                <span className="font-semibold text-slate-200 truncate block">{payMethod}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Date & Time</span>
+                <span className="font-semibold text-slate-300 block">{paidTime}</span>
+              </div>
+              <div>
+                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Txn ID</span>
+                <span className="font-mono text-[10px] text-amber-400/90 truncate block">{txnId}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Guest</span>
+                <span className="font-semibold text-slate-300 truncate block">{customerName}</span>
+              </div>
             </div>
-            <div className="flex justify-between text-slate-400">
-              <span>Mode</span>
-              <span className="font-bold text-slate-200">{paymentSuccessData.paymentMethod}</span>
+
+            {/* Delicacies List */}
+            {items.length > 0 && (
+              <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+                <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  <span>Delicacies Invoiced ({items.length})</span>
+                  <span>Amount</span>
+                </div>
+                <div className="max-h-40 overflow-y-auto pr-1 space-y-1.5 divide-y divide-slate-900">
+                  {items.map((item, idx) => (
+                    <div key={idx} className="pt-1.5 first:pt-0 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 truncate pr-2">
+                        <span className={`w-2 h-2 rounded-sm ${item.isVeg !== false ? 'bg-emerald-400' : 'bg-rose-400'} shrink-0`} />
+                        <span className="font-medium text-slate-200 truncate">{item.name}</span>
+                        <span className="text-amber-400 font-bold text-[11px]">x{item.quantity}</span>
+                      </div>
+                      <span className="font-bold text-slate-300 shrink-0">
+                        ₹{(Number(item.totalPrice) || (Number(item.price) * Number(item.quantity)) || 0).toFixed(0)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Subtotal & Taxes Breakdown */}
+            <div className="pt-2.5 border-t border-slate-800/80 space-y-1 text-xs">
+              <div className="flex justify-between text-slate-400">
+                <span>Subtotal</span>
+                <span className="text-slate-200 font-bold">₹{subtotalAmt.toFixed(2)}</span>
+              </div>
+              {discAmt > 0 && (
+                <div className="flex justify-between text-emerald-400 font-bold">
+                  <span>Discount</span>
+                  <span>-₹{discAmt.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-slate-400 text-[11px]">
+                <span>GST (5% SGST + CGST)</span>
+                <span className="text-slate-300">₹{taxAmt.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t border-slate-800 text-sm font-black text-white">
+                <span>Total Paid Amount</span>
+                <span className="text-emerald-400 text-xl font-black font-mono">₹{totalAmt.toFixed(2)}</span>
+              </div>
             </div>
-            <div className="flex justify-between pt-2 border-t border-slate-800 text-sm font-black text-white">
-              <span>Amount Paid</span>
-              <span className="text-emerald-400 text-xl font-black">₹{paymentSuccessData.amount.toFixed(2)}</span>
+
+            {/* Official Stamp */}
+            <div className="p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-500/30 flex items-center justify-center gap-1.5 text-center text-xs font-bold text-emerald-300">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Paid & Verified Tax Invoice</span>
             </div>
+
           </div>
 
-          <div className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2">
             {/* Post-Payment Feedback Button */}
             <button
               type="button"
@@ -838,18 +1154,18 @@ export default function CustomerWebBill() {
             </button>
 
             <Link
-              to={`/menu?table=${formattedTable}`}
-              className="w-full py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs sm:text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+              to={`/menu?table=${tblNo}`}
+              className="w-full py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <UtensilsCrossed className="w-4 h-4 text-amber-400" />
-              <span>Back to Menu (Table {formattedTable})</span>
+              <span>Back to Menu (Table {tblNo})</span>
             </Link>
 
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={handlePrintReceipt}
-                className="py-3 rounded-xl bg-slate-950 hover:bg-slate-800 text-amber-400 border border-slate-800 font-black text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-amber-400 border border-slate-800 font-black text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 <span>Print Bill</span>
@@ -858,7 +1174,7 @@ export default function CustomerWebBill() {
               <button
                 type="button"
                 onClick={() => setShowDownloadModal(true)}
-                className="py-3 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer"
+                className="py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5 text-orange-400" />
                 <span>Download Bill</span>
@@ -871,13 +1187,41 @@ export default function CustomerWebBill() {
         {/* Post-Payment Feedback Modal */}
         <CustomerFeedbackModal
           isOpen={showBillFeedback}
-          orderId={paymentSuccessData.invoiceNumber || 'SD1024'}
-          tableNumber={formattedTable}
-          orderItems={paymentSuccessData.items || []}
-          amount={paymentSuccessData.amount}
+          orderId={receipt.orderId || invNo || 'SD1024'}
+          tableNumber={tblNo}
+          orderItems={items}
+          amount={totalAmt}
           onComplete={() => setShowBillFeedback(false)}
           onSkip={() => setShowBillFeedback(false)}
         />
+      </div>
+    );
+  }
+
+  // ================= EMPTY TABLE STATE (NO ACTIVE & NO CLEARED ORDERS) =================
+  if (billData.activeOrders.length === 0 && !hasSettledReceipt) {
+    return (
+      <div className="min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans selection:bg-orange-500 selection:text-white">
+        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+          <div className="w-16 h-16 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-center mx-auto text-amber-400 shadow-inner">
+            <UtensilsCrossed className="w-8 h-8" />
+          </div>
+          <div>
+            <h2 className="text-lg font-black text-white">No Active Orders on Table {formattedTable}</h2>
+            <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
+              There are currently no dishes ordered or pending payment for this dining table.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Link
+              to={`/menu?table=${formattedTable}`}
+              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow transition cursor-pointer"
+            >
+              <UtensilsCrossed className="w-4 h-4" />
+              <span>Browse Menu & Order Dishes</span>
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -913,7 +1257,7 @@ export default function CustomerWebBill() {
             }`}>
               {billData.billStatus}
             </span>
-            <span className="text-[11px] font-mono text-slate-400 hidden xs:inline">{invoiceNumber}</span>
+            <span className="text-[11px] font-mono text-slate-400 hidden xs:inline">{sessionInvoiceNumber}</span>
           </div>
         </div>
 
@@ -937,11 +1281,22 @@ export default function CustomerWebBill() {
                 )}
               </div>
 
-              {/* Cleared Orders Notice */}
+              {/* Cleared Orders Notice with View Receipt button */}
               {billData.clearedOrderCount > 0 && (
-                <div className="p-2 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-[11px] text-emerald-400 font-bold flex items-center justify-between">
-                  <span>Previous Orders Settled:</span>
-                  <span>₹{billData.totalClearedAmount.toFixed(0)} (Paid ✅)</span>
+                <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-400 font-bold flex items-center justify-between">
+                  <div>
+                    <span>Previous Orders Settled: </span>
+                    <span className="text-white font-extrabold">₹{billData.totalClearedAmount.toFixed(0)}</span>
+                    <span className="text-[10px] ml-1 text-emerald-400 font-normal">(Paid ✅)</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowReceiptView(true)}
+                    className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] transition cursor-pointer flex items-center gap-1 shadow-sm"
+                  >
+                    <Receipt className="w-3 h-3" />
+                    <span>View Paid Receipt</span>
+                  </button>
                 </div>
               )}
 

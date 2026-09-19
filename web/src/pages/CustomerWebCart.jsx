@@ -43,6 +43,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { openRazorpayPayment } from '../utils/razorpay';
 import { getCartComplementaryItems, getAiSuggestedCombo } from '../services/customerAiService';
 import CustomerFeedbackModal from '../components/CustomerFeedbackModal';
+import { formatOrderNumber } from '../utils/orderNumber';
 
 const DEFAULT_VOUCHERS = [
   {
@@ -581,6 +582,17 @@ export default function CustomerWebCart() {
         total: finalPayable
       });
 
+      if (orderId) {
+        try {
+          const raw = localStorage.getItem('smartdine_customer_order_ids');
+          const ids = raw ? JSON.parse(raw) : [];
+          if (!ids.includes(orderId)) {
+            ids.unshift(orderId);
+            localStorage.setItem('smartdine_customer_order_ids', JSON.stringify(ids));
+          }
+        } catch {}
+      }
+
       // Keep kitchen instructions / special notes blank after order placement
       setOrderNotes('');
       setActiveRazorpayOrderId(null);
@@ -782,7 +794,7 @@ export default function CustomerWebCart() {
           <div className="space-y-2">
             <div className="flex items-center justify-center gap-2 flex-wrap">
               <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 font-mono font-bold text-xs border border-amber-500/20">
-                Order #{completedOrderData.orderId}
+                Order #{formatOrderNumber(completedOrderData.orderId)}
               </span>
               <span className="px-3 py-1 rounded-full bg-slate-900 text-slate-300 font-bold text-xs border border-slate-800">
                 Table {completedOrderData.tableNumber}
@@ -812,7 +824,7 @@ export default function CustomerWebCart() {
             <div className="grid grid-cols-2 gap-2.5 text-xs">
               <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
                 <span className="text-[10px] text-slate-400 block font-semibold">Order ID</span>
-                <span className="font-mono font-bold text-white">#SD-{completedOrderData.orderId}</span>
+                <span className="font-mono font-bold text-white">#{formatOrderNumber(completedOrderData.orderId)}</span>
               </div>
               <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800">
                 <span className="text-[10px] text-slate-400 block font-semibold">Amount</span>
@@ -879,15 +891,13 @@ export default function CustomerWebCart() {
               <span>Track Live Preparation Status →</span>
             </button>
 
-            <a
-              href={`/bill?table=${completedOrderData.tableNumber}`}
-              target="_blank"
-              rel="noreferrer"
+            <Link
+              to={`/bill?table=${completedOrderData.tableNumber}&orderId=${completedOrderData.orderId}&view=receipt`}
               className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs border border-slate-800 shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Receipt className="w-4 h-4 text-amber-400" />
               <span>View & Print Bill Receipt</span>
-            </a>
+            </Link>
 
             <button
               onClick={() => setShowFeedbackModal(true)}

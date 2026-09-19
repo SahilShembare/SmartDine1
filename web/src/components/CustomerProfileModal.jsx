@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTableOrder } from '../context/TableOrderContext';
 import toast from 'react-hot-toast';
+import { formatOrderNumber } from '../utils/orderNumber';
 import { 
   User, 
   X, 
@@ -82,10 +83,47 @@ export default function CustomerProfileModal({ isOpen, onClose }) {
     }
   };
 
-  const myOrders = orders.filter(o => 
-    (currentUser?.uid && o.customerId === currentUser.uid) || 
-    (currentTable && o.tableNumber === currentTable)
-  ).slice(0, 3);
+  const customerOrderIds = useMemo(() => {
+    try {
+      const saved = localStorage.getItem('smartdine_customer_order_ids');
+      const list = saved ? JSON.parse(saved) : [];
+      const lastId = localStorage.getItem('smartdine_last_order_id');
+      if (lastId && !list.includes(lastId)) {
+        list.unshift(lastId);
+      }
+      return list;
+    } catch {
+      return [];
+    }
+  }, [orders]);
+
+  const guestPhone = (currentUser?.phoneNumber || localStorage.getItem('smartdine_guest_phone') || phone || '').replace(/\D/g, '');
+  const userUid = currentUser?.uid;
+  const userEmail = currentUser?.email?.toLowerCase();
+
+  const DEMO_IDS = useMemo(() => new Set([
+    'ORD-1048', 'ORD-1047', 'ORD-1046', 'ORD-1045', 'ORD-1044', 'ORD-1043', 'ORD-9821', 'ORD-9822'
+  ]), []);
+
+  const myOrders = useMemo(() => {
+    return orders.filter(o => {
+      if (o.isDemo || DEMO_IDS.has(o.id)) return false;
+      if (customerOrderIds.includes(o.id)) return true;
+      if (userUid && o.customerId === userUid) return true;
+      if (userEmail && o.customerEmail && o.customerEmail.toLowerCase() === userEmail) return true;
+      if (guestPhone && guestPhone.length >= 10 && o.customerPhone) {
+        const cleanOPhone = String(o.customerPhone).replace(/\D/g, '');
+        if (cleanOPhone && cleanOPhone === guestPhone) return true;
+      }
+      if (currentTable && String(o.tableNumber).padStart(2, '0') === String(currentTable).padStart(2, '0')) {
+        const guestName = (currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || displayName || '').trim().toLowerCase();
+        if (!guestName || (o.customerName && o.customerName.trim().toLowerCase() === guestName)) {
+          return true;
+        }
+      }
+      return false;
+    }).slice(0, 3);
+  }, [orders, customerOrderIds, userUid, userEmail, guestPhone, currentTable, currentUser, displayName, DEMO_IDS]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
@@ -273,7 +311,7 @@ export default function CustomerProfileModal({ isOpen, onClose }) {
                   >
                     <div>
                       <div className="font-extrabold text-xs text-white flex items-center gap-1.5">
-                        <span>Order #{order.id.slice(0, 6)}</span>
+                        <span>Order #{formatOrderNumber(order.orderNumber || order.id)}</span>
                         <span className="text-[10px] px-2 py-0.2 rounded-full bg-slate-950 text-amber-400 border border-amber-500/30">
                           Table {order.tableNumber}
                         </span>

@@ -42,3 +42,8 @@ ui-debug.log*
 .env*.local
 .env
 !.env.example
+
+# Windows duplicate copy files
+* - Copy.*
+*- Copy.*
+

@@ -21,5 +21,8 @@
     "firebase"
   ],
   "author": "Smart Dine",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "nodemailer": "^10.0.10"
+  }
 }

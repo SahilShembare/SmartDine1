@@ -1573,45 +1573,4 @@ export const DEMO_TABLES = [
   { id: "table-25", tableNumber: "25", capacity: 10, active: true, location: "Royal Banquet Suite", qrUrl: "https://smartdine.netlify.app/menu?table=25", deepLink: "smartdine://table/25" }
 ];
 
-export const DEMO_ORDERS = [
-  {
-    id: "ORD-9821",
-    tableNumber: "02",
-    customerName: "Rahul Sharma",
-    customerPhone: "+91 98765 43210",
-    customerId: "cust-1",
-    items: [
-      { itemId: "item-1", name: "Misal Pav", price: 120, quantity: 2, isVeg: true },
-      { itemId: "item-51", name: "Mango Lassi", price: 100, quantity: 2, isVeg: true }
-    ],
-    subtotal: 440,
-    tax: 22,
-    total: 462,
-    status: "preparing",
-    paymentStatus: "paid",
-    paymentMethod: "UPI / Counter",
-    notes: "Please make the rassa spicy and extra lemon",
-    createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
-    updatedAt: new Date(Date.now() - 5 * 60000).toISOString()
-  },
-  {
-    id: "ORD-9822",
-    tableNumber: "05",
-    customerName: "Priya Nair",
-    customerPhone: "+91 91234 56789",
-    customerId: "cust-2",
-    items: [
-      { itemId: "item-145", name: "Plain Dosa", price: 90, quantity: 2, isVeg: true },
-      { itemId: "item-49", name: "Masala Chai", price: 50, quantity: 2, isVeg: true }
-    ],
-    subtotal: 280,
-    tax: 14,
-    total: 294,
-    status: "accepted",
-    paymentStatus: "pending",
-    paymentMethod: "Pay after Dining",
-    notes: "Crispy dosas with hot sambar please",
-    createdAt: new Date(Date.now() - 8 * 60000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 60000).toISOString()
-  }
-];
+export const DEMO_ORDERS = [];

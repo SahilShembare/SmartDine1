@@ -36,10 +36,10 @@ export default function OrdersScreen() {
       if (saved) {
         setHistoryOrders(JSON.parse(saved));
       } else {
-        setHistoryOrders(orders.slice(0, 3));
+        setHistoryOrders([]);
       }
     } catch (e) {
-      setHistoryOrders(orders.slice(0, 3));
+      setHistoryOrders([]);
     }
   };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTableOrder } from '../context/TableOrderContext';
@@ -18,6 +18,7 @@ import {
   Edit3, 
   Phone, 
   Mail, 
+  Receipt,
   CheckCircle2, 
   RotateCcw, 
   ArrowRight, 
@@ -201,11 +202,60 @@ export default function CustomerProfile() {
   // FAQ Accordion State
   const [openFaqIndex, setOpenFaqIndex] = useState(0);
 
-  // Filter orders for this customer / table
-  const myOrders = orders.filter(o => 
-    (currentUser?.uid && o.customerId === currentUser.uid) ||
-    (currentTable && o.tableNumber === currentTable)
-  );
+  // Placed customer order IDs from this device/session
+  const customerOrderIds = useMemo(() => {
+    try {
+      const saved = localStorage.getItem('smartdine_customer_order_ids');
+      const list = saved ? JSON.parse(saved) : [];
+      const lastId = localStorage.getItem('smartdine_last_order_id');
+      if (lastId && !list.includes(lastId)) {
+        list.unshift(lastId);
+      }
+      return list;
+    } catch {
+      return [];
+    }
+  }, [orders]);
+
+  const guestPhone = (currentUser?.phoneNumber || localStorage.getItem('smartdine_guest_phone') || phone || '').replace(/\D/g, '');
+  const userUid = currentUser?.uid;
+  const userEmail = currentUser?.email?.toLowerCase();
+
+  // Known demo order IDs to strictly exclude
+  const DEMO_IDS = useMemo(() => new Set([
+    'ORD-1048', 'ORD-1047', 'ORD-1046', 'ORD-1045', 'ORD-1044', 'ORD-1043', 'ORD-9821', 'ORD-9822'
+  ]), []);
+
+  // Filter orders strictly for this customer: exclude demo orders, show only real customer orders
+  const myOrders = useMemo(() => {
+    return orders.filter(o => {
+      // 1. Strictly exclude demo / seed orders
+      if (o.isDemo || DEMO_IDS.has(o.id)) return false;
+
+      // 2. Orders placed from this browser session/device
+      if (customerOrderIds.includes(o.id)) return true;
+
+      // 3. Match by logged-in user ID or Email
+      if (userUid && o.customerId === userUid) return true;
+      if (userEmail && o.customerEmail && o.customerEmail.toLowerCase() === userEmail) return true;
+
+      // 4. Match by customer phone number
+      if (guestPhone && guestPhone.length >= 10 && o.customerPhone) {
+        const cleanOPhone = String(o.customerPhone).replace(/\D/g, '');
+        if (cleanOPhone && cleanOPhone === guestPhone) return true;
+      }
+
+      // 5. Match by current active dining table session
+      if (currentTable && String(o.tableNumber).padStart(2, '0') === String(currentTable).padStart(2, '0')) {
+        const guestName = (currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || displayName || '').trim().toLowerCase();
+        if (!guestName || (o.customerName && o.customerName.trim().toLowerCase() === guestName)) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+  }, [orders, customerOrderIds, userUid, userEmail, guestPhone, currentTable, currentUser, displayName, DEMO_IDS]);
 
   // Save profile changes
   const handleSaveProfile = async (e) => {
@@ -484,7 +534,7 @@ export default function CustomerProfile() {
                       </p>
                     </div>
                     <span className="text-xs font-black text-amber-400 bg-slate-800/80 px-3 py-1 rounded-xl border border-slate-700">
-                      {myOrders.length} Orders
+                      {myOrders.length} {myOrders.length === 1 ? 'Order' : 'Orders'}
                     </span>
                   </div>
 
@@ -566,8 +616,16 @@ export default function CustomerProfile() {
                             ))}
                           </div>
 
-                          {/* Action Buttons: View Tracking & Reorder */}
-                          <div className="flex items-center justify-end gap-2 pt-1">
+                          {/* Action Buttons: View Tracking, Bill Receipt & Reorder */}
+                          <div className="flex items-center justify-end gap-2 pt-1 flex-wrap">
+                            <button
+                              onClick={() => navigate(`/bill?table=${order.tableNumber || currentTable || '01'}&orderId=${order.id}&view=receipt`)}
+                              className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-white border border-amber-500/30 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <Receipt className="w-3.5 h-3.5 text-amber-400" />
+                              <span>Bill Receipt</span>
+                            </button>
+
                             <button
                               onClick={() => navigate(`/track/${order.id}`)}
                               className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
