@@ -173,19 +173,20 @@ export function TableOrderProvider({ children }) {
       const unsubTables = onSnapshot(collection(db, 'tables'), (snapshot) => {
         if (!snapshot.empty) {
           const tbls = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          if (tbls.length < 25) {
-            const existingMap = new Map(tbls.map(t => [String(t.tableNumber).padStart(2, '0'), t]));
-            const merged = DEMO_TABLES.map(dt => {
-              const num = String(dt.tableNumber).padStart(2, '0');
-              return existingMap.has(num) ? { ...dt, ...existingMap.get(num) } : dt;
-            });
-            setTables(merged);
-            localStore.saveTables(merged);
-          } else {
-            setTables(tbls);
-            localStore.saveTables(tbls);
+          tbls.sort((a, b) => parseInt(a.tableNumber || 0, 10) - parseInt(b.tableNumber || 0, 10));
+          setTables(tbls);
+          localStore.saveTables(tbls);
+        } else {
+          // If Firestore is empty, maintain existing local tables without resurrecting demo tables
+          const localTbls = localStore.getTables();
+          if (localTbls) {
+            setTables(localTbls);
           }
         }
+      }, (err) => {
+        console.warn('Firestore tables listener error (using local tables):', err);
+        const localTbls = localStore.getTables();
+        if (localTbls) setTables(localTbls);
       });
 
       // Orders listener
@@ -929,27 +930,117 @@ export function TableOrderProvider({ children }) {
     localStore.saveTables(updated);
   };
 
-  const addTable = (tableData) => {
+  const updateTable = async (id, tableData) => {
+    const formatted = String(tableData.tableNumber).padStart(2, '0');
+    const payload = {
+      ...tableData,
+      tableNumber: formatted,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isFirebaseConfigured) {
+      try {
+        await updateDoc(doc(db, 'tables', id), payload);
+      } catch (err) {
+        console.warn('Firestore updateTable note:', err);
+      }
+    }
+
+    const updated = tables.map(t => t.id === id ? { ...t, ...payload } : t);
+    setTables(updated);
+    localStore.saveTables(updated);
+    return true;
+  };
+
+  const addTable = async (tableData) => {
     const formatted = String(tableData.tableNumber).padStart(2, '0');
     const existingIndex = tables.findIndex(t => String(t.tableNumber).padStart(2, '0') === formatted);
     if (existingIndex !== -1) {
       throw new Error(`Table ${formatted} already exists!`);
     }
 
-    const newTbl = {
-      id: `tbl-${formatted}-${Date.now()}`,
+    const payload = {
       tableNumber: formatted,
       capacity: Number(tableData.capacity) || 4,
-      section: tableData.section || 'Main Dining',
-      status: 'Available',
-      active: true,
-      createdAt: new Date().toISOString()
+      location: (tableData.location || 'Main Dining Hall').trim(),
+      active: tableData.active !== undefined ? tableData.active : true,
+      qrUrl: tableData.qrUrl || `https://smartdine.netlify.app/menu?table=${formatted}`,
+      deepLink: tableData.deepLink || `smartdine://table/${formatted}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
+    let docId = `table-${formatted}-${Date.now()}`;
+    if (isFirebaseConfigured) {
+      try {
+        const docRef = await addDoc(collection(db, 'tables'), payload);
+        docId = docRef.id;
+      } catch (err) {
+        console.warn('Firestore addTable note:', err);
+      }
+    }
+
+    const newTbl = { id: docId, ...payload };
     const updated = [...tables, newTbl];
+    updated.sort((a, b) => parseInt(a.tableNumber || 0, 10) - parseInt(b.tableNumber || 0, 10));
     setTables(updated);
     localStore.saveTables(updated);
     return newTbl;
+  };
+
+  const deleteTable = async (tableIdOrNumber) => {
+    const formatted = String(tableIdOrNumber).padStart(2, '0');
+    const target = tables.find(t => t.id === tableIdOrNumber || String(t.tableNumber).padStart(2, '0') === formatted);
+    const targetId = target ? target.id : tableIdOrNumber;
+    const targetNum = target ? String(target.tableNumber).padStart(2, '0') : formatted;
+
+    if (isFirebaseConfigured) {
+      try {
+        await deleteDoc(doc(db, 'tables', targetId));
+      } catch (err) {
+        console.warn('Firestore deleteTable note:', err);
+      }
+    }
+
+    const updated = tables.filter(t => t.id !== targetId && String(t.tableNumber).padStart(2, '0') !== targetNum);
+    setTables(updated);
+    localStore.saveTables(updated);
+    return true;
+  };
+
+  const resetToRealTables = async (tableCount = 6) => {
+    const realList = [];
+    const sections = ['Main Dining Hall', 'Window View', 'Terrace Balcony', 'Family Booth', 'VIP Lounge'];
+    for (let i = 1; i <= tableCount; i++) {
+      const num = String(i).padStart(2, '0');
+      realList.push({
+        id: `tbl-${num}`,
+        tableNumber: num,
+        capacity: i % 2 === 0 ? 4 : (i === 5 ? 6 : 2),
+        active: true,
+        location: sections[(i - 1) % sections.length],
+        qrUrl: `https://smartdine.netlify.app/menu?table=${num}`,
+        deepLink: `smartdine://table/${num}`,
+        createdAt: new Date().toISOString()
+      });
+    }
+
+    if (isFirebaseConfigured) {
+      try {
+        for (const t of tables) {
+          try { await deleteDoc(doc(db, 'tables', t.id)); } catch {}
+        }
+        for (const t of realList) {
+          try { await addDoc(collection(db, 'tables'), t); } catch {}
+        }
+      } catch (e) {
+        console.warn('Firebase batch sync warning:', e);
+      }
+    }
+
+    setTables(realList);
+    localStore.saveTables(realList);
+    return realList;
   };
 
   const resetCleanAdminOrders = () => {
@@ -1006,6 +1097,9 @@ export function TableOrderProvider({ children }) {
       addCategory,
       updateTableStatus,
       addTable,
+      updateTable,
+      deleteTable,
+      resetToRealTables,
       resetCleanAdminOrders
     }}>
       {children}

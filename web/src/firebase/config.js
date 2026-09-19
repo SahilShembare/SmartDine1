@@ -78,17 +78,13 @@ export const localStore = {
   saveMenuItems: (items) => setLocalData('menuItems', items),
   
   getTables: () => {
-    const data = getLocalData('tables', DEMO_TABLES);
-    if (!Array.isArray(data) || data.length < 25) {
-      const existingMap = new Map((data || []).map(t => [String(t.tableNumber).padStart(2, '0'), t]));
-      const merged = DEMO_TABLES.map(dt => {
-        const num = String(dt.tableNumber).padStart(2, '0');
-        return existingMap.has(num) ? { ...dt, ...existingMap.get(num) } : dt;
-      });
-      setLocalData('tables', merged);
-      return merged;
+    const data = getLocalData('tables', null);
+    if (data === null) {
+      // First time initialization only: seed initial real tables
+      setLocalData('tables', DEMO_TABLES);
+      return DEMO_TABLES;
     }
-    return data;
+    return Array.isArray(data) ? data : [];
   },
   saveTables: (tables) => setLocalData('tables', tables),
   
