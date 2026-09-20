@@ -16,12 +16,27 @@ const transporter = nodemailer.createTransport({
 });
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
+  // CORS Preflight
+  res.setHeader?.('Access-Control-Allow-Origin', '*');
+  res.setHeader?.('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader?.('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+
+  const method = (req.method || 'POST').toUpperCase();
+  if (method !== 'POST' && method !== 'GET') {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   try {
-    const { email, baseUrl = 'http://localhost:5173' } = req.body || {};
+    let body = req.body || {};
+    if (typeof body === 'string') {
+      try { body = JSON.parse(body); } catch {}
+    }
+    const email = (body.email || req.query?.email || '').trim();
+    const baseUrl = body.baseUrl || req.query?.baseUrl || 'http://localhost:5173';
 
     if (!email || !email.includes('@')) {
       return res.status(400).json({ error: 'Please provide a valid email address.' });

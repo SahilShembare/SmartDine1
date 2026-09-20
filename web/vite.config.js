@@ -35,9 +35,13 @@ function razorpayDevApiPlugin() {
 
         const host = req.headers.host || 'localhost:5173';
         const urlObj = new URL(req.url, `http://${host}`);
-        const url = urlObj.pathname;
+        const url = urlObj.pathname.replace(/\/+$/, '') || '/';
         const query = Object.fromEntries(urlObj.searchParams.entries());
         req.query = query;
+
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
         // Parse JSON body safely for POST/PUT/PATCH requests
         const parseBody = () => new Promise((resolve) => {
