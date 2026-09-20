@@ -108,7 +108,8 @@ export function AuthProvider({ children }) {
         : `/api/check-duplicate-user?phone=${encodeURIComponent(cleanDigits)}`;
       const res = await fetch(url);
       if (res.ok) {
-        const data = await res.json();
+        const text = await res.text();
+        const data = text ? JSON.parse(text) : {};
         if (data && data.isDuplicate) return true;
       }
     } catch (e) {}
@@ -149,7 +150,8 @@ export function AuthProvider({ children }) {
     try {
       const res = await fetch(`/api/check-duplicate-user?email=${encodeURIComponent(cleanEmail)}&phone=${encodeURIComponent(cleanPhone)}`);
       if (res.ok) {
-        const data = await res.json();
+        const text = await res.text();
+        const data = text ? JSON.parse(text) : {};
         if (data && data.isDuplicate) {
           return data;
         }
@@ -267,7 +269,8 @@ export function AuthProvider({ children }) {
             body: JSON.stringify({ email: cleanEmail, password })
           });
           if (res.ok) {
-            const data = await res.json();
+            const text = await res.text();
+            const data = text ? JSON.parse(text) : {};
             if (data && data.matched && data.user) {
               const userData = {
                 uid: `server-${Date.now()}`,
@@ -423,7 +426,8 @@ export function AuthProvider({ children }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: cleanEmail, baseUrl })
       });
-      const data = await res.json();
+      const text = await res.text();
+      const data = text ? JSON.parse(text) : {};
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Failed to send reset link email.');
       }

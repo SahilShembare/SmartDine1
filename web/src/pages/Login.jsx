@@ -217,9 +217,16 @@ export default function Login() {
         })
       });
 
-      const data = await res.json();
+      let data = {};
+      try {
+        const text = await res.text();
+        data = text ? JSON.parse(text) : {};
+      } catch (parseErr) {
+        console.warn('API returned non-JSON response:', parseErr);
+      }
+
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to dispatch verification email.');
+        throw new Error(data.error || `Failed to dispatch verification email (Server status ${res.status}).`);
       }
 
       const realOtp = String(data.otp);
@@ -230,12 +237,19 @@ export default function Login() {
       toast.success(`Verification OTP sent to ${regEmail.trim()}! Check your inbox.`);
     } catch (err) {
       console.error('Email dispatch error:', err);
-      // Fallback in case of network issue
+      const isAlreadyRegistered = err.message && err.message.includes('pehle se registered');
+      if (isAlreadyRegistered) {
+        setError(err.message);
+        toast.error(err.message, { duration: 5000, icon: '⚠️' });
+        return;
+      }
+      // Fallback in case of network or SMTP issue
       const fallbackCode = String(Math.floor(100000 + Math.random() * 900000));
       setGeneratedOtp(fallbackCode);
       setRegStep(2);
       setOtpTimer(60);
-      setError(`Notice: ${err.message || 'Email delivery failed'}. Generated fallback code.`);
+      setError(`Notice: ${err.message || 'Email delivery failed'}. Fallback verification code: ${fallbackCode}`);
+      toast('Verification code generated: ' + fallbackCode, { icon: '🔑', duration: 8000 });
     } finally {
       setLoading(false);
     }
@@ -404,8 +418,15 @@ export default function Login() {
           })
         });
 
-        const data = await res.json();
-        if (data.success) {
+        let data = {};
+        try {
+          const text = await res.text();
+          data = text ? JSON.parse(text) : {};
+        } catch (parseErr) {
+          console.warn('API non-JSON response:', parseErr);
+        }
+
+        if (res.ok && data.success) {
           const realCode = String(data.otp);
           setGeneratedForgotOtp(realCode);
           setForgotOtpStep(true);
@@ -414,7 +435,7 @@ export default function Login() {
           toast.success(`Reset OTP sent to ${id}!`);
           return;
         } else {
-          throw new Error(data.error || 'Failed to send reset OTP.');
+          throw new Error(data.error || `Failed to send reset OTP (Status ${res.status}).`);
         }
       } else {
         const code = String(Math.floor(100000 + Math.random() * 900000));

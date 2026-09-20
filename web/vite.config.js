@@ -19,31 +19,60 @@ function razorpayDevApiPlugin() {
     name: 'razorpay-dev-api-plugin',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (!req.url.startsWith('/api/')) {
+        if (!req.url || !req.url.startsWith('/api/')) {
           return next();
         }
 
-        // Parse JSON body
+        // Handle CORS preflight
+        if (req.method === 'OPTIONS') {
+          res.statusCode = 204;
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+          res.end();
+          return;
+        }
+
+        const host = req.headers.host || 'localhost:5173';
+        const urlObj = new URL(req.url, `http://${host}`);
+        const url = urlObj.pathname;
+        const query = Object.fromEntries(urlObj.searchParams.entries());
+        req.query = query;
+
+        // Parse JSON body safely for POST/PUT/PATCH requests
         const parseBody = () => new Promise((resolve) => {
+          if (req.method === 'GET' || req.method === 'HEAD' || req.readableEnded) {
+            return resolve({});
+          }
           let data = '';
           req.on('data', chunk => { data += chunk; });
           req.on('end', () => {
             try {
               resolve(data ? JSON.parse(data) : {});
             } catch {
-              resolve(data);
+              resolve(data ? { raw: data } : {});
             }
           });
+          req.on('error', () => resolve({}));
         });
-
-        const url = req.url.split('?')[0];
 
         // Express-compatible response helpers
         res.status = (code) => {
           res.statusCode = code;
           return res;
         };
+        res.send = (body) => {
+          if (res.writableEnded) return res;
+          if (typeof body === 'object') {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(body));
+          } else {
+            res.end(String(body));
+          }
+          return res;
+        };
         res.json = (obj) => {
+          if (res.writableEnded) return res;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(obj));
           return res;
@@ -53,44 +82,31 @@ function razorpayDevApiPlugin() {
           const body = await parseBody();
           req.body = body;
 
-          if (url === '/api/create-razorpay-order') {
-            const handler = await getHandler('./api/create-razorpay-order.js');
-            return handler(req, res);
-          } else if (url === '/api/verify-razorpay-payment') {
-            const handler = await getHandler('./api/verify-razorpay-payment.js');
-            return handler(req, res);
-          } else if (url === '/api/razorpay-webhook') {
-            const handler = await getHandler('./api/razorpay-webhook.js');
-            return handler(req, res);
-          } else if (url === '/api/refund-payment') {
-            const handler = await getHandler('./api/refund-payment.js');
-            return handler(req, res);
-          } else if (url === '/api/send-email-otp') {
-            const handler = await getHandler('./api/send-email-otp.js');
-            return handler(req, res);
-          } else if (url === '/api/send-password-reset-link') {
-            const handler = await getHandler('./api/send-password-reset-link.js');
-            return handler(req, res);
-          } else if (url === '/api/check-duplicate-user') {
-            const handler = await getHandler('./api/check-duplicate-user.js');
-            return handler(req, res);
-          } else if (url === '/api/record-registered-user') {
-            const handler = await getHandler('./api/record-registered-user.js');
-            return handler(req, res);
-          } else if (url === '/api/update-user-password') {
-            const handler = await getHandler('./api/update-user-password.js');
-            return handler(req, res);
-          } else if (url === '/api/verify-user-credentials') {
-            const handler = await getHandler('./api/verify-user-credentials.js');
-            return handler(req, res);
-          } else {
+          let handlerPath = null;
+          if (url === '/api/create-razorpay-order') handlerPath = './api/create-razorpay-order.js';
+          else if (url === '/api/verify-razorpay-payment') handlerPath = './api/verify-razorpay-payment.js';
+          else if (url === '/api/razorpay-webhook') handlerPath = './api/razorpay-webhook.js';
+          else if (url === '/api/refund-payment') handlerPath = './api/refund-payment.js';
+          else if (url === '/api/send-email-otp') handlerPath = './api/send-email-otp.js';
+          else if (url === '/api/send-password-reset-link') handlerPath = './api/send-password-reset-link.js';
+          else if (url === '/api/check-duplicate-user') handlerPath = './api/check-duplicate-user.js';
+          else if (url === '/api/record-registered-user') handlerPath = './api/record-registered-user.js';
+          else if (url === '/api/update-user-password') handlerPath = './api/update-user-password.js';
+          else if (url === '/api/verify-user-credentials') handlerPath = './api/verify-user-credentials.js';
+
+          if (!handlerPath) {
             return next();
           }
+
+          const handler = await getHandler(handlerPath);
+          await handler(req, res);
         } catch (err) {
           console.error('API middleware error:', err);
-          res.statusCode = 500;
-          res.setHeader('Content-Type', 'application/json');
-          res.end(JSON.stringify({ error: err.message || 'Internal Server Error' }));
+          if (!res.writableEnded) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ success: false, error: err.message || 'Internal Server Error' }));
+          }
         }
       });
     }
