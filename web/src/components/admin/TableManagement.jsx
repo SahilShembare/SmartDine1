@@ -178,13 +178,13 @@ export default function TableManagement() {
     }
   };
 
-  // Handle Setup Real Tables (Clear Demo Data)
+  // Handle Setup Real Tables Layout
   const handleConfirmRealTables = async () => {
     setIsResetting(true);
     try {
       const count = Math.max(1, Math.min(50, parseInt(realTableCount, 10) || 6));
       await resetToRealTables(count);
-      toast.success(`Configured ${count} real restaurant tables! All duplicate & demo tables cleared.`, { icon: '✨' });
+      toast.success(`Configured ${count} restaurant dining tables successfully!`, { icon: '✨' });
       setIsRealTablesModalOpen(false);
     } catch (err) {
       console.error('Real tables setup error:', err);
@@ -246,10 +246,10 @@ export default function TableManagement() {
             type="button"
             onClick={() => setIsRealTablesModalOpen(true)}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold border border-slate-200 transition active:scale-95 cursor-pointer"
-            title="Clean demo tables and set real restaurant tables"
+            title="Configure real restaurant tables layout"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Real Tables Setup</span>
+            <span>Table Layout Setup</span>
           </button>
 
           {/* Add Table Button */}
@@ -766,10 +766,10 @@ export default function TableManagement() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    Real Tables Setup
+                    Table Layout Setup
                   </h3>
                   <p className="text-[11px] text-slate-400">
-                    Clean all demo & duplicate tables
+                    Configure restaurant dining tables
                   </p>
                 </div>
               </div>
@@ -784,7 +784,7 @@ export default function TableManagement() {
 
             <div className="py-4 space-y-4 text-xs text-slate-600">
               <p className="leading-relaxed">
-                Use this tool to remove all duplicate and dummy demo tables, and configure your restaurant's actual table count.
+                Use this tool to configure your restaurant's dining table layout and generate live QR standees.
               </p>
 
               <div>

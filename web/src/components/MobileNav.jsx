@@ -87,7 +87,7 @@ export default function MobileNav() {
 
         {/* Tab 4: Track Order */}
         <NavLink
-          to="/track/demo"
+          to="/profile"
           className={({ isActive }) =>
             `flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all ${
               isActive
@@ -97,7 +97,7 @@ export default function MobileNav() {
           }
         >
           <Clock className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">Live Order</span>
+          <span className="text-[10px]">Orders</span>
         </NavLink>
 
         {/* Tab 5: On Home show "Scan QR" instead of profile, on menu/cart show Profile */}

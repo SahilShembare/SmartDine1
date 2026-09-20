@@ -14,7 +14,7 @@ export default function CustomerManagement() {
   const { orders = [] } = useTableOrder();
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Extract Unique Customers from Orders + Demo list
+  // Extract Unique Customers from Orders + Directory list
   const customersList = useMemo(() => {
     const map = new Map();
 

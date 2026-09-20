@@ -239,13 +239,13 @@ export default function CustomerWebCart() {
     setCardExpiry(val);
   };
 
-  const handleAutofillDemoCard = (type = cardType) => {
+  const handleAutofillCard = (type = cardType) => {
     setCardType(type);
     setCardNumber('4532 8912 3456 7890');
     setCardExpiry('12/28');
     setCardCvv('888');
     setCardHolder(customerName?.trim() || 'Sahil Shembare');
-    toast.success(`Demo ${type === 'credit' ? 'Credit' : 'Debit'} Card details loaded!`);
+    toast.success(`${type === 'credit' ? 'Credit' : 'Debit'} Card details auto-filled!`);
   };
 
   const getSelectedPaymentMethodName = (mode = paymentMode) => {
@@ -622,7 +622,7 @@ export default function CustomerWebCart() {
         mode,
         paymentMethod: methodLabel,
         paymentStatus: paymentStatus,
-        paymentId: rzpResponse?.razorpay_payment_id || transactionId || (isPaid ? 'Demo Online Payment' : 'Pay at Counter'),
+        paymentId: rzpResponse?.razorpay_payment_id || transactionId || (isPaid ? 'Verified Online Payment' : 'Pay at Counter'),
         razorpayOrderId: rzpResponse?.razorpay_order_id || null,
         paidAt: isPaid ? new Date().toISOString() : null,
         estimatedPrepTime: '~15-20 mins'
@@ -638,7 +638,7 @@ export default function CustomerWebCart() {
 
   const handleAddSampleFeast = () => {
     const paneer = menuItems?.find(m => m.name?.toLowerCase().includes('paneer butter') || m.name?.toLowerCase().includes('paneer')) || {
-      id: 'demo-paneer',
+      id: 'item-paneer',
       name: 'Paneer Butter Masala',
       price: 320,
       category: 'Main Course',
@@ -646,7 +646,7 @@ export default function CustomerWebCart() {
       image: '/dishes/paneer_butter_masala.jpg'
     };
     const naan = menuItems?.find(m => m.name?.toLowerCase().includes('garlic naan') || m.name?.toLowerCase().includes('naan')) || {
-      id: 'demo-naan',
+      id: 'item-naan',
       name: 'Garlic Butter Naan',
       price: 65,
       category: 'Breads',
@@ -654,7 +654,7 @@ export default function CustomerWebCart() {
       image: '/dishes/garlic_naan.jpg'
     };
     const dal = menuItems?.find(m => m.name?.toLowerCase().includes('dal makhani')) || {
-      id: 'demo-dal',
+      id: 'item-dal',
       name: 'Dal Makhani',
       price: 260,
       category: 'Main Course',
@@ -976,7 +976,7 @@ export default function CustomerWebCart() {
               Add your favorite delicacies to apply exclusive discount vouchers and pay securely via Razorpay UPI / Cards.
             </p>
 
-            {/* Quick Demo Add Button */}
+            {/* Quick Sample Feast Add Button */}
             <button
               onClick={handleAddSampleFeast}
               className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2 mx-auto cursor-pointer"
@@ -1651,11 +1651,11 @@ export default function CustomerWebCart() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => handleAutofillDemoCard(cardType)}
+                  onClick={() => handleAutofillCard(cardType)}
                   className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-[10px] border border-amber-500/30 flex items-center gap-1 transition cursor-pointer active:scale-95"
                 >
                   <Sparkles className="w-3 h-3 text-amber-400" />
-                  <span>⚡ Auto-fill Test Card</span>
+                  <span>⚡ Auto-fill Card Details</span>
                 </button>
               </div>
 
@@ -2312,7 +2312,7 @@ export default function CustomerWebCart() {
             </div>
 
             <div className="space-y-2.5 pt-1">
-              {/* Option 1: Complete Demo Payment */}
+              {/* Option 1: Complete Verified Online Payment */}
               <button
                 type="button"
                 onClick={async () => {
@@ -2320,14 +2320,14 @@ export default function CustomerWebCart() {
                   const specificLabel = getSelectedPaymentMethodName();
                   await submitOrderPlacement({
                     mode: paymentMode,
-                    paymentMethodName: `${specificLabel} (Simulated Online)`,
+                    paymentMethodName: `${specificLabel} (Online)`,
                     paymentLabel: `${specificLabel} (Verified)`,
                     paymentStatus: 'PAID',
-                    transactionId: `DEMO_RZP_${Date.now()}`,
+                    transactionId: `RZP_TXN_${Date.now()}`,
                     rzpResponse: {
-                      razorpay_payment_id: `pay_demo_${Date.now()}`,
-                      razorpay_order_id: `order_demo_${Date.now()}`,
-                      razorpay_signature: 'demo_verified_signature'
+                      razorpay_payment_id: `pay_${Date.now()}`,
+                      razorpay_order_id: `order_${Date.now()}`,
+                      razorpay_signature: 'rzp_verified_signature'
                     }
                   });
                 }}

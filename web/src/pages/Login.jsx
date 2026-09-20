@@ -663,9 +663,9 @@ export default function Login() {
                 </button>
               </div>
 
-              {/* Quick Demo Fill Buttons inside Card */}
+              {/* Staff Portals Shortcut */}
               <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-                <span className="text-[11px] font-semibold text-slate-400">Quick Demo Fill:</span>
+                <span className="text-[11px] font-semibold text-slate-400">Staff Portals:</span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"

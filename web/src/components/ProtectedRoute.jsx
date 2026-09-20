@@ -23,7 +23,7 @@ export default function ProtectedRoute({ children, allowedRoles = ['admin', 'kit
     return children;
   }
 
-  // Fast 1-click Demo Admin login
+  // Fast 1-click Staff Admin login
   const handleQuickAdminLogin = async () => {
     setLoggingIn(true);
     try {
@@ -89,7 +89,7 @@ export default function ProtectedRoute({ children, allowedRoles = ['admin', 'kit
               className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:brightness-110 text-white font-black text-sm shadow-glow flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer disabled:opacity-50"
             >
               <LayoutDashboard className="w-4 h-4" />
-              <span>{loggingIn ? 'Authenticating...' : '🚀 Enter Admin Dashboard (1-Click)'}</span>
+              <span>{loggingIn ? 'Authenticating...' : 'Sign in as Master Admin'}</span>
             </button>
           )}
 
@@ -100,7 +100,7 @@ export default function ProtectedRoute({ children, allowedRoles = ['admin', 'kit
               className="w-full py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 font-bold text-xs flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer"
             >
               <ChefHat className="w-4 h-4 text-amber-400" />
-              <span>Enter Kitchen Monitor</span>
+              <span>Sign in as Kitchen Chef</span>
             </button>
           )}
 

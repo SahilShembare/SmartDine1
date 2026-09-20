@@ -230,7 +230,7 @@ export default function AdminTables() {
     try {
       const count = Math.max(1, Math.min(50, parseInt(realTableCount, 10) || 6));
       await resetToRealTables(count);
-      toast.success(`Configured ${count} real restaurant tables! All demo tables cleared.`, {
+      toast.success(`Configured ${count} restaurant dining tables successfully!`, {
         icon: '✨',
         duration: 4000
       });
@@ -313,10 +313,10 @@ export default function AdminTables() {
             <button
               onClick={() => setIsRealTablesModalOpen(true)}
               className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition"
-              title="Configure actual restaurant table count and clear demo data"
+              title="Configure restaurant table layout and generate QR standees"
             >
               <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>Real Tables Setup</span>
+              <span>Table Layout Setup</span>
             </button>
 
             <button
@@ -590,7 +590,7 @@ export default function AdminTables() {
             <div>
               <h3 className="text-lg font-bold text-white">No Restaurant Tables Configured</h3>
               <p className="text-xs text-slate-400 max-w-md mt-1 mx-auto">
-                All demo tables have been cleared. Add your actual dining tables to generate high-resolution QR standees and accept orders.
+                Add your dining tables to generate high-resolution QR standees and accept orders.
               </p>
             </div>
             <div className="flex items-center gap-3 pt-2">
@@ -955,10 +955,10 @@ export default function AdminTables() {
                 </div>
                 <div>
                   <h3 className="font-extrabold text-base text-white">
-                    Setup Real Restaurant Tables
+                    Setup Restaurant Dining Tables
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Replace demo tables with your actual dining tables
+                    Configure your restaurant dining tables layout
                   </p>
                 </div>
               </div>
@@ -972,12 +972,12 @@ export default function AdminTables() {
 
             <div className="p-5 space-y-4 text-xs text-slate-300">
               <p className="text-slate-300 leading-relaxed">
-                Configure your actual restaurant table count. All demo data will be cleared and replaced with your real table layout.
+                Configure your restaurant table count. Your layout will be automatically generated with QR standees.
               </p>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  How many real tables does your restaurant have?
+                  How many dining tables does your restaurant have?
                 </label>
                 <div className="flex items-center gap-3">
                   <input
@@ -995,10 +995,10 @@ export default function AdminTables() {
               <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/60 text-[11px] text-slate-400 space-y-1">
                 <p className="text-emerald-400 font-semibold flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5" />
-                  Real Persistent Setup
+                  Persistent Floor Setup
                 </p>
                 <p>
-                  Demo tables will be cleared and replaced with your actual restaurant tables. You can also delete or add tables individually at any time.
+                  Configure your actual restaurant tables. You can also delete or add tables individually at any time.
                 </p>
               </div>
 
