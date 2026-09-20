@@ -24,5 +24,8 @@
   "license": "ISC",
   "dependencies": {
     "nodemailer": "^10.0.10"
+  },
+  "devDependencies": {
+    "qrcode": "^1.5.4"
   }
 }

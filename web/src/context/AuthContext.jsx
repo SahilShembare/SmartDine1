@@ -167,7 +167,7 @@ export function AuthProvider({ children }) {
         return {
           isDuplicate: true,
           field: 'email',
-          message: `Yeh Email "${email}" pehle se registered hai (Already filled). Same email se repeat registration allow nahi hai. Kripya Login karein.`,
+          message: `This Email "${email}" is already registered. Please log in to continue.`,
           toastMessage: `Email "${email}" is already registered! Please login.`
         };
       }
@@ -180,8 +180,8 @@ export function AuthProvider({ children }) {
         return {
           isDuplicate: true,
           field: 'phone',
-          message: `Yeh Mobile Number "+91 ${phone}" pehle se registered hai (Already filled). Kripya Login karein.`,
-          toastMessage: `Mobile "+91 ${phone}" is already registered! Please login.`
+          message: `This Mobile Number "${phone}" is already registered. Please log in to continue.`,
+          toastMessage: `Mobile "${phone}" is already registered! Please login.`
         };
       }
     }
@@ -193,7 +193,7 @@ export function AuthProvider({ children }) {
         return {
           isDuplicate: true,
           field: 'name_email',
-          message: `Yeh Naam "${name}" aur Email pehle se registered hain (Already filled). Kripya Login karein.`,
+          message: `An account with name "${name}" and this email is already registered. Please log in.`,
           toastMessage: `Account already exists for "${name}". Please login.`
         };
       }
@@ -208,7 +208,7 @@ export function AuthProvider({ children }) {
           return {
             isDuplicate: true,
             field: 'email',
-            message: `Yeh Email "${email}" pehle se registered hai (Already filled). Kripya Login karein.`,
+            message: `This Email "${email}" is already registered. Please log in to continue.`,
             toastMessage: `Email "${email}" is already registered! Please login.`
           };
         }
@@ -225,7 +225,7 @@ export function AuthProvider({ children }) {
           return {
             isDuplicate: true,
             field: 'email',
-            message: `Yeh Email "${email}" pehle se registered hai (Already filled). Kripya Login karein.`,
+            message: `This Email "${email}" is already registered. Please log in to continue.`,
             toastMessage: `Email "${email}" is already registered! Please login.`
           };
         }
