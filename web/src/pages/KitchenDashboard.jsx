@@ -55,8 +55,8 @@ import {
 
 export default function KitchenDashboard() {
   const { currentUser } = useAuth();
-  const { orders, updateOrderStatus, updateOrderEta, refreshOrders } = useTableOrder();
-  const isAdminReadOnly = currentUser?.role === 'admin';
+  const { orders, waiterCalls = [], resolveWaiterCall, updateOrderStatus, updateOrderEta, refreshOrders } = useTableOrder();
+  const isAdminReadOnly = false;
 
   // Navigation & Filter States
   const [activeTab, setActiveTab] = useState('all'); // all, pending, preparing, ready, served, completed
@@ -83,6 +83,10 @@ export default function KitchenDashboard() {
   // Dedicated Kitchen Chef Profile State
   const [showChefProfileModal, setShowChefProfileModal] = useState(false);
   const [isEditingChefProfile, setIsEditingChefProfile] = useState(false);
+
+  // Dedicated Kitchen Waiter Calls State
+  const [showWaiterCallsModal, setShowWaiterCallsModal] = useState(false);
+  const [waiterCallFilter, setWaiterCallFilter] = useState('pending'); // 'pending' | 'attended' | 'all'
 
   // Ingredient / Stock Alert States
   const [showStockModal, setShowStockModal] = useState(false);
@@ -355,27 +359,36 @@ export default function KitchenDashboard() {
   };
 
   const handleStatusUpdate = async (orderId, newStatus) => {
-    if (isAdminReadOnly) {
-      alert('Action Blocked: Administrator account is in Read-Only monitor mode and cannot modify kitchen order tickets.');
-      return;
-    }
-    if (isFirebaseConfigured) {
-      await updateDoc(doc(db, 'orders', orderId), {
-        status: newStatus,
-        updatedAt: new Date().toISOString()
-      });
-    } else {
-      updateOrderStatus(orderId, newStatus);
+    try {
+      if (updateOrderStatus) {
+        await updateOrderStatus(orderId, newStatus);
+      }
+      toast.success(
+        newStatus === 'preparing' 
+          ? '🔥 Order accepted! Cooking started.' 
+          : newStatus === 'ready' 
+            ? '🛎️ Order marked ready for service!' 
+            : newStatus === 'served' 
+              ? '🍽️ Order marked served to table!' 
+              : `Order status updated to ${newStatus}!`,
+        { duration: 3500 }
+      );
+    } catch (err) {
+      console.error('Error updating order status in Kitchen Dashboard:', err);
+      try {
+        localStore.updateOrderStatus(orderId, newStatus);
+        if (refreshOrders) refreshOrders();
+        toast.success(`Order status updated to ${newStatus}!`);
+      } catch (localErr) {
+        toast.error('Failed to update order status');
+      }
     }
   };
 
   const handleEtaUpdate = async (orderId, newMinutes) => {
-    if (isAdminReadOnly) {
-      alert('Action Blocked: Administrator account is in Read-Only monitor mode.');
-      return;
-    }
     if (updateOrderEta) {
       await updateOrderEta(orderId, newMinutes);
+      toast.success(`Prep ETA updated to ${newMinutes} min`);
     }
   };
 
@@ -629,6 +642,54 @@ export default function KitchenDashboard() {
     });
   }, [orders]);
 
+  // Pending and attended waiter calls for kitchen
+  const pendingWaiterCalls = useMemo(() => {
+    return (waiterCalls || []).filter(c => c.status === 'pending');
+  }, [waiterCalls]);
+
+  const attendedWaiterCalls = useMemo(() => {
+    return (waiterCalls || []).filter(c => c.status === 'attended');
+  }, [waiterCalls]);
+
+  const totalKitchenAlerts = pendingOrders.length + pendingWaiterCalls.length;
+
+  // Audio chime and toast alert when a new table calls for waiter
+  const prevPendingCallsCount = useRef(0);
+  useEffect(() => {
+    const currentCount = pendingWaiterCalls.length;
+    if (currentCount > prevPendingCallsCount.current) {
+      if (soundEnabled) {
+        playOrderBellSound();
+      }
+      const latestCall = pendingWaiterCalls[0];
+      if (latestCall) {
+        toast((t) => (
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400 shrink-0">
+              <BellRing className="w-5 h-5 animate-bounce" />
+            </div>
+            <div>
+              <p className="font-black text-xs text-white">
+                Table {latestCall.tableNumber} — Waiter Called!
+              </p>
+              <p className="text-[11px] text-amber-300">
+                {latestCall.reason}{latestCall.notes ? `: "${latestCall.notes}"` : ''}
+              </p>
+            </div>
+          </div>
+        ), {
+          duration: 5000,
+          style: {
+            background: '#0f172a',
+            color: '#fff',
+            border: '1px solid #f59e0b'
+          }
+        });
+      }
+    }
+    prevPendingCallsCount.current = currentCount;
+  }, [pendingWaiterCalls, soundEnabled]);
+
   // Filtered date groups based on date selector
   const filteredDateGroups = useMemo(() => {
     if (selectedDateFilter === 'all') return dateWiseGroups;
@@ -650,6 +711,7 @@ export default function KitchenDashboard() {
               setShowChefProfileModal(true);
             }}
             onOpenOrdersHistory={() => setShowProfileSalesModal(true)}
+            onOpenWaiterCalls={() => setShowWaiterCallsModal(true)}
             chefName={chefProfile.displayName}
           />
         </div>
@@ -736,10 +798,10 @@ export default function KitchenDashboard() {
                   className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition relative cursor-pointer"
                   title="Live Kitchen Notifications"
                 >
-                  <BellRing className={`w-4 h-4 ${pendingOrders.length > 0 ? 'text-orange-400 animate-pulse' : 'text-slate-400'}`} />
-                  {pendingOrders.length > 0 && (
+                  <BellRing className={`w-4 h-4 ${totalKitchenAlerts > 0 ? 'text-orange-400 animate-pulse' : 'text-slate-400'}`} />
+                  {totalKitchenAlerts > 0 && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-black flex items-center justify-center animate-bounce shadow-md">
-                      {pendingOrders.length}
+                      {totalKitchenAlerts}
                     </span>
                   )}
                 </button>
@@ -753,9 +815,50 @@ export default function KitchenDashboard() {
                         <span>Live Order Notifications</span>
                       </span>
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                        {pendingOrders.length} Pending
+                        {totalKitchenAlerts} Pending
                       </span>
                     </div>
+
+                    {/* Live Waiter Calls Alert inside Kitchen Dropdown */}
+                    {pendingWaiterCalls.length > 0 && (
+                      <div className="space-y-1.5 pb-2 border-b border-slate-800">
+                        <div className="flex items-center justify-between text-[11px] font-black text-amber-400">
+                          <span className="flex items-center gap-1.5">
+                            <BellRing className="w-3.5 h-3.5 animate-pulse" />
+                            <span>Waiter Calls ({pendingWaiterCalls.length})</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNotifDropdownOpen(false);
+                              setShowWaiterCallsModal(true);
+                            }}
+                            className="text-[10px] text-amber-300 hover:underline cursor-pointer font-bold"
+                          >
+                            View All →
+                          </button>
+                        </div>
+                        {pendingWaiterCalls.slice(0, 3).map(call => (
+                          <div key={call.id} className="p-2 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 text-xs flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <span className="font-black text-amber-400">Table {call.tableNumber}:</span>
+                              <span className="ml-1 text-slate-200 font-bold">{call.reason}</span>
+                              {call.notes && <span className="text-[10px] text-slate-400 block truncate">"{call.notes}"</span>}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                resolveWaiterCall && resolveWaiterCall(call.id);
+                                toast.success(`Table ${call.tableNumber} request attended! ✓`);
+                              }}
+                              className="px-2 py-0.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold shrink-0 cursor-pointer"
+                            >
+                              Attended ✓
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1 text-xs custom-scrollbar">
                       {pendingOrders.length === 0 ? (
@@ -766,22 +869,29 @@ export default function KitchenDashboard() {
                         pendingOrders.map(ord => (
                           <div
                             key={ord.id}
-                            onClick={() => {
-                              setNotifDropdownOpen(false);
-                              setActiveTab('pending');
-                            }}
-                            className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800/80 border border-slate-800 transition cursor-pointer space-y-1"
+                            className="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800/80 border border-slate-800 transition space-y-1.5"
                           >
                             <div className="flex items-center justify-between">
                               <span className="font-black text-white">Table {ord.tableNumber || '01'}</span>
-                              <span className="text-[10px] font-mono text-orange-400 font-bold">#{ord.id}</span>
+                              <span className="text-[10px] font-mono text-orange-400 font-bold">#{ord.orderNumber || ord.id}</span>
                             </div>
                             <p className="text-[11px] text-slate-300 truncate">
                               {ord.items?.map(i => `${i.quantity}x ${i.name}`).join(', ')}
                             </p>
                             <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
                               <span>🕒 {ord.createdAt ? new Date(ord.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}</span>
-                              <span className="text-orange-400 font-bold">{ord.items?.length || 0} items</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setNotifDropdownOpen(false);
+                                  handleStatusUpdate(ord.id || ord.orderNumber, 'preparing');
+                                }}
+                                className="px-2.5 py-1 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-black text-[10px] shadow-sm transition active:scale-95 cursor-pointer flex items-center gap-1"
+                              >
+                                <ChefHat className="w-3 h-3" />
+                                <span>Accept Order</span>
+                              </button>
                             </div>
                           </div>
                         ))
@@ -963,20 +1073,6 @@ export default function KitchenDashboard() {
 
           </div>
 
-          {/* Admin Read-Only Banner */}
-          {isAdminReadOnly && (
-            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center justify-between gap-3 shadow-md">
-              <div className="flex items-center gap-2">
-                <Eye className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>
-                  <strong>Admin Monitor Mode:</strong> You are viewing live kitchen tickets in <strong>Read-Only</strong> mode. Ticket progression is reserved for kitchen line cooks.
-                </span>
-              </div>
-              <span className="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 text-[10px] uppercase font-extrabold border border-amber-500/30">
-                View Only
-              </span>
-            </div>
-          )}
 
           {/* ================================================================ */}
           {/* 4. INGREDIENT / STOCK ALERT BAR                                  */}
@@ -1205,7 +1301,7 @@ export default function KitchenDashboard() {
                   onUpdateStatus={handleStatusUpdate}
                   onUpdateEta={handleEtaUpdate}
                   onOpenKotSlip={(ord) => setKotSlipOrder(ord)}
-                  readOnly={isAdminReadOnly}
+                  readOnly={false}
                   stationFilter={selectedStation}
                 />
               ))}
@@ -2178,6 +2274,222 @@ export default function KitchenDashboard() {
           </div>
         )}
 
+        {/* ================================================================== */}
+        {/* 11. DEDICATED KITCHEN WAITER CALLS & FLOOR SERVICE MODAL             */}
+        {/* ================================================================== */}
+        {showWaiterCallsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-3 sm:p-5 animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh] text-slate-100">
+              
+              {/* Modal Header */}
+              <div className="p-4 sm:p-6 border-b border-slate-800 bg-slate-950 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-md">
+                    <BellRing className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-lg sm:text-xl font-black text-white">
+                        Floor Service & Waiter Calls
+                      </h2>
+                      {pendingWaiterCalls.length > 0 && (
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] font-black animate-pulse">
+                          {pendingWaiterCalls.length} Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-400 font-medium">
+                      Real-time service calls sent from seated customer dining tables
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowWaiterCallsModal(false)}
+                  className="p-2 rounded-xl bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Filter Tabs */}
+              <div className="px-4 sm:px-6 py-3 bg-slate-950/60 border-b border-slate-800 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setWaiterCallFilter('pending')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    waiterCallFilter === 'pending'
+                      ? 'bg-amber-500 text-slate-950 shadow-md font-black'
+                      : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <span>Active Requests</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    waiterCallFilter === 'pending' ? 'bg-slate-950/30 text-slate-950' : 'bg-slate-700 text-slate-300'
+                  }`}>
+                    {pendingWaiterCalls.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setWaiterCallFilter('attended')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    waiterCallFilter === 'attended'
+                      ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                      : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <span>Attended Today</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    waiterCallFilter === 'attended' ? 'bg-slate-950/30 text-slate-950' : 'bg-slate-700 text-slate-300'
+                  }`}>
+                    {attendedWaiterCalls.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setWaiterCallFilter('all')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                    waiterCallFilter === 'all'
+                      ? 'bg-orange-500 text-white shadow-md font-black'
+                      : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white'
+                  }`}
+                >
+                  <span>All Calls ({waiterCalls.length})</span>
+                </button>
+              </div>
+
+              {/* Modal Body: Calls List */}
+              <div className="p-4 sm:p-6 overflow-y-auto max-h-[60vh] space-y-3 custom-scrollbar">
+                {(() => {
+                  const displayCalls = waiterCallFilter === 'pending' 
+                    ? pendingWaiterCalls 
+                    : waiterCallFilter === 'attended' 
+                      ? attendedWaiterCalls 
+                      : waiterCalls;
+
+                  if (displayCalls.length === 0) {
+                    return (
+                      <div className="py-12 text-center space-y-3">
+                        <div className="w-16 h-16 rounded-3xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto shadow-inner">
+                          <Bell className="w-8 h-8 opacity-70" />
+                        </div>
+                        <div>
+                          <h4 className="text-base font-bold text-white">
+                            {waiterCallFilter === 'pending' ? 'No Active Waiter Calls' : 'No Calls Recorded'}
+                          </h4>
+                          <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
+                            {waiterCallFilter === 'pending' 
+                              ? 'All seated diner tables are currently attended to. When a diner calls a waiter, it will ring an alert here immediately!'
+                              : 'No waiter calls found in this category.'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {displayCalls.map((call) => {
+                        const isPending = call.status === 'pending';
+                        const timeStr = call.timestamp 
+                          ? new Date(call.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                          : 'Just now';
+
+                        return (
+                          <div
+                            key={call.id}
+                            className={`p-4 rounded-2xl border transition-all duration-200 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+                              isPending
+                                ? 'bg-gradient-to-r from-amber-950/30 via-slate-900 to-slate-900 border-amber-500/40 hover:border-amber-400'
+                                : 'bg-slate-950/60 border-slate-800'
+                            }`}
+                          >
+                            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                              <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-black shrink-0 shadow-sm ${
+                                isPending 
+                                  ? 'bg-gradient-to-tr from-amber-500 to-orange-500 text-slate-950 ring-2 ring-amber-400/40' 
+                                  : 'bg-slate-800 text-slate-400'
+                              }`}>
+                                <span className="text-[9px] uppercase tracking-wider font-extrabold leading-none">Table</span>
+                                <span className="text-base leading-tight font-black">{call.tableNumber}</span>
+                              </div>
+
+                              <div className="space-y-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <h4 className="text-sm font-black text-white">
+                                    {call.reason || 'General Assistance'}
+                                  </h4>
+                                  <span className="text-xs text-slate-400">• {call.customerName || 'Guest'}</span>
+                                  <span className="text-[10px] text-slate-400 font-mono">🕒 {timeStr}</span>
+                                </div>
+                                {call.notes && (
+                                  <p className="text-xs text-amber-200/90 font-medium italic bg-amber-950/30 px-2.5 py-1 rounded-lg border border-amber-500/20 max-w-md">
+                                    "{call.notes}"
+                                  </p>
+                                )}
+                                {isPending ? (
+                                  <div className="flex items-center gap-1.5 text-[11px] text-amber-400 font-bold">
+                                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                                    <span>Guest is waiting at Table {call.tableNumber}</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 font-bold">
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>Attended at {call.resolvedAt ? new Date(call.resolvedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Earlier'}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0 justify-end">
+                              {isPending ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    resolveWaiterCall && resolveWaiterCall(call.id);
+                                    toast.success(`Table ${call.tableNumber} request marked attended! ✓`);
+                                  }}
+                                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-glow transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  <Check className="w-4 h-4" />
+                                  <span>Mark Attended ✓</span>
+                                </button>
+                              ) : (
+                                <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold flex items-center gap-1">
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>Attended</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-800 bg-slate-950 flex items-center justify-between">
+                <span className="text-xs text-slate-400 font-semibold">
+                  <strong className="text-amber-400">{pendingWaiterCalls.length}</strong> active call(s) pending
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowWaiterCallsModal(false)}
+                  className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

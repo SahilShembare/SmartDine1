@@ -430,7 +430,7 @@ export default function OrderCard({
             {(statusStr === 'pending' || statusStr === 'placed') && (
               <button
                 type="button"
-                onClick={() => onUpdateStatus(order.id, 'preparing')}
+                onClick={() => onUpdateStatus(order.id || order.orderNumber, 'preparing')}
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-orange-600 via-amber-600 to-orange-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-xs shadow-glow transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 tracking-wide uppercase"
               >
                 <ChefHat className="w-4 h-4" />
@@ -442,7 +442,7 @@ export default function OrderCard({
             {(statusStr === 'preparing' || statusStr === 'accepted') && (
               <button
                 type="button"
-                onClick={() => onUpdateStatus(order.id, 'ready')}
+                onClick={() => onUpdateStatus(order.id || order.orderNumber, 'ready')}
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 tracking-wide uppercase"
               >
                 <BellRing className="w-4 h-4 animate-pulse" />
@@ -454,7 +454,7 @@ export default function OrderCard({
             {statusStr === 'ready' && (
               <button
                 type="button"
-                onClick={() => onUpdateStatus(order.id, 'served')}
+                onClick={() => onUpdateStatus(order.id || order.orderNumber, 'served')}
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 tracking-wide uppercase"
               >
                 <Utensils className="w-4 h-4" />
@@ -466,7 +466,7 @@ export default function OrderCard({
             {(statusStr === 'served' || statusStr === 'enjoying_meal' || statusStr === 'bill requested') && (
               <button
                 type="button"
-                onClick={() => onUpdateStatus(order.id, 'completed')}
+                onClick={() => onUpdateStatus(order.id || order.orderNumber, 'completed')}
                 className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-600 hover:to-green-600 text-white font-extrabold text-xs shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-2 tracking-wide uppercase"
               >
                 <CheckCheck className="w-4 h-4" />
@@ -491,8 +491,8 @@ export default function OrderCard({
                 <button
                   type="button"
                   onClick={() => {
-                    if (window.confirm(`Are you sure you want to cancel Order #${order?.id}?`)) {
-                      onUpdateStatus(order.id, 'cancelled');
+                    if (window.confirm(`Are you sure you want to cancel Order #${order?.id || order?.orderNumber}?`)) {
+                      onUpdateStatus(order.id || order.orderNumber, 'cancelled');
                     }
                   }}
                   className="text-slate-400 hover:text-red-400 transition cursor-pointer font-semibold ml-auto"

@@ -96,6 +96,37 @@ export function TableOrderProvider({ children }) {
     localStorage.setItem('smartdine_customer_feedbacks', JSON.stringify(customerFeedbacks));
   }, [customerFeedbacks]);
 
+  // Live Waiter Calls (Real-time synced across tabs & devices)
+  const [waiterCalls, setWaiterCalls] = useState(() => {
+    try {
+      const saved = localStorage.getItem('smartdine_waiter_calls');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Save waiter calls and dispatch cross-tab update
+  useEffect(() => {
+    localStorage.setItem('smartdine_waiter_calls', JSON.stringify(waiterCalls));
+    window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+      detail: { collection: 'waiter_calls', data: waiterCalls } 
+    }));
+  }, [waiterCalls]);
+
+  // Sync listener across tabs & windows
+  useEffect(() => {
+    const handleStorageUpdate = (e) => {
+      if (e.key === 'smartdine_waiter_calls' && e.newValue) {
+        try {
+          setWaiterCalls(JSON.parse(e.newValue));
+        } catch {}
+      }
+    };
+    window.addEventListener('storage', handleStorageUpdate);
+    return () => window.removeEventListener('storage', handleStorageUpdate);
+  }, []);
+
   // Submit Feedback Handler
   const submitOrderFeedback = async (feedbackData) => {
     const newFeedback = {
@@ -784,15 +815,42 @@ export function TableOrderProvider({ children }) {
 
     if (isFirebaseConfigured) {
       try {
-        await updateDoc(doc(db, 'orders', orderId), updates);
+        const existingOrder = orders.find(o => String(o.id) === String(orderId) || String(o.orderNumber) === String(orderId));
+        const targetDocId = existingOrder?.firestoreDocId || orderId;
+        try {
+          await updateDoc(doc(db, 'orders', targetDocId), updates);
+        } catch (firstErr) {
+          const q = query(collection(db, 'orders'), where('orderNumber', '==', String(orderId)));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            await updateDoc(doc(db, 'orders', snap.docs[0].id), updates);
+          }
+        }
       } catch (err) {
         console.warn('Firebase status update error:', err);
       }
     }
 
     localStore.updateOrderStatus(orderId, newStatus);
-    const updated = localStore.getOrders();
-    setOrders([...updated]);
+    const targetStr = String(orderId);
+    setOrders(prev => {
+      const exists = prev.some(o => String(o.id) === targetStr || String(o.orderNumber) === targetStr);
+      if (exists) {
+        return prev.map(o => {
+          if (String(o.id) === targetStr || String(o.orderNumber) === targetStr) {
+            return { ...o, ...updates };
+          }
+          return o;
+        });
+      }
+      return localStore.getOrders();
+    });
+
+    try {
+      window.dispatchEvent(new CustomEvent('smartdine_local_sync', {
+        detail: { collection: 'orders', data: localStore.getOrders() }
+      }));
+    } catch {}
   };
 
   // Update preparation ETA from Kitchen/Admin (instantly updates customer view)
@@ -802,7 +860,9 @@ export function TableOrderProvider({ children }) {
 
     if (isFirebaseConfigured) {
       try {
-        await updateDoc(doc(db, 'orders', orderId), {
+        const existingOrder = orders.find(o => String(o.id) === String(orderId) || String(o.orderNumber) === String(orderId));
+        const targetDocId = existingOrder?.firestoreDocId || orderId;
+        await updateDoc(doc(db, 'orders', targetDocId), {
           estimatedPrepMinutes: minutes,
           prepTimeRange: rangeStr,
           updatedAt: new Date().toISOString()
@@ -813,8 +873,15 @@ export function TableOrderProvider({ children }) {
     }
 
     localStore.updateOrderEta(orderId, minutes, rangeStr);
-    const updated = localStore.getOrders();
-    setOrders([...updated]);
+    const targetStr = String(orderId);
+    setOrders(prev => {
+      return prev.map(o => {
+        if (String(o.id) === targetStr || String(o.orderNumber) === targetStr) {
+          return { ...o, estimatedPrepMinutes: minutes, prepTimeRange: rangeStr, updatedAt: new Date().toISOString() };
+        }
+        return o;
+      });
+    });
   };
 
   // Staff/Admin assigns a table to a queued/waiting customer
@@ -1070,6 +1137,56 @@ export function TableOrderProvider({ children }) {
     localStorage.setItem('smartdine_clean_admin_v2', 'true');
   };
 
+  const callWaiter = async ({ tableNumber, reason = 'General Assistance', notes = '', customerName = '' }) => {
+    const targetTable = String(tableNumber || currentTable || '01').padStart(2, '0');
+    const guestName = customerName || localStorage.getItem('smartdine_guest_name') || 'Guest';
+
+    const newCall = {
+      id: `call-${Date.now()}`,
+      tableNumber: targetTable,
+      customerName: guestName,
+      reason: reason || 'General Assistance',
+      notes: (notes || '').trim(),
+      status: 'pending', // 'pending' | 'attended' | 'cancelled'
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      estimatedArrivalMinutes: 2
+    };
+
+    setWaiterCalls(prev => [newCall, ...prev.filter(c => !(String(c.tableNumber).padStart(2, '0') === targetTable && c.status === 'pending'))]);
+
+    // Sync to Firestore if configured
+    if (isFirebaseConfigured && db) {
+      try {
+        await addDoc(collection(db, 'waiter_calls'), newCall);
+      } catch (e) {
+        console.warn('Firestore waiter call note:', e);
+      }
+    }
+
+    return newCall;
+  };
+
+  const cancelWaiterCall = async (callId) => {
+    setWaiterCalls(prev => prev.map(c => 
+      c.id === callId ? { ...c, status: 'cancelled', updatedAt: new Date().toISOString() } : c
+    ));
+    return true;
+  };
+
+  const resolveWaiterCall = async (callId) => {
+    setWaiterCalls(prev => prev.map(c => 
+      c.id === callId ? { ...c, status: 'attended', attendedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : c
+    ));
+    return true;
+  };
+
+  const getActiveWaiterCallForTable = (tableNumber) => {
+    const target = String(tableNumber || currentTable || '').padStart(2, '0');
+    if (!target) return null;
+    return waiterCalls.find(c => String(c.tableNumber).padStart(2, '0') === target && c.status === 'pending') || null;
+  };
+
   return (
     <TableOrderContext.Provider value={{
       currentTable,
@@ -1121,7 +1238,12 @@ export function TableOrderProvider({ children }) {
       updateTable,
       deleteTable,
       resetToRealTables,
-      resetCleanAdminOrders
+      resetCleanAdminOrders,
+      waiterCalls,
+      callWaiter,
+      cancelWaiterCall,
+      resolveWaiterCall,
+      getActiveWaiterCallForTable
     }}>
       {children}
     </TableOrderContext.Provider>

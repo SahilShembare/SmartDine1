@@ -37,15 +37,18 @@ import {
   HelpCircle,
   SlidersHorizontal,
   ArrowRight,
-  CheckCircle2
+  CheckCircle2,
+  Bell
 } from 'lucide-react';
 import CustomerProfileModal from '../components/CustomerProfileModal';
+import CallWaiterModal from '../components/CallWaiterModal';
 
 export default function CustomerWebMenu() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isCallWaiterOpen, setIsCallWaiterOpen] = useState(false);
   const guestName = currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || '';
   const avatarUrl = currentUser?.photoURL || localStorage.getItem('smartdine_guest_avatar') || '';
   const { 
@@ -59,8 +62,11 @@ export default function CustomerWebMenu() {
     updateQuantity,
     cartItemCount, 
     cartTotal,
-    reloadLatestMenu
+    reloadLatestMenu,
+    getActiveWaiterCallForTable
   } = useTableOrder();
+
+  const activeWaiterCall = getActiveWaiterCallForTable ? getActiveWaiterCallForTable(currentTable) : null;
 
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [search, setSearch] = useState('');
@@ -270,7 +276,7 @@ export default function CustomerWebMenu() {
 
               {currentTable ? (
                 <div className="flex items-center gap-2">
-                  <div className="px-3.5 py-1.5 rounded-xl bg-slate-900 text-amber-400 border border-amber-500/30 font-black text-xs flex items-center gap-1.5 shadow-sm">
+                  <div className="px-3 py-1.5 rounded-xl bg-slate-900 text-amber-400 border border-amber-500/30 font-black text-xs flex items-center gap-1.5 shadow-sm">
                     <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                     <span>Table <strong>{currentTable}</strong></span>
                   </div>
@@ -284,13 +290,15 @@ export default function CustomerWebMenu() {
                   </Link>
                 </div>
               ) : (
-                <Link
-                  to="/scan"
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold transition cursor-pointer shadow-glow"
-                >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span>Scan Table QR</span>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/scan"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold transition cursor-pointer shadow-glow"
+                  >
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>Scan Table QR</span>
+                  </Link>
+                </div>
               )}
 
               {/* Cart Button in Menu Header */}
@@ -1076,6 +1084,36 @@ export default function CustomerWebMenu() {
       <CustomerProfileModal 
         isOpen={isProfileModalOpen} 
         onClose={() => setIsProfileModalOpen(false)} 
+      />
+
+      {/* Floating Call Waiter Quick Action Button on Customer Menu */}
+      <div className="fixed bottom-20 right-4 z-40">
+        <button
+          type="button"
+          onClick={() => setIsCallWaiterOpen(true)}
+          className="px-3.5 py-2.5 rounded-full bg-slate-900/95 hover:bg-slate-800 border-2 border-amber-500/50 hover:border-amber-400 text-amber-400 font-extrabold text-xs shadow-2xl backdrop-blur-md transition-all active:scale-95 flex items-center gap-2 cursor-pointer group"
+          title="Call Waiter / Floor Service"
+        >
+          <div className="relative">
+            <Bell className="w-4 h-4 text-amber-400 group-hover:animate-bounce" />
+            {activeWaiterCall && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+            )}
+          </div>
+          <span className="hidden sm:inline">Call Waiter</span>
+          {currentTable && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300">
+              T{currentTable}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Call Waiter Modal */}
+      <CallWaiterModal 
+        isOpen={isCallWaiterOpen} 
+        onClose={() => setIsCallWaiterOpen(false)} 
+        defaultTable={currentTable} 
       />
 
     </div>

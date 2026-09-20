@@ -25,15 +25,25 @@ import {
   Tag
 } from 'lucide-react';
 
+
 export default function Navbar() {
   const { currentUser, logout } = useAuth();
-  const { currentTable, orders, getCombinedTableBill, cartItemCount = 0 } = useTableOrder();
+  const { 
+    currentTable, 
+    orders, 
+    getCombinedTableBill, 
+    cartItemCount = 0,
+    waiterCalls = [],
+    resolveWaiterCall,
+    getActiveWaiterCallForTable
+  } = useTableOrder();
   const navigate = useNavigate();
   const location = useLocation();
   
   const [scanDropdownOpen, setScanDropdownOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [adminProfileOpen, setAdminProfileOpen] = useState(false);
+
 
   const isHomePage = location.pathname === '/';
   const isLoginPage = location.pathname === '/login';
@@ -51,10 +61,13 @@ export default function Navbar() {
   const guestName = currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || 'Guest';
   const avatarUrl = currentUser?.photoURL || localStorage.getItem('smartdine_guest_avatar') || '';
 
+  const activeWaiterCall = getActiveWaiterCallForTable ? getActiveWaiterCallForTable(currentTable) : null;
+
   // Notifications calculation for Admin Top Bar
   const billRequests = orders.filter(o => o.paymentStatus === 'Bill Requested' || o.paymentStatus === 'Cash Payment Requested');
   const kitchenPending = orders.filter(o => o.status === 'pending' || o.status === 'placed');
-  const totalUnreadCount = billRequests.length + kitchenPending.length;
+  const pendingWaiterCalls = (waiterCalls || []).filter(c => c.status === 'pending');
+  const totalUnreadCount = billRequests.length + kitchenPending.length + pendingWaiterCalls.length;
 
   return (
     <>
@@ -192,12 +205,34 @@ export default function Navbar() {
                       </div>
 
                       <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 text-xs">
-                        {billRequests.length === 0 && kitchenPending.length === 0 ? (
+                        {billRequests.length === 0 && kitchenPending.length === 0 && pendingWaiterCalls.length === 0 ? (
                           <div className="py-6 text-center text-slate-400 text-xs">
                             No active alerts. Everything running smoothly! 👑
                           </div>
                         ) : (
                           <>
+                            {/* Live Waiter Calls Alert in Admin */}
+                            {pendingWaiterCalls.map(c => (
+                              <div key={c.id} className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-200 transition space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-extrabold text-amber-400 text-xs flex items-center gap-1.5">
+                                    <BellRing className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                                    <span>Table {c.tableNumber} - Waiter Called</span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => resolveWaiterCall && resolveWaiterCall(c.id)}
+                                    className="px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold transition cursor-pointer"
+                                  >
+                                    Attended ✓
+                                  </button>
+                                </div>
+                                <p className="text-[11px] text-slate-300">
+                                  {c.customerName}: <strong className="text-white">{c.reason}</strong>
+                                  {c.notes ? ` ("${c.notes}")` : ''}
+                                </p>
+                              </div>
+                            ))}
                             {billRequests.map(br => (
                               <Link
                                 key={br.id}
@@ -342,24 +377,26 @@ export default function Navbar() {
                 )}
               </div>
             ) : (!isHomePage && !isAdminPage && !isLoginPage && !isScanPage) ? (
-              /* CUSTOMER PROFILE BUTTON (Hidden on Home, Login, Scan & Admin) */
-              <Link
-                to="/profile"
-                title="Customer Profile & Dining Details"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-bold transition shadow-sm cursor-pointer group"
-              >
-                <div className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-xs shadow-sm overflow-hidden">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <span>{currentUser?.displayName ? currentUser.displayName.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}</span>
-                  )}
-                </div>
-                <span className="hidden sm:inline max-w-[110px] truncate font-bold text-slate-200">
-                  {currentUser?.displayName || guestName || 'Profile'}
-                </span>
-                <Crown className="w-3 h-3 text-amber-400 group-hover:scale-110 transition-transform" />
-              </Link>
+              /* CUSTOMER HEADER ACTIONS (Profile) */
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/profile"
+                  title="Customer Profile & Dining Details"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-bold transition shadow-sm cursor-pointer group"
+                >
+                  <div className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-xs shadow-sm overflow-hidden">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      <span>{currentUser?.displayName ? currentUser.displayName.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}</span>
+                    )}
+                  </div>
+                  <span className="hidden sm:inline max-w-[110px] truncate font-bold text-slate-200">
+                    {currentUser?.displayName || guestName || 'Profile'}
+                  </span>
+                  <Crown className="w-3 h-3 text-amber-400 group-hover:scale-110 transition-transform" />
+                </Link>
+              </div>
             ) : null}
 
           </div>

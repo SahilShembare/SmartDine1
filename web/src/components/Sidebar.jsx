@@ -24,10 +24,11 @@ export default function Sidebar({
   onOpenProfileSales,
   onOpenChefProfile,
   onOpenOrdersHistory,
+  onOpenWaiterCalls,
   chefName
 }) {
   const { currentUser, logout } = useAuth();
-  const { orders } = useTableOrder();
+  const { orders, waiterCalls = [] } = useTableOrder();
   const navigate = useNavigate();
 
   // Active uncompleted orders count
@@ -40,6 +41,10 @@ export default function Sidebar({
     (o.paymentStatus !== 'Paid' && !o.paidAt)
   ).length;
 
+  // Pending waiter calls count
+  const pendingWaiterCalls = (waiterCalls || []).filter(c => c.status === 'pending');
+  const pendingWaiterCount = pendingWaiterCalls.length;
+
   const adminLinks = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/admin/orders', label: 'Live Orders', icon: Flame, badge: activeOrdersCount > 0 ? activeOrdersCount : null, badgeColor: 'bg-orange-500' },
@@ -49,7 +54,7 @@ export default function Sidebar({
     { to: '/admin/customers', label: 'Customers', icon: Users },
     { to: '/admin/coupons', label: 'Offers & Coupons', icon: TicketPercent },
     { to: '/admin/analytics', label: 'Analytics & Sales', icon: BarChart3 },
-    { to: '/admin/notifications', label: 'Notifications', icon: BellRing },
+    { to: '/admin/notifications', label: 'Notifications', icon: BellRing, badge: pendingWaiterCount > 0 ? pendingWaiterCount : null, badgeColor: 'bg-amber-500' },
     { to: '/admin/settings', label: 'Restaurant Settings', icon: Settings },
   ];
 
@@ -57,6 +62,15 @@ export default function Sidebar({
 
   const kitchenLinks = [
     { to: '/kitchen', label: 'Live Order Queue', icon: ChefHat, end: true, badge: activeOrdersCount > 0 ? activeOrdersCount : null, badgeColor: 'bg-orange-500' },
+    {
+      to: '#waiter-calls',
+      label: 'Call Waiter',
+      icon: BellRing,
+      isAction: true,
+      onClick: onOpenWaiterCalls,
+      badge: pendingWaiterCount > 0 ? `${pendingWaiterCount} New` : null,
+      badgeColor: 'bg-amber-500 animate-pulse'
+    },
     ...(handleHistoryClick ? [{
       to: '#orders-history',
       label: 'Date-Wise Orders History',
@@ -133,9 +147,15 @@ export default function Sidebar({
                       <Icon className="w-4 h-4 shrink-0 text-orange-400" />
                       <span>{link.label}</span>
                     </div>
-                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                      Open
-                    </span>
+                    {link.badge ? (
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full text-slate-950 shadow-sm ${link.badgeColor || 'bg-amber-500'}`}>
+                        {link.badge}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                        Open
+                      </span>
+                    )}
                   </button>
                 );
               }

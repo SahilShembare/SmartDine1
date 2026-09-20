@@ -18,12 +18,27 @@ import {
 } from 'lucide-react';
 
 export default function AdminNotifications() {
-  const { orders } = useTableOrder();
-  const [filterType, setFilterType] = useState('all'); // 'all' | 'orders' | 'bills' | 'cash'
+  const { orders, waiterCalls = [], resolveWaiterCall } = useTableOrder();
+  const [filterType, setFilterType] = useState('all'); // 'all' | 'waiter' | 'orders' | 'bills' | 'cash'
 
-  // Build live notification stream from orders
+  // Build live notification stream from orders & waiter calls
   const notifications = useMemo(() => {
     const list = [];
+
+    // Waiter calls
+    (waiterCalls || []).forEach(c => {
+      list.push({
+        id: c.id,
+        type: 'waiter',
+        title: `🛎️ Waiter Call (Table ${c.tableNumber})`,
+        message: `${c.customerName || 'Guest'} requested ${c.reason}${c.notes ? ` - "${c.notes}"` : ''}`,
+        time: c.createdAt,
+        link: `/admin/tables`,
+        urgency: c.status === 'pending' ? 'high' : 'low',
+        status: c.status,
+        callId: c.id
+      });
+    });
 
     orders.forEach(o => {
       // 1. Cash Payment Requested
@@ -80,9 +95,10 @@ export default function AdminNotifications() {
     });
 
     return list.sort((a, b) => new Date(b.time) - new Date(a.time));
-  }, [orders]);
+  }, [orders, waiterCalls]);
 
   const filteredNotifs = notifications.filter(n => {
+    if (filterType === 'waiter' && n.type !== 'waiter') return false;
     if (filterType === 'orders' && n.type !== 'order') return false;
     if (filterType === 'bills' && n.type !== 'bill') return false;
     if (filterType === 'cash' && n.type !== 'cash') return false;
@@ -116,6 +132,7 @@ export default function AdminNotifications() {
         <div className="flex items-center gap-2 bg-slate-900/90 p-3 rounded-2xl border border-slate-800 overflow-x-auto custom-scrollbar">
           {[
             { id: 'all', label: `All Alerts (${notifications.length})` },
+            { id: 'waiter', label: `🛎️ Waiter Calls (${notifications.filter(n => n.type === 'waiter' && n.status === 'pending').length})` },
             { id: 'cash', label: `💵 Cash To Collect (${notifications.filter(n => n.type === 'cash').length})` },
             { id: 'bills', label: `🛎️ Bill Requests (${notifications.filter(n => n.type === 'bill').length})` },
             { id: 'orders', label: `🔥 New Orders (${notifications.filter(n => n.type === 'order').length})` },
@@ -147,7 +164,9 @@ export default function AdminNotifications() {
               <div
                 key={notif.id}
                 className={`p-4.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                  notif.type === 'cash'
+                  notif.type === 'waiter'
+                    ? 'bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border-amber-500/60 shadow-lg'
+                    : notif.type === 'cash'
                     ? 'bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border-emerald-500/60 shadow-lg'
                     : notif.type === 'bill'
                     ? 'bg-gradient-to-r from-amber-950/40 via-slate-900 to-slate-900 border-amber-500/60 shadow-lg'
@@ -158,19 +177,28 @@ export default function AdminNotifications() {
               >
                 <div className="flex items-start gap-3.5">
                   <div className={`p-2.5 rounded-xl mt-0.5 ${
+                    notif.type === 'waiter' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse' :
                     notif.type === 'cash' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse' :
                     notif.type === 'bill' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse' :
                     notif.type === 'order' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/40' :
                     'bg-slate-800 text-slate-400'
                   }`}>
-                    {notif.type === 'cash' ? <Banknote className="w-5 h-5" /> :
+                    {notif.type === 'waiter' ? <BellRing className="w-5 h-5" /> :
+                     notif.type === 'cash' ? <Banknote className="w-5 h-5" /> :
                      notif.type === 'bill' ? <BellRing className="w-5 h-5" /> :
                      notif.type === 'order' ? <Flame className="w-5 h-5" /> :
                      <CheckCircle2 className="w-5 h-5" />}
                   </div>
 
                   <div>
-                    <h4 className="font-bold text-sm text-white">{notif.title}</h4>
+                    <h4 className="font-bold text-sm text-white flex items-center gap-2">
+                      <span>{notif.title}</span>
+                      {notif.type === 'waiter' && notif.status === 'attended' && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          Attended
+                        </span>
+                      )}
+                    </h4>
                     <p className="text-xs text-slate-300 mt-0.5">{notif.message}</p>
                     <span className="text-[10px] text-slate-500 font-mono mt-1 inline-block">
                       {new Date(notif.time || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -178,13 +206,25 @@ export default function AdminNotifications() {
                   </div>
                 </div>
 
-                <Link
-                  to={notif.link}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center justify-center gap-1.5 self-start sm:self-auto cursor-pointer"
-                >
-                  <span>Open Details</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </Link>
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  {notif.type === 'waiter' && notif.status === 'pending' && (
+                    <button
+                      type="button"
+                      onClick={() => resolveWaiterCall && resolveWaiterCall(notif.callId)}
+                      className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm cursor-pointer"
+                    >
+                      Mark Attended ✓
+                    </button>
+                  )}
+
+                  <Link
+                    to={notif.link}
+                    className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>Open Details</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
             ))
           )}

@@ -29,5 +29,14 @@
     "phone": "7898758809",
     "role": "customer",
     "registeredAt": "2026-09-18T05:13:06.304Z"
+  },
+  {
+    "name": "royy",
+    "email": "smartdine82@gmail.com",
+    "phone": "9529582311",
+    "role": "customer",
+    "registeredAt": "2026-09-19T13:49:51.749Z",
+    "password": "Sah@1234",
+    "updatedAt": "2026-09-19T13:49:51.782Z"
   }
 ]

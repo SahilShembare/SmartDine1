@@ -152,7 +152,8 @@ export const localStore = {
 
   updateOrderStatus: (orderId, newStatus) => {
     const orders = getLocalData('orders', []);
-    const index = orders.findIndex(o => o.id === orderId);
+    const targetStr = String(orderId);
+    const index = orders.findIndex(o => String(o.id) === targetStr || String(o.orderNumber) === targetStr);
     if (index !== -1) {
       const updates = { status: newStatus, updatedAt: new Date().toISOString() };
       if (newStatus === 'preparing' && !orders[index].prepStartedAt) {
@@ -173,7 +174,8 @@ export const localStore = {
 
   updateOrderEta: (orderId, minutes, rangeStr) => {
     const orders = getLocalData('orders', []);
-    const index = orders.findIndex(o => o.id === orderId);
+    const targetStr = String(orderId);
+    const index = orders.findIndex(o => String(o.id) === targetStr || String(o.orderNumber) === targetStr);
     if (index !== -1) {
       const parsed = Math.max(1, parseInt(minutes) || 20);
       orders[index] = {
@@ -190,7 +192,8 @@ export const localStore = {
 
   assignTableToOrder: (orderId, tableNumber) => {
     const orders = getLocalData('orders', []);
-    const index = orders.findIndex(o => o.id === orderId);
+    const targetStr = String(orderId);
+    const index = orders.findIndex(o => String(o.id) === targetStr || String(o.orderNumber) === targetStr);
     if (index !== -1) {
       const formatted = String(tableNumber).padStart(2, '0');
       orders[index] = {

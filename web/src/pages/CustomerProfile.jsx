@@ -45,6 +45,9 @@ import {
   Upload
 } from 'lucide-react';
 
+import CustomerFeedbackModal from '../components/CustomerFeedbackModal';
+import CallWaiterModal from '../components/CallWaiterModal';
+
 export default function CustomerProfile() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -55,8 +58,12 @@ export default function CustomerProfile() {
     addToCart, 
     currentTable, 
     cart,
-    customerFeedbacks = [] 
+    customerFeedbacks = [],
+    getActiveWaiterCallForTable
   } = useTableOrder();
+
+  const [isCallWaiterOpen, setIsCallWaiterOpen] = useState(false);
+  const activeWaiterCall = getActiveWaiterCallForTable ? getActiveWaiterCallForTable(currentTable) : null;
 
   const avatarInputRef = React.useRef(null);
 
@@ -446,7 +453,7 @@ export default function CustomerProfile() {
             </div>
 
             {/* Quick Action Button in Hero */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5 flex-wrap justify-center sm:justify-end">
               <Link
                 to="/menu"
                 className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:brightness-110 text-white font-black text-xs sm:text-sm shadow-glow transition active:scale-95 flex items-center gap-2"
@@ -457,6 +464,42 @@ export default function CustomerProfile() {
             </div>
           </div>
 
+        </div>
+
+        {/* Quick Floor Service Card */}
+        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/20 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+          <div className="flex items-center gap-3.5 text-center sm:text-left">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-sm">
+              <Bell className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center justify-center sm:justify-start gap-2">
+                <h3 className="text-sm font-extrabold text-white">Floor Service & Waiter Call</h3>
+                <span className="px-2 py-0.5 rounded-full bg-slate-800 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
+                  Table {currentTable || '01'}
+                </span>
+                {activeWaiterCall && (
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold animate-pulse">
+                    Staff Alerted
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {activeWaiterCall 
+                  ? `Floor staff notified for "${activeWaiterCall.reason}". Arriving in ~1-2 min.`
+                  : 'Need water refill, extra cutlery, table cleaning, or chef recommendations?'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsCallWaiterOpen(true)}
+            className="w-full sm:w-auto px-5 py-2.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-extrabold text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+          >
+            <Bell className="w-4 h-4" />
+            <span>{activeWaiterCall ? 'View Waiter Status' : '🛎️ Call Waiter Now'}</span>
+          </button>
         </div>
 
         {/* Main Profile Layout: Sidebar (Desktop) + Tab Content (Right) */}
@@ -1353,6 +1396,13 @@ export default function CustomerProfile() {
           </div>
         </div>
       )}
+
+      {/* Call Waiter Modal */}
+      <CallWaiterModal 
+        isOpen={isCallWaiterOpen} 
+        onClose={() => setIsCallWaiterOpen(false)} 
+        defaultTable={currentTable} 
+      />
 
     </div>
   );
