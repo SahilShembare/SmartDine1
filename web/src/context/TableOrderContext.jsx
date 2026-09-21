@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, localStore, isFirebaseConfigured } from '../firebase/config';
 import { DEMO_TABLES } from '../firebase/seed-data.js';
-import { collection, addDoc, onSnapshot, query, orderBy, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { getNextOrderNumber, getNextInvoiceNumber, getOrAssignInvoiceNumber, formatOrderNumber, formatInvoiceNumber } from '../utils/orderNumber';
 
 const TableOrderContext = createContext();
@@ -254,17 +254,35 @@ export function TableOrderProvider({ children }) {
       // Menu items listener
       const unsubMenu = onSnapshot(collection(db, 'menuItems'), (snapshot) => {
         if (!snapshot.empty) {
-          const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const items = snapshot.docs.map(doc => ({ id: doc.id, firestoreDocId: doc.id, ...doc.data() }));
           setMenuItems(items);
+          localStore.saveMenuItems(items);
+        } else {
+          const localItems = localStore.getMenuItems();
+          if (localItems && localItems.length > 0) {
+            setMenuItems(localItems);
+          }
         }
+      }, (err) => {
+        console.warn('Firestore menu items listener error, using localStore:', err);
+        setMenuItems(localStore.getMenuItems());
       });
 
       // Categories listener
       const unsubCategories = onSnapshot(collection(db, 'categories'), (snapshot) => {
         if (!snapshot.empty) {
-          const cats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          const cats = snapshot.docs.map(doc => ({ id: doc.id, firestoreDocId: doc.id, ...doc.data() }));
           setCategories(cats);
+          localStore.saveCategories(cats);
+        } else {
+          const localCats = localStore.getCategories();
+          if (localCats && localCats.length > 0) {
+            setCategories(localCats);
+          }
         }
+      }, (err) => {
+        console.warn('Firestore categories listener error, using localStore:', err);
+        setCategories(localStore.getCategories());
       });
 
       // Tables listener
@@ -1266,64 +1284,164 @@ export function TableOrderProvider({ children }) {
     }
   };
 
-  const addMenuItem = (item) => {
+  const addMenuItem = async (item) => {
     const newItem = {
       id: `item-${Date.now()}`,
-      name: item.name || 'New Dish',
+      name: item.name?.trim() || 'New Dish',
       price: Number(item.price) || 0,
       categoryId: item.categoryId || (categories[0]?.id || 'main-course'),
       category: item.category || (categories[0]?.name || 'Main Course'),
-      description: item.description || '',
+      description: item.description?.trim() || '',
       imageUrl: item.imageUrl || '/dishes/paneer_butter_masala.jpg',
       isVeg: item.isVeg !== undefined ? item.isVeg : true,
       inStock: item.inStock !== undefined ? item.inStock : true,
       available: item.available !== undefined ? item.available : true,
       createdAt: new Date().toISOString()
     };
-    const updated = [newItem, ...menuItems];
-    setMenuItems(updated);
+
+    if (isFirebaseConfigured) {
+      try {
+        const docRef = await addDoc(collection(db, 'menuItems'), newItem);
+        if (docRef?.id) {
+          newItem.firestoreDocId = docRef.id;
+        }
+      } catch (err) {
+        console.warn('Firebase addDoc menuItem error, using local fallback:', err);
+      }
+    }
+
+    setMenuItems(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
+    const currentItems = localStore.getMenuItems();
+    const updated = [newItem, ...currentItems.filter(i => i.id !== newItem.id)];
     localStore.saveMenuItems(updated);
     return newItem;
   };
 
-  const updateMenuItem = (itemId, updates) => {
-    const updated = menuItems.map(item => item.id === itemId ? { ...item, ...updates } : item);
-    setMenuItems(updated);
+  const updateMenuItem = async (itemId, updates) => {
+    const targetStr = String(itemId);
+    setMenuItems(prev => prev.map(item => 
+      (String(item.id) === targetStr || String(item.firestoreDocId) === targetStr) 
+        ? { ...item, ...updates } 
+        : item
+    ));
+
+    const currentItems = localStore.getMenuItems();
+    const updated = currentItems.map(item => 
+      (String(item.id) === targetStr || String(item.firestoreDocId) === targetStr) 
+        ? { ...item, ...updates } 
+        : item
+    );
     localStore.saveMenuItems(updated);
+
+    if (isFirebaseConfigured) {
+      try {
+        const itemToUpdate = menuItems.find(i => String(i.id) === targetStr || String(i.firestoreDocId) === targetStr);
+        const docId = itemToUpdate?.firestoreDocId || itemId;
+        await updateDoc(doc(db, 'menuItems', docId), updates);
+      } catch (err) {
+        console.warn('Firebase updateDoc menuItem error:', err);
+      }
+    }
   };
 
-  const deleteMenuItem = (itemId) => {
-    const updated = menuItems.filter(item => item.id !== itemId);
-    setMenuItems(updated);
+  const deleteMenuItem = async (itemId) => {
+    const targetStr = String(itemId);
+    const itemToDelete = menuItems.find(i => String(i.id) === targetStr || String(i.firestoreDocId) === targetStr);
+
+    setMenuItems(prev => prev.filter(item => String(item.id) !== targetStr && String(item.firestoreDocId) !== targetStr));
+    const currentItems = localStore.getMenuItems();
+    const updated = currentItems.filter(item => String(item.id) !== targetStr && String(item.firestoreDocId) !== targetStr);
     localStore.saveMenuItems(updated);
+
+    if (isFirebaseConfigured) {
+      try {
+        const docId = itemToDelete?.firestoreDocId || itemId;
+        await deleteDoc(doc(db, 'menuItems', docId));
+      } catch (err) {
+        console.warn('Firebase deleteDoc menuItem error:', err);
+      }
+    }
   };
 
-  const toggleItemAvailability = (itemId) => {
-    const updated = menuItems.map(item => {
-      if (item.id === itemId) {
+  const toggleItemAvailability = async (itemId) => {
+    const targetStr = String(itemId);
+    let newInStock = false;
+    setMenuItems(prev => prev.map(item => {
+      if (String(item.id) === targetStr || String(item.firestoreDocId) === targetStr) {
+        const current = item.inStock !== undefined ? item.inStock : (item.available !== false);
+        newInStock = !current;
+        return { ...item, inStock: newInStock, available: newInStock };
+      }
+      return item;
+    }));
+
+    const currentItems = localStore.getMenuItems();
+    const updated = currentItems.map(item => {
+      if (String(item.id) === targetStr || String(item.firestoreDocId) === targetStr) {
         const current = item.inStock !== undefined ? item.inStock : (item.available !== false);
         return { ...item, inStock: !current, available: !current };
       }
       return item;
     });
-    setMenuItems(updated);
     localStore.saveMenuItems(updated);
+
+    if (isFirebaseConfigured) {
+      try {
+        const itemToUpdate = menuItems.find(i => String(i.id) === targetStr || String(i.firestoreDocId) === targetStr);
+        const docId = itemToUpdate?.firestoreDocId || itemId;
+        await updateDoc(doc(db, 'menuItems', docId), { inStock: newInStock, available: newInStock });
+      } catch (err) {
+        console.warn('Firebase toggleItemAvailability error:', err);
+      }
+    }
   };
 
-  const addCategory = (categoryData) => {
+  const addCategory = async (categoryData) => {
     const newCat = {
       id: categoryData.id || `cat-${Date.now()}`,
-      name: categoryData.name,
+      name: categoryData.name?.trim() || 'New Category',
       description: categoryData.description || '',
       imageUrl: categoryData.imageUrl || '',
       active: true,
       displayOrder: categories.length + 1,
       createdAt: new Date().toISOString()
     };
-    const updated = [...categories, newCat];
-    setCategories(updated);
+
+    if (isFirebaseConfigured) {
+      try {
+        const docRef = await addDoc(collection(db, 'categories'), newCat);
+        if (docRef?.id) {
+          newCat.firestoreDocId = docRef.id;
+        }
+      } catch (err) {
+        console.warn('Firebase addDoc category error:', err);
+      }
+    }
+
+    setCategories(prev => [...prev.filter(c => c.id !== newCat.id), newCat]);
+    const currentCats = localStore.getCategories();
+    const updated = [...currentCats.filter(c => c.id !== newCat.id), newCat];
     localStore.saveCategories(updated);
     return newCat;
+  };
+
+  const deleteCategory = async (catId) => {
+    const targetStr = String(catId);
+    const catToDelete = categories.find(c => String(c.id) === targetStr || String(c.firestoreDocId) === targetStr);
+
+    setCategories(prev => prev.filter(c => String(c.id) !== targetStr && String(c.firestoreDocId) !== targetStr));
+    const currentCats = localStore.getCategories();
+    const updated = currentCats.filter(c => String(c.id) !== targetStr && String(c.firestoreDocId) !== targetStr);
+    localStore.saveCategories(updated);
+
+    if (isFirebaseConfigured) {
+      try {
+        const docId = catToDelete?.firestoreDocId || catId;
+        await deleteDoc(doc(db, 'categories', docId));
+      } catch (err) {
+        console.warn('Firebase deleteDoc category error:', err);
+      }
+    }
   };
 
   const updateTableStatus = (tableNumber, newStatus) => {
@@ -1556,6 +1674,7 @@ export function TableOrderProvider({ children }) {
       deleteMenuItem,
       toggleItemAvailability,
       addCategory,
+      deleteCategory,
       updateTableStatus,
       addTable,
       updateTable,

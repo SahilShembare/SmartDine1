@@ -50,30 +50,22 @@ function setLocalData(key, data) {
 // In-Memory & LocalStorage Real-time Store (100% Real Live Production Mode)
 export const localStore = {
   getCategories: () => {
-    const data = getLocalData('categories', DEMO_CATEGORIES);
-    if (Array.isArray(data)) {
-      const activeIds = new Set(DEMO_CATEGORIES.map(c => c.id));
-      const filtered = data.filter(cat => activeIds.has(cat.id));
-      if (filtered.length !== data.length) {
-        setLocalData('categories', filtered);
-        return filtered;
-      }
+    const data = getLocalData('categories', null);
+    if (data === null) {
+      setLocalData('categories', DEMO_CATEGORIES);
+      return DEMO_CATEGORIES;
     }
-    return data;
+    return Array.isArray(data) ? data : [];
   },
   saveCategories: (categories) => setLocalData('categories', categories),
   
   getMenuItems: () => {
-    const data = getLocalData('menuItems', DEMO_MENU_ITEMS);
-    if (Array.isArray(data)) {
-      const activeIds = new Set(DEMO_MENU_ITEMS.map(i => i.id));
-      const filtered = data.filter(item => activeIds.has(item.id));
-      if (filtered.length !== data.length) {
-        setLocalData('menuItems', filtered);
-        return filtered;
-      }
+    const data = getLocalData('menuItems', null);
+    if (data === null) {
+      setLocalData('menuItems', DEMO_MENU_ITEMS);
+      return DEMO_MENU_ITEMS;
     }
-    return data;
+    return Array.isArray(data) ? data : [];
   },
   saveMenuItems: (items) => setLocalData('menuItems', items),
   

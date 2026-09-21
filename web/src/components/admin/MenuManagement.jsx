@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
@@ -11,7 +11,8 @@ import {
   Tag, 
   IndianRupee,
   Utensils,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
 import { useTableOrder } from '../../context/TableOrderContext';
 import toast from 'react-hot-toast';
@@ -25,6 +26,7 @@ export default function MenuManagement({ autoOpenAdd = false }) {
     deleteMenuItem, 
     toggleItemAvailability,
     addCategory,
+    deleteCategory,
     setCategories 
   } = useTableOrder();
 
@@ -36,6 +38,7 @@ export default function MenuManagement({ autoOpenAdd = false }) {
   const [editingItem, setEditingItem] = useState(null);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Form State for Food Item
   const [formData, setFormData] = useState({
@@ -87,6 +90,13 @@ export default function MenuManagement({ autoOpenAdd = false }) {
     setIsItemModalOpen(true);
   };
 
+  // Sync autoOpenAdd prop when opened from parent navigation
+  useEffect(() => {
+    if (autoOpenAdd) {
+      handleOpenAddModal();
+    }
+  }, [autoOpenAdd]);
+
   // Open Edit Item Modal
   const handleOpenEditModal = (item) => {
     setEditingItem(item);
@@ -118,7 +128,7 @@ export default function MenuManagement({ autoOpenAdd = false }) {
   };
 
   // Save Item (Add or Edit)
-  const handleSaveItem = (e) => {
+  const handleSaveItem = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) {
       toast.error('Please enter food item name');
@@ -129,60 +139,91 @@ export default function MenuManagement({ autoOpenAdd = false }) {
       return;
     }
 
-    const categoryObj = categories.find(c => c.id === formData.categoryId);
-    const categoryName = categoryObj ? categoryObj.name : (formData.category || 'Main Course');
+    setIsSaving(true);
+    try {
+      const categoryObj = categories.find(c => c.id === formData.categoryId);
+      const categoryName = categoryObj ? categoryObj.name : (formData.category || 'Main Course');
+      const itemPayload = {
+        ...formData,
+        name: formData.name.trim(),
+        price: Number(formData.price),
+        category: categoryName,
+        imageUrl: formData.imageUrl || '/dishes/paneer_butter_masala.jpg'
+      };
 
-    if (editingItem) {
-      updateMenuItem(editingItem.id, {
-        ...formData,
-        price: Number(formData.price),
-        category: categoryName
-      });
-      toast.success('Food item updated successfully!');
-    } else {
-      addMenuItem({
-        ...formData,
-        price: Number(formData.price),
-        category: categoryName
-      });
-      toast.success('Food item added successfully!');
+      if (editingItem) {
+        await updateMenuItem(editingItem.id, itemPayload);
+        toast.success('Food item updated successfully!');
+      } else {
+        await addMenuItem(itemPayload);
+        toast.success('Food item added successfully!');
+      }
+      setIsItemModalOpen(false);
+    } catch (err) {
+      console.error('Failed to save menu item:', err);
+      toast.error('Failed to save menu item. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsItemModalOpen(false);
   };
 
   // Delete Item
-  const handleDeleteItem = (itemId) => {
-    deleteMenuItem(itemId);
-    toast.success('Food item deleted');
-    setDeleteConfirmId(null);
+  const handleDeleteItem = async (itemId) => {
+    try {
+      await deleteMenuItem(itemId);
+      toast.success('Food item deleted');
+    } catch (err) {
+      console.error('Failed to delete item:', err);
+      toast.error('Failed to delete item');
+    } finally {
+      setDeleteConfirmId(null);
+    }
   };
 
   // Quick Price Update
-  const handleQuickPriceUpdate = (item, newPrice) => {
+  const handleQuickPriceUpdate = async (item, newPrice) => {
     const parsed = Number(newPrice);
     if (!parsed || parsed <= 0) return;
-    updateMenuItem(item.id, { price: parsed });
-    toast.success(`Price updated to ₹${parsed}`);
+    try {
+      await updateMenuItem(item.id, { price: parsed });
+      toast.success(`Price updated to ₹${parsed}`);
+    } catch (err) {
+      console.error('Failed to update price:', err);
+      toast.error('Failed to update price');
+    }
   };
 
   // Add Category
-  const handleAddCategory = (e) => {
+  const handleAddCategory = async (e) => {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
-    addCategory({
-      name: newCategoryName.trim(),
-      id: newCategoryName.toLowerCase().replace(/\s+/g, '-')
-    });
-    setNewCategoryName('');
-    toast.success('Category added successfully!');
+    try {
+      await addCategory({
+        name: newCategoryName.trim(),
+        id: newCategoryName.toLowerCase().replace(/\s+/g, '-')
+      });
+      setNewCategoryName('');
+      toast.success('Category added successfully!');
+    } catch (err) {
+      console.error('Failed to add category:', err);
+      toast.error('Failed to add category');
+    }
   };
 
   // Delete Category
-  const handleDeleteCategory = (catId) => {
-    const updated = categories.filter(c => c.id !== catId);
-    setCategories(updated);
-    toast.success('Category removed');
+  const handleDeleteCategory = async (catId) => {
+    try {
+      if (deleteCategory) {
+        await deleteCategory(catId);
+      } else {
+        const updated = categories.filter(c => c.id !== catId);
+        setCategories(updated);
+      }
+      toast.success('Category removed');
+    } catch (err) {
+      console.error('Failed to delete category:', err);
+      toast.error('Failed to remove category');
+    }
   };
 
   return (
@@ -616,9 +657,11 @@ export default function MenuManagement({ autoOpenAdd = false }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition cursor-pointer"
+                  disabled={isSaving}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white shadow-xs transition cursor-pointer"
                 >
-                  {editingItem ? 'Update Food Item' : 'Save Food Item'}
+                  {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{editingItem ? 'Update Food Item' : 'Save Food Item'}</span>
                 </button>
               </div>
             </form>
