@@ -29,6 +29,8 @@ export default function DashboardOverview({
     updateOrderStatus,
     updateTableStatus,
     isOrderPaid = () => false,
+    isRealOrder: contextIsRealOrder,
+    isOrderToday: contextIsOrderToday,
     markOrderAsPaidByAdmin,
     markTableAsPaidByAdmin
   } = useTableOrder();
@@ -36,32 +38,77 @@ export default function DashboardOverview({
   const [selectedTableModal, setSelectedTableModal] = useState(null);
   const [selectedOrderModal, setSelectedOrderModal] = useState(null);
 
-  // =========================================================================
-  // 1. FOUR SIMPLE SUMMARY CARDS
-  // =========================================================================
-  const totalOrdersCount = orders.length;
+  // Fallback real order filter
+  const isOrderReal = (o) => {
+    if (typeof contextIsRealOrder === 'function') return contextIsRealOrder(o);
+    if (!o) return false;
+    if (o.isDemo || o.demo) return false;
+    const name = String(o.customerName || '').toLowerCase();
+    if (name.includes('demo') || name.includes('test')) return false;
+    return true;
+  };
 
-  const pendingOrdersCount = useMemo(() => {
-    return orders.filter(o => String(o.status || '').toLowerCase() === 'pending').length;
-  }, [orders]);
+  // Fallback is today check
+  const isTodayOrder = (o) => {
+    if (typeof contextIsOrderToday === 'function') return contextIsOrderToday(o);
+    if (!o?.createdAt) return false;
+    try {
+      const d = new Date(o.createdAt);
+      const now = new Date();
+      return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    } catch {
+      return false;
+    }
+  };
 
-  const todaySales = useMemo(() => {
-    return orders
+  // 1. All REAL orders (100% demo-free)
+  const realOrders = useMemo(() => {
+    return orders.filter(isOrderReal);
+  }, [orders, contextIsRealOrder]);
+
+  // 2. DAILY ORDERS (Placed Today)
+  const dailyOrders = useMemo(() => {
+    return realOrders.filter(o => isTodayOrder(o) && o.status !== 'cancelled');
+  }, [realOrders, contextIsOrderToday]);
+  const dailyOrdersCount = dailyOrders.length;
+
+  // 3. DAILY TOTAL REVENUE (Settled / Paid Today)
+  const dailyTotalRevenue = useMemo(() => {
+    return realOrders
       .filter(o => {
         const s = String(o.status || '').toLowerCase();
-        return isOrderPaid(o) && s !== 'cancelled';
+        if (s === 'cancelled') return false;
+        const wasCreatedToday = isTodayOrder(o);
+        const wasPaidToday = o.paidAt ? isTodayOrder({ createdAt: o.paidAt }) : false;
+        return isOrderPaid(o) && (wasCreatedToday || wasPaidToday);
       })
       .reduce((sum, o) => sum + (Number(o.amount || o.total) || 0), 0);
-  }, [orders, isOrderPaid]);
+  }, [realOrders, isOrderPaid, contextIsOrderToday]);
 
-  // Pending Counter/Cash Bills count
+  // 4. Pending Orders (Awaiting kitchen preparation)
+  const pendingOrdersCount = useMemo(() => {
+    return realOrders.filter(o => String(o.status || '').toLowerCase() === 'pending').length;
+  }, [realOrders]);
+
+  // 5. Pending Counter/Cash Bills count
   const pendingCounterBillsCount = useMemo(() => {
-    return orders.filter(o => {
+    return realOrders.filter(o => {
       const s = String(o.status || '').toLowerCase();
       if (s === 'cancelled') return false;
       return !isOrderPaid(o);
     }).length;
-  }, [orders, isOrderPaid]);
+  }, [realOrders, isOrderPaid]);
+
+  // 6. All-time real orders and revenue for secondary reference
+  const allTimeOrdersCount = useMemo(() => {
+    return realOrders.filter(o => o.status !== 'cancelled').length;
+  }, [realOrders]);
+
+  const allTimeRevenue = useMemo(() => {
+    return realOrders
+      .filter(o => isOrderPaid(o) && String(o.status || '').toLowerCase() !== 'cancelled')
+      .reduce((sum, o) => sum + (Number(o.amount || o.total) || 0), 0);
+  }, [realOrders, isOrderPaid]);
 
   // Total Tables & Available Tables
   const totalTables = tables.length || 25;
@@ -88,8 +135,8 @@ export default function DashboardOverview({
   // 2. RECENT ORDERS (Table)
   // =========================================================================
   const recentOrders = useMemo(() => {
-    return [...orders].slice(0, 7);
-  }, [orders]);
+    return realOrders.slice(0, 8);
+  }, [realOrders]);
 
   const getStatusBadge = (status) => {
     const s = String(status || '').toLowerCase();
@@ -207,23 +254,26 @@ export default function DashboardOverview({
       {/* ============================================================ */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* Total Orders */}
+        {/* Daily Orders (Today) */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-sm transition">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Total Orders
+              Daily Orders (Today)
             </span>
-            <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center">
               <ShoppingBag className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-4">
             <div className="text-3xl font-bold text-slate-900 tracking-tight">
-              {totalOrdersCount}
+              {dailyOrdersCount}
             </div>
-            <p className="mt-1 text-xs text-slate-500">
-              Today's total orders
-            </p>
+            <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+              <span>Placed today</span>
+              {allTimeOrdersCount > dailyOrdersCount && (
+                <span className="text-[11px] font-semibold text-slate-400">Total: {allTimeOrdersCount}</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -246,16 +296,16 @@ export default function DashboardOverview({
               {pendingOrdersCount}
             </div>
             <p className="mt-1 text-xs text-slate-500">
-              Orders waiting for action
+              Orders waiting in queue
             </p>
           </div>
         </div>
 
-        {/* Today's Sales */}
+        {/* Daily Total Revenue (Today) */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-sm transition">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Today's Sales
+              Daily Total Revenue
             </span>
             <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
               <IndianRupee className="w-5 h-5" />
@@ -263,11 +313,14 @@ export default function DashboardOverview({
           </div>
           <div className="mt-4">
             <div className="text-3xl font-bold text-slate-900 tracking-tight">
-              ₹{todaySales.toLocaleString('en-IN')}
+              ₹{dailyTotalRevenue.toLocaleString('en-IN')}
             </div>
-            <p className="mt-1 text-xs text-slate-500">
-              Total revenue today
-            </p>
+            <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+              <span>Settled today</span>
+              {allTimeRevenue > dailyTotalRevenue && (
+                <span className="text-[11px] font-semibold text-slate-400">Total: ₹{allTimeRevenue.toLocaleString('en-IN')}</span>
+              )}
+            </div>
           </div>
         </div>
 

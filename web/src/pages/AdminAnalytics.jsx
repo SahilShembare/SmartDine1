@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminAnalytics() {
-  const { orders, menuItems, categories } = useTableOrder();
+  const { orders = [], menuItems = [], categories = [], isRealOrder, isOrderToday } = useTableOrder();
   const [timeRange, setTimeRange] = useState('monthly'); // 'daily' | 'weekly' | 'monthly' | 'yearly'
 
   const isOrderPaid = (o) => {
@@ -27,8 +27,13 @@ export default function AdminAnalytics() {
     return p === 'paid' || p === 'cash paid' || p === 'online paid' || !!o.paidAt;
   };
 
-  const validOrders = orders.filter(o => o.status !== 'cancelled');
-  const paidOrders = orders.filter(o => isOrderPaid(o) && o.status !== 'cancelled');
+  const realOrders = orders.filter(o => !isRealOrder || isRealOrder(o));
+  const rangeOrders = realOrders.filter(o => {
+    if (timeRange === 'daily' && isOrderToday) return isOrderToday(o);
+    return true;
+  });
+  const validOrders = rangeOrders.filter(o => o.status !== 'cancelled');
+  const paidOrders = rangeOrders.filter(o => isOrderPaid(o) && o.status !== 'cancelled');
 
   const totalRevenue = validOrders.reduce((sum, o) => sum + (o.total || 0), 0);
   const paidRevenue = paidOrders.reduce((sum, o) => sum + (o.total || 0), 0);

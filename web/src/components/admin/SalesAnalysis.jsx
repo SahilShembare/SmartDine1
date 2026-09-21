@@ -21,21 +21,26 @@ const getOrderDate = (order) => {
   return isNaN(d.getTime()) ? new Date() : d;
 };
 
-// Helper to check if order is paid (online is auto-paid, or marked paid)
-const isOrderPaid = (order) => {
-  if (!order) return false;
-  const pStatus = String(order.paymentStatus || order.payment_status || '').toLowerCase().trim();
-  if (!pStatus || pStatus === 'pending' || pStatus === 'unpaid' || pStatus.includes('requested') || pStatus.includes('awaiting')) {
-    return false;
-  }
-  const method = String(order.paymentMethod || '').toLowerCase();
-  const isCounter = method.includes('counter') || method.includes('cash') || method.includes('desk');
-  const isOnline = !isCounter && (method.includes('upi') || method.includes('card') || method.includes('netbanking') || method.includes('net banking') || method.includes('razorpay') || method.includes('online'));
-  return isOnline || pStatus === 'paid' || !!order.paidAt;
-};
-
 export default function SalesAnalysis() {
-  const { orders = [] } = useTableOrder();
+  const { 
+    orders = [], 
+    isOrderPaid = () => false,
+    isRealOrder: contextIsRealOrder 
+  } = useTableOrder();
+
+  const isOrderReal = (o) => {
+    if (typeof contextIsRealOrder === 'function') return contextIsRealOrder(o);
+    if (!o) return false;
+    if (o.isDemo || o.demo) return false;
+    const name = String(o.customerName || '').toLowerCase();
+    if (name.includes('demo') || name.includes('test')) return false;
+    return true;
+  };
+
+  // 100% Real Orders (demo-free)
+  const realOrders = useMemo(() => {
+    return orders.filter(isOrderReal);
+  }, [orders, contextIsRealOrder]);
 
   const [analysisType, setAnalysisType] = useState('monthly'); // 'monthly' | 'yearly'
 
@@ -60,7 +65,7 @@ export default function SalesAnalysis() {
       name: curLabel
     });
 
-    orders.forEach(o => {
+    realOrders.forEach(o => {
       if (!o.createdAt) return;
       const d = getOrderDate(o);
       const y = String(d.getFullYear());
@@ -85,7 +90,7 @@ export default function SalesAnalysis() {
     const years = Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
 
     return { months, years, defaultMonthKey: curKey, defaultYear: curYear };
-  }, [orders]);
+  }, [realOrders]);
 
   const [selectedMonth, setSelectedMonth] = useState(availablePeriods.defaultMonthKey);
   const [selectedYear, setSelectedYear] = useState(availablePeriods.defaultYear);
@@ -102,7 +107,7 @@ export default function SalesAnalysis() {
     };
 
     // Filter real orders matching selected month and year
-    const monthOrders = orders.filter(o => {
+    const monthOrders = realOrders.filter(o => {
       const d = getOrderDate(o);
       return d.getFullYear() === selYear && d.getMonth() === selMonthIndex;
     });
@@ -201,13 +206,13 @@ export default function SalesAnalysis() {
       weeks,
       topDishes
     };
-  }, [orders, selectedMonth, availablePeriods]);
+  }, [realOrders, selectedMonth, availablePeriods]);
 
   // Yearly Data Calculation (100% Real from Orders)
   const yearlyData = useMemo(() => {
     const selYearNum = Number(selectedYear || availablePeriods.defaultYear);
 
-    const yearOrders = orders.filter(o => {
+    const yearOrders = realOrders.filter(o => {
       const d = getOrderDate(o);
       return d.getFullYear() === selYearNum && String(o.status || '').toLowerCase() !== 'cancelled';
     });
@@ -274,7 +279,7 @@ export default function SalesAnalysis() {
       peakMonth,
       months: months12
     };
-  }, [orders, selectedYear, availablePeriods]);
+  }, [realOrders, selectedYear, availablePeriods]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">

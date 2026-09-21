@@ -22,12 +22,35 @@ export default function PaymentManagement() {
   const { 
     orders = [], 
     isOrderPaid: isContextOrderPaid, 
+    isRealOrder: contextIsRealOrder,
+    isOrderToday: contextIsOrderToday,
     markOrderAsPaidByAdmin, 
     markOrderAsUnpaidByAdmin
   } = useTableOrder();
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedOrderModal, setSelectedOrderModal] = useState(null);
+
+  const isOrderReal = (o) => {
+    if (typeof contextIsRealOrder === 'function') return contextIsRealOrder(o);
+    if (!o) return false;
+    if (o.isDemo || o.demo) return false;
+    const name = String(o.customerName || '').toLowerCase();
+    if (name.includes('demo') || name.includes('test')) return false;
+    return true;
+  };
+
+  const isTodayOrder = (o) => {
+    if (typeof contextIsOrderToday === 'function') return contextIsOrderToday(o);
+    if (!o?.createdAt) return false;
+    try {
+      const d = new Date(o.createdAt);
+      const now = new Date();
+      return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    } catch {
+      return false;
+    }
+  };
 
   // Online verification helper (UPI, Card, NetBanking are online gateway types)
   const isOnlinePaymentMethod = (method) => {
@@ -46,26 +69,48 @@ export default function PaymentManagement() {
     return false;
   };
 
+  // 100% Real Orders (demo-free)
+  const realOrders = useMemo(() => {
+    return orders.filter(isOrderReal);
+  }, [orders, contextIsRealOrder]);
+
   // Payment Metrics
   const metrics = useMemo(() => {
+    let dailyRevenue = 0;
     let totalRevenue = 0;
+    let todayCashTotal = 0;
     let cashTotal = 0;
+    let todayOnlineTotal = 0;
     let onlineTotal = 0;
     let pendingCount = 0;
+    let todayOrdersCount = 0;
 
-    orders.forEach(o => {
+    realOrders.forEach(o => {
       const method = String(o.paymentMethod || '').toLowerCase();
       const isPaid = isPaidOrder(o);
       const s = String(o.status || '').toLowerCase();
       const amt = Number(o.amount || o.total) || 0;
+      const isFromToday = isTodayOrder(o) || (o.paidAt && isTodayOrder({ createdAt: o.paidAt }));
 
       if (s !== 'cancelled') {
+        if (isTodayOrder(o)) {
+          todayOrdersCount++;
+        }
+
         if (isPaid) {
           totalRevenue += amt;
-          if (method.includes('cash') || method.includes('counter')) {
+          const isCash = method.includes('cash') || method.includes('counter');
+
+          if (isCash) {
             cashTotal += amt;
           } else {
             onlineTotal += amt;
+          }
+
+          if (isFromToday) {
+            dailyRevenue += amt;
+            if (isCash) todayCashTotal += amt;
+            else todayOnlineTotal += amt;
           }
         } else {
           pendingCount++;
@@ -73,12 +118,21 @@ export default function PaymentManagement() {
       }
     });
 
-    return { totalRevenue, cashTotal, onlineTotal, pendingCount };
-  }, [orders, isContextOrderPaid]);
+    return { 
+      dailyRevenue, 
+      totalRevenue, 
+      todayCashTotal, 
+      cashTotal, 
+      todayOnlineTotal, 
+      onlineTotal, 
+      pendingCount,
+      todayOrdersCount 
+    };
+  }, [realOrders, isContextOrderPaid, contextIsOrderToday]);
 
   // Filtered Payments List
   const filteredPayments = useMemo(() => {
-    return orders.filter(o => {
+    return realOrders.filter(o => {
       const isPaid = isPaidOrder(o);
 
       if (filterPaymentStatus === 'paid' && !isPaid) return false;
@@ -95,7 +149,7 @@ export default function PaymentManagement() {
 
       return true;
     });
-  }, [orders, filterPaymentStatus, searchQuery, isContextOrderPaid]);
+  }, [realOrders, filterPaymentStatus, searchQuery, isContextOrderPaid]);
 
   const handleMarkPaid = async (order, method = 'Cash (Collected at Counter)') => {
     try {
@@ -146,37 +200,37 @@ export default function PaymentManagement() {
       
       {/* 4 Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* 1. Total Revenue */}
+        {/* 1. Daily Total Revenue */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Total Revenue
+            Daily Revenue (Today)
           </span>
           <div className="mt-3 text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
-            ₹{metrics.totalRevenue.toLocaleString('en-IN')}
+            ₹{metrics.dailyRevenue.toLocaleString('en-IN')}
           </div>
-          <p className="mt-1 text-xs text-slate-400">Total settled payments</p>
+          <p className="mt-1 text-xs text-slate-400">All-time settled: ₹{metrics.totalRevenue.toLocaleString('en-IN')}</p>
         </div>
 
-        {/* 2. Cash Collected */}
+        {/* 2. Cash Collected Today */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Cash Payments
+            Cash Payments (Today)
           </span>
           <div className="mt-3 text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
-            ₹{metrics.cashTotal.toLocaleString('en-IN')}
+            ₹{metrics.todayCashTotal.toLocaleString('en-IN')}
           </div>
-          <p className="mt-1 text-xs text-slate-400">Cash collected at counter</p>
+          <p className="mt-1 text-xs text-slate-400">All-time cash: ₹{metrics.cashTotal.toLocaleString('en-IN')}</p>
         </div>
 
-        {/* 3. Online Payments */}
+        {/* 3. Online Payments Today */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Online / UPI
+            Online / UPI (Today)
           </span>
           <div className="mt-3 text-2xl lg:text-3xl font-bold text-emerald-600 tracking-tight">
-            ₹{metrics.onlineTotal.toLocaleString('en-IN')}
+            ₹{metrics.todayOnlineTotal.toLocaleString('en-IN')}
           </div>
-          <p className="mt-1 text-xs text-slate-400">QR, Cards & UPI</p>
+          <p className="mt-1 text-xs text-slate-400">All-time online: ₹{metrics.onlineTotal.toLocaleString('en-IN')}</p>
         </div>
 
         {/* 4. Pending Collections */}

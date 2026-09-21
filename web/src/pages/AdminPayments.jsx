@@ -30,10 +30,11 @@ import {
 
 export default function AdminPayments() {
   const { 
-    orders, 
+    orders = [], 
     markTableAsPaidByAdmin,
     markOrderAsPaidByAdmin,
-    refundOrder
+    refundOrder,
+    isRealOrder
   } = useTableOrder();
 
   const [paymentFilter, setPaymentFilter] = useState('all'); 
@@ -61,9 +62,10 @@ export default function AdminPayments() {
     return p === 'PAID' || p.includes('PAID') || p.includes('RAZORPAY');
   };
 
-  const paidOrders = orders.filter(o => isOrderPaid(o) && o.status !== 'cancelled');
-  const pendingOrders = orders.filter(o => !isOrderPaid(o) && !isOrderRefunded(o) && o.status !== 'cancelled');
-  const refundedOrders = orders.filter(o => isOrderRefunded(o));
+  const realOrders = orders.filter(o => !isRealOrder || isRealOrder(o));
+  const paidOrders = realOrders.filter(o => isOrderPaid(o) && o.status !== 'cancelled');
+  const pendingOrders = realOrders.filter(o => !isOrderPaid(o) && !isOrderRefunded(o) && o.status !== 'cancelled');
+  const refundedOrders = realOrders.filter(o => isOrderRefunded(o));
 
   const totalCollected = paidOrders.reduce((sum, o) => sum + (o.total || 0), 0);
   const pendingAmount = pendingOrders.reduce((sum, o) => sum + (o.total || 0), 0);

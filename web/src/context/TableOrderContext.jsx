@@ -8,18 +8,53 @@ const TableOrderContext = createContext();
 
 export const isRealOrder = (order) => {
   if (!order) return false;
-  if (order.isDemo === true || order.demo === true) return false;
+  if (order.isDemo === true || order.demo === true || order.is_demo === true) return false;
   if (!order.items || !Array.isArray(order.items) || order.items.length === 0) return false;
-  if (!order.tableNumber || String(order.tableNumber).trim() === '' || order.tableNumber === 'undefined') return false;
   
-  const DEMO_IDS = new Set(['ORD-1048', 'ORD-1047', 'ORD-1046', 'ORD-1045', 'ORD-1044', 'ORD-1043', 'ORD-9821', 'ORD-9822', 'ORD-9823']);
-  if (DEMO_IDS.has(order.id) || DEMO_IDS.has(order.orderNumber)) return false;
-  
-  const DEMO_NAMES = new Set(['vip diner', 'rahul sharma (customer)', 'guest (table 01)']);
+  const idStr = String(order.id || order.orderNumber || '').trim();
+  const lowerId = idStr.toLowerCase();
+  if (lowerId.includes('demo') || lowerId.includes('sample') || lowerId.includes('mock') || lowerId.includes('seed')) return false;
+
+  const DEMO_IDS = new Set([
+    'ORD-1048', 'ORD-1047', 'ORD-1046', 'ORD-1045', 'ORD-1044', 'ORD-1043', 
+    'ORD-9821', 'ORD-9822', 'ORD-9823', '1048', '1047', '1046', '1045', '1044', '1043'
+  ]);
+  if (DEMO_IDS.has(idStr) || DEMO_IDS.has(String(order.orderNumber || '')) || DEMO_IDS.has(String(order.id || ''))) {
+    return false;
+  }
+
   const name = String(order.customerName || '').trim().toLowerCase();
-  if (DEMO_NAMES.has(name)) return false;
+  const DEMO_NAMES = new Set([
+    'vip diner', 'rahul sharma (customer)', 'guest (table 01)', 
+    'demo user', 'test user', 'demo guest', 'sample user', 'test diner'
+  ]);
+  if (DEMO_NAMES.has(name) || name.includes('demo') || name.includes('sample customer') || name.includes('test user')) {
+    return false;
+  }
+
+  // Must have a real table or valid waiting/takeaway session
+  const table = String(order.tableNumber || '').trim();
+  if (!table || table === 'undefined' || table === 'null') return false;
 
   return true;
+};
+
+export const isOrderToday = (order) => {
+  if (!order) return false;
+  const rawDate = order.createdAt || order.prepStartedAt || order.paidAt || order.updatedAt;
+  if (!rawDate) return false;
+  try {
+    const d = new Date(rawDate);
+    if (isNaN(d.getTime())) return false;
+    const now = new Date();
+    return (
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  } catch {
+    return false;
+  }
 };
 
 export const CLEAN_INITIAL_ORDERS = [];
@@ -1425,6 +1460,8 @@ export function TableOrderProvider({ children }) {
       orders,
       setOrders,
       isOrderPaid,
+      isRealOrder,
+      isOrderToday,
       placeOrder,
       getTableActiveOrders,
       getCombinedTableBill,

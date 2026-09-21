@@ -27,7 +27,8 @@ export default function AdminOrders() {
     updateOrderStatus, 
     updateOrderEta,
     markTableAsPaidByAdmin,
-    markOrderAsPaidByAdmin 
+    markOrderAsPaidByAdmin,
+    isRealOrder
   } = useTableOrder();
 
   const [statusFilter, setStatusFilter] = useState('all');
@@ -45,8 +46,8 @@ export default function AdminOrders() {
     enjoying_meal: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
     'bill requested': 'bg-purple-500/20 text-purple-400 border-purple-500/40',
     'cash requested': 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
-    completed: 'bg-slate-700/40 text-slate-400 border-slate-700/60',
-    cancelled: 'bg-red-500/20 text-red-400 border-red-500/40'
+    completed: 'bg-slate-500/20 text-slate-400 border-slate-500/40',
+    cancelled: 'bg-rose-500/20 text-rose-400 border-rose-500/40'
   };
 
   const handleStatusChange = (orderId, newStatus) => {
@@ -61,8 +62,9 @@ export default function AdminOrders() {
     return p === 'paid' || p === 'cash paid' || p === 'online paid' || !!o.paidAt;
   };
 
-  // Filtered orders
+  // Filtered orders (100% Real, demo-free)
   const filteredOrders = orders.filter(o => {
+    if (isRealOrder && !isRealOrder(o)) return false;
     if (statusFilter !== 'all') {
       if (statusFilter === 'active' && (o.status === 'completed' || o.status === 'cancelled')) return false;
       if (statusFilter === 'kitchen' && !['pending', 'placed', 'preparing', 'accepted', 'ready'].includes(o.status)) return false;

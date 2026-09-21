@@ -13,12 +13,42 @@ import {
 import { useTableOrder } from '../../context/TableOrderContext';
 
 export default function ReportManagement() {
-  const { orders = [] } = useTableOrder();
+  const { 
+    orders = [], 
+    isOrderPaid = () => false,
+    isRealOrder: contextIsRealOrder,
+    isOrderToday: contextIsOrderToday
+  } = useTableOrder();
+
+  const isOrderReal = (o) => {
+    if (typeof contextIsRealOrder === 'function') return contextIsRealOrder(o);
+    if (!o) return false;
+    if (o.isDemo || o.demo) return false;
+    const name = String(o.customerName || '').toLowerCase();
+    if (name.includes('demo') || name.includes('test')) return false;
+    return true;
+  };
+
+  const isTodayOrder = (o) => {
+    if (typeof contextIsOrderToday === 'function') return contextIsOrderToday(o);
+    if (!o?.createdAt) return false;
+    try {
+      const d = new Date(o.createdAt);
+      const now = new Date();
+      return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    } catch {
+      return false;
+    }
+  };
 
   // Basic Sales & Order Metrics (100% Real from Live Orders)
   const reportData = useMemo(() => {
+    const realOrders = orders.filter(isOrderReal);
+
     let dailySales = 0;
-    let validOrdersCount = 0;
+    let allTimeSales = 0;
+    let dailyOrdersCount = 0;
+    let totalOrdersCount = 0;
     let completedOrdersCount = 0;
     let cancelledOrdersCount = 0;
 
@@ -29,33 +59,34 @@ export default function ReportManagement() {
       'Card': { count: 0, amount: 0 },
     };
 
-    orders.forEach(order => {
+    realOrders.forEach(order => {
       const status = String(order.status || '').toLowerCase();
-      const pStatus = String(order.paymentStatus || '').toLowerCase();
       const amount = Number(order.amount || order.total) || 0;
+      const isPaid = isOrderPaid(order);
+      const isFromToday = isTodayOrder(order);
 
       if (status === 'cancelled') {
-        cancelledOrdersCount++;
+        if (isFromToday) cancelledOrdersCount++;
         return;
       }
 
-      validOrdersCount++;
-      if (status === 'served' || status === 'completed') {
-        completedOrdersCount++;
+      totalOrdersCount++;
+      if (isFromToday) {
+        dailyOrdersCount++;
+        if (status === 'served' || status === 'completed') {
+          completedOrdersCount++;
+        }
       }
 
-      // Online payment methods (UPI, Card, NetBanking) are automatically Paid ONLY if not counter/cash
-      const method = String(order.paymentMethod || 'Cash').toLowerCase();
-      const isCounter = method.includes('counter') || method.includes('cash') || method.includes('desk');
-      const isOnline = !isCounter && (method.includes('upi') || method.includes('online') || method.includes('razorpay') || method.includes('card') || method.includes('netbanking') || method.includes('net banking'));
-      const isUnpaidState = !pStatus || pStatus === 'pending' || pStatus === 'unpaid' || pStatus.includes('requested') || pStatus.includes('awaiting');
-      const isPaid = !isUnpaidState && (isOnline || pStatus === 'paid' || !!order.paidAt);
-
       if (isPaid) {
-        dailySales += amount;
+        allTimeSales += amount;
+        if (isFromToday || (order.paidAt && isTodayOrder({ createdAt: order.paidAt }))) {
+          dailySales += amount;
+        }
       }
 
       // Payment method breakdown
+      const method = String(order.paymentMethod || 'Cash').toLowerCase();
       let key = 'Cash';
       if (method.includes('upi') || method.includes('online') || method.includes('razorpay')) {
         key = 'UPI';
@@ -67,37 +98,42 @@ export default function ReportManagement() {
       if (!paymentMethods[key]) {
         paymentMethods[key] = { count: 0, amount: 0 };
       }
-      paymentMethods[key].count++;
-      if (isPaid) {
-        paymentMethods[key].amount += amount;
+      if (isFromToday) {
+        paymentMethods[key].count++;
+        if (isPaid) {
+          paymentMethods[key].amount += amount;
+        }
       }
 
-      // Items ranking
-      (order.items || []).forEach(item => {
-        const name = item.name || 'Dish';
-        if (!itemCounts[name]) {
-          itemCounts[name] = {
-            name: name,
-            quantity: 0,
-            revenue: 0,
-            isVeg: item.isVeg !== undefined ? item.isVeg : true
-          };
-        }
-        const qty = Number(item.quantity) || 1;
-        const price = Number(item.price) || 0;
-        itemCounts[name].quantity += qty;
-        itemCounts[name].revenue += (qty * price);
-      });
+      // Items ranking for today (or fallback all time)
+      if (isFromToday) {
+        (order.items || []).forEach(item => {
+          const name = item.name || 'Dish';
+          if (!itemCounts[name]) {
+            itemCounts[name] = {
+              name: name,
+              quantity: 0,
+              revenue: 0,
+              isVeg: item.isVeg !== undefined ? item.isVeg : true
+            };
+          }
+          const qty = Number(item.quantity) || 1;
+          const price = Number(item.price) || 0;
+          itemCounts[name].quantity += qty;
+          itemCounts[name].revenue += (qty * price);
+        });
+      }
     });
 
-    const avgOrderValue = validOrdersCount > 0 ? Math.round(dailySales / validOrdersCount) : 0;
+    const avgOrderValue = dailyOrdersCount > 0 ? Math.round(dailySales / dailyOrdersCount) : 0;
     const sortedItems = Object.values(itemCounts).sort((a, b) => b.quantity - a.quantity);
     const topItem = sortedItems[0] || null;
 
     return {
       dailySales,
-      totalOrders: orders.length,
-      validOrdersCount,
+      allTimeSales,
+      dailyOrdersCount,
+      totalOrdersCount,
       completedOrdersCount,
       cancelledOrdersCount,
       avgOrderValue,
@@ -105,7 +141,7 @@ export default function ReportManagement() {
       mostOrderedItems: sortedItems.slice(0, 7),
       paymentMethods
     };
-  }, [orders]);
+  }, [orders, isOrderPaid, contextIsRealOrder, contextIsOrderToday]);
 
   const maxQty = reportData.mostOrderedItems[0]?.quantity || 1;
 
@@ -164,39 +200,39 @@ export default function ReportManagement() {
         {/* 1. Daily Sales */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs print:border-slate-300 print:shadow-none break-inside-avoid">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Daily Sales
+            Daily Sales (Today)
           </span>
           <div className="mt-3 text-3xl font-bold text-slate-900 tracking-tight">
             ₹{reportData.dailySales.toLocaleString('en-IN')}
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            Avg. ₹{reportData.avgOrderValue} per order
+            Avg. ₹{reportData.avgOrderValue} per order • All-time: ₹{reportData.allTimeSales.toLocaleString('en-IN')}
           </p>
         </div>
 
         {/* 2. Total Orders */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs print:border-slate-300 print:shadow-none break-inside-avoid">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Total Orders
+            Daily Orders (Today)
           </span>
           <div className="mt-3 text-3xl font-bold text-slate-900 tracking-tight">
-            {reportData.totalOrders}
+            {reportData.dailyOrdersCount}
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            {reportData.completedOrdersCount} served • {reportData.cancelledOrdersCount} cancelled
+            {reportData.completedOrdersCount} served • All-time: {reportData.totalOrdersCount}
           </p>
         </div>
 
         {/* 3. Most Popular Dish */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs print:border-slate-300 print:shadow-none break-inside-avoid">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Top Selling Dish
+            Top Selling Dish Today
           </span>
           <div className="mt-3 text-lg font-bold text-slate-900 truncate">
             {reportData.topItem ? reportData.topItem.name : '—'}
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            {reportData.topItem ? `${reportData.topItem.quantity} portions sold today` : 'No dishes sold yet'}
+            {reportData.topItem ? `${reportData.topItem.quantity} portions sold today` : 'No dishes sold today'}
           </p>
         </div>
 
@@ -206,12 +242,12 @@ export default function ReportManagement() {
             Fulfillment Rate
           </span>
           <div className="mt-3 text-3xl font-bold text-emerald-600 tracking-tight">
-            {reportData.totalOrders > 0 
-              ? `${Math.round(((reportData.totalOrders - reportData.cancelledOrdersCount) / reportData.totalOrders) * 100)}%` 
+            {reportData.dailyOrdersCount > 0 
+              ? `${Math.round(((reportData.dailyOrdersCount - reportData.cancelledOrdersCount) / reportData.dailyOrdersCount) * 100)}%` 
               : '100%'}
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            Order success rate
+            Daily order success rate
           </p>
         </div>
       </div>
