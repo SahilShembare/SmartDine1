@@ -26,7 +26,8 @@ export default function AdminOrders() {
     orders, 
     updateOrderStatus, 
     updateOrderEta,
-    markTableAsPaidByAdmin 
+    markTableAsPaidByAdmin,
+    markOrderAsPaidByAdmin 
   } = useTableOrder();
 
   const [statusFilter, setStatusFilter] = useState('all');
@@ -311,9 +312,19 @@ export default function AdminOrders() {
                     {!paid && (
                       <button
                         type="button"
-                        onClick={() => {
-                          markTableAsPaidByAdmin(order.tableNumber, 'Cash (Collected by Cashier)');
-                          toast.success(`💰 Table ${order.tableNumber} bill settled!`);
+                        onClick={async () => {
+                          try {
+                            if (markOrderAsPaidByAdmin) {
+                              await markOrderAsPaidByAdmin(order.id, 'Cash (Collected by Cashier)');
+                            }
+                            if (order.tableNumber && markTableAsPaidByAdmin) {
+                              await markTableAsPaidByAdmin(order.tableNumber, 'Cash (Collected by Cashier)');
+                            }
+                            toast.success(`💰 Order #${order.id} marked as Paid!`, { icon: '✅' });
+                          } catch (err) {
+                            console.error('AdminOrders settle error:', err);
+                            toast.error('Failed to settle order: ' + (err.message || ''));
+                          }
                         }}
                         className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
                       >

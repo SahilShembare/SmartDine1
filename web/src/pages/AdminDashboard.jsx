@@ -20,12 +20,12 @@ export default function AdminDashboard({ initialTab = 'dashboard' }) {
 
   // Determine initial tab from props or URL pathname
   const getTabFromPath = () => {
-    const path = location.pathname.replace('/admin', '').replace('/', '').trim();
-    if (!path) return initialTab || 'dashboard';
-    if (path === 'orders') return 'kitchen';
-    if (path === 'analytics') return 'reports';
-    if (path === 'categories') return 'menu';
-    return path;
+    const raw = location.pathname.replace(/^\/admin\/?/, '').replace(/\/+$/, '').trim();
+    if (!raw) return initialTab || 'dashboard';
+    if (raw === 'orders') return 'kitchen';
+    if (raw === 'analytics') return 'reports';
+    if (raw === 'categories') return 'menu';
+    return raw;
   };
 
   const [activeTab, setActiveTab] = useState(getTabFromPath);

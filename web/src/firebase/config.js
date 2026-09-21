@@ -216,7 +216,8 @@ export const localStore = {
 
   updateOrderData: (orderId, updates) => {
     const orders = getLocalData('orders', []);
-    const index = orders.findIndex(o => o.id === orderId);
+    const targetStr = String(orderId);
+    const index = orders.findIndex(o => String(o.id) === targetStr || String(o.orderNumber) === targetStr);
     if (index !== -1) {
       orders[index] = { ...orders[index], ...updates, updatedAt: new Date().toISOString() };
       setLocalData('orders', orders);

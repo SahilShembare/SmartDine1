@@ -656,6 +656,19 @@ export function TableOrderProvider({ children }) {
     if (!tableNum) throw new Error('No active table found');
     const formatted = String(tableNum).padStart(2, '0');
 
+    // 1. Update React state immediately
+    setOrders(prev => prev.map(o => {
+      if (String(o.tableNumber).padStart(2, '0') === formatted && !isOrderPaid(o)) {
+        return {
+          ...o,
+          status: 'bill requested',
+          paymentStatus: 'Bill Requested',
+          billRequestedAt: new Date().toISOString()
+        };
+      }
+      return o;
+    }));
+
     if (isFirebaseConfigured) {
       try {
         const q = query(
@@ -663,7 +676,7 @@ export function TableOrderProvider({ children }) {
           where('tableNumber', '==', formatted)
         );
         const snap = await getDocs(q);
-        snap.docs.forEach(async (d) => {
+        for (const d of snap.docs) {
           const data = d.data();
           if (data.paymentStatus !== 'Paid') {
             await updateDoc(doc(db, 'orders', d.id), {
@@ -673,20 +686,19 @@ export function TableOrderProvider({ children }) {
               updatedAt: new Date().toISOString()
             });
           }
-        });
+        }
       } catch (err) {
         console.warn('Firebase bill request warning:', err);
       }
     }
 
-    localStore.updateOrdersForTable(formatted, {
-      status: 'bill requested',
-      paymentStatus: 'Bill Requested',
-      billRequestedAt: new Date().toISOString()
-    });
-
-    const updated = localStore.getOrders();
-    setOrders([...updated]);
+    try {
+      localStore.updateOrdersForTable(formatted, {
+        status: 'bill requested',
+        paymentStatus: 'Bill Requested',
+        billRequestedAt: new Date().toISOString()
+      });
+    } catch {}
   };
 
   // Pay Combined Table Bill (Online UPI / Card / NetBanking / Cash)
@@ -696,7 +708,7 @@ export function TableOrderProvider({ children }) {
     discountAmount = 0,
     couponCode = null,
     invoiceNumber = null
-  }) => {
+  } = {}) => {
     if (!tableNum) throw new Error('No active table found');
     const formatted = String(tableNum).padStart(2, '0');
 
@@ -715,8 +727,17 @@ export function TableOrderProvider({ children }) {
       discountAmount,
       couponCode,
       invoiceNumber: assignedInvoice,
-      paidAt: new Date().toISOString()
+      paidAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
+
+    // 1. Immediately update React state functionally
+    setOrders(prev => prev.map(o => {
+      if (String(o.tableNumber).padStart(2, '0') === formatted && !isOrderPaid(o) && o.status !== 'cancelled') {
+        return { ...o, ...paidPayload };
+      }
+      return o;
+    }));
 
     if (isFirebaseConfigured) {
       try {
@@ -725,10 +746,7 @@ export function TableOrderProvider({ children }) {
         for (const d of snap.docs) {
           const data = d.data();
           if (data.paymentStatus !== 'Paid') {
-            await updateDoc(doc(db, 'orders', d.id), {
-              ...paidPayload,
-              updatedAt: new Date().toISOString()
-            });
+            await updateDoc(doc(db, 'orders', d.id), paidPayload);
           }
         }
       } catch (err) {
@@ -736,10 +754,9 @@ export function TableOrderProvider({ children }) {
       }
     }
 
-    localStore.updateOrdersForTable(formatted, paidPayload);
-    const updated = localStore.getOrders();
-    setOrders([...updated]);
-    clearCart();
+    try {
+      localStore.updateOrdersForTable(formatted, paidPayload);
+    } catch {}
 
     return {
       tableNumber: formatted,
@@ -759,8 +776,17 @@ export function TableOrderProvider({ children }) {
     const reqPayload = {
       paymentStatus: 'Cash Payment Requested',
       paymentMethod: 'Pay at Counter',
-      billRequestedAt: new Date().toISOString()
+      billRequestedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
+
+    // 1. Immediately update React state functionally
+    setOrders(prev => prev.map(o => {
+      if (String(o.tableNumber).padStart(2, '0') === formatted && !isOrderPaid(o)) {
+        return { ...o, ...reqPayload };
+      }
+      return o;
+    }));
 
     if (isFirebaseConfigured) {
       try {
@@ -769,10 +795,7 @@ export function TableOrderProvider({ children }) {
         for (const d of snap.docs) {
           const data = d.data();
           if (data.paymentStatus !== 'Paid') {
-            await updateDoc(doc(db, 'orders', d.id), {
-              ...reqPayload,
-              updatedAt: new Date().toISOString()
-            });
+            await updateDoc(doc(db, 'orders', d.id), reqPayload);
           }
         }
       } catch (err) {
@@ -780,14 +803,15 @@ export function TableOrderProvider({ children }) {
       }
     }
 
-    localStore.updateOrdersForTable(formatted, reqPayload);
-    const updated = localStore.getOrders();
-    setOrders([...updated]);
+    try {
+      localStore.updateOrdersForTable(formatted, reqPayload);
+    } catch {}
     return { tableNumber: formatted, status: 'Cash Payment Requested' };
   };
 
   // Admin marks table bill as paid (e.g. Received Cash at Counter / Handed to Captain)
   const markTableAsPaidByAdmin = async (tableNum, paymentMethod = 'Cash (Collected at Counter)') => {
+    if (!tableNum) return;
     const formatted = String(tableNum).padStart(2, '0');
     return await payTableBill(formatted, {
       paymentMethod,
@@ -797,6 +821,13 @@ export function TableOrderProvider({ children }) {
 
   // Refund Order (Admin action)
   const refundOrder = async (orderId, refundData = {}) => {
+    const orderIdStr = String(orderId);
+    const targetOrder = orders.find(o => 
+      String(o.id) === orderIdStr || 
+      String(o.orderNumber) === orderIdStr || 
+      (o.firestoreDocId && String(o.firestoreDocId) === orderIdStr)
+    );
+
     const updates = {
       paymentStatus: 'REFUNDED',
       refund_status: 'REFUNDED',
@@ -806,23 +837,42 @@ export function TableOrderProvider({ children }) {
       updatedAt: new Date().toISOString()
     };
 
+    setOrders(prevOrders => prevOrders.map(o => {
+      const match = String(o.id) === orderIdStr || 
+                    String(o.orderNumber) === orderIdStr || 
+                    (o.firestoreDocId && String(o.firestoreDocId) === orderIdStr);
+      return match ? { ...o, ...updates } : o;
+    }));
+
     if (isFirebaseConfigured) {
       try {
-        await updateDoc(doc(db, 'orders', orderId), updates);
+        let firestoreId = targetOrder?.firestoreDocId;
+        if (!firestoreId && orderIdStr.length > 15) firestoreId = orderIdStr;
+        if (firestoreId) {
+          await updateDoc(doc(db, 'orders', firestoreId), updates);
+        }
       } catch (err) {
         console.warn('Firebase refund update error:', err);
       }
     }
 
-    localStore.updateOrderData(orderId, updates);
-    const updated = localStore.getOrders();
-    setOrders([...updated]);
+    try {
+      localStore.updateOrderData(orderId, updates);
+    } catch (e) {
+      console.warn('localStore update error:', e);
+    }
+
     return updates;
   };
 
   // Mark a single order as Paid by Admin (for Cash / Counter orders)
   const markOrderAsPaidByAdmin = async (orderId, paymentMethod = 'Cash (Collected at Counter)') => {
-    const targetOrder = orders.find(o => o.id === orderId || o.orderNumber === orderId || o.firestoreDocId === orderId);
+    const orderIdStr = String(orderId);
+    const targetOrder = orders.find(o => 
+      String(o.id) === orderIdStr || 
+      String(o.orderNumber) === orderIdStr || 
+      (o.firestoreDocId && String(o.firestoreDocId) === orderIdStr)
+    );
     const allKnownOrders = (orders && orders.length > 0) ? orders : localStore.getOrders();
     const assignedInvoice = targetOrder?.invoiceNumber || getNextInvoiceNumber(allKnownOrders);
 
@@ -832,20 +882,53 @@ export function TableOrderProvider({ children }) {
       invoiceNumber: assignedInvoice,
       paidAt: new Date().toISOString(),
       transactionId: `CASH-${Date.now().toString().slice(-6)}`,
-      status: targetOrder?.status === 'pending' || targetOrder?.status === 'ready' || targetOrder?.status === 'served' ? targetOrder.status : 'completed',
       updatedAt: new Date().toISOString()
     };
 
+    // Preserve active cooking lifecycle status if kitchen is working on it
+    if (targetOrder?.status && ['preparing', 'ready', 'served'].includes(targetOrder.status)) {
+      updates.status = targetOrder.status;
+    }
+
+    // 1. Immediately update React state so the UI reflects Paid with 0 lag
+    setOrders(prevOrders => prevOrders.map(o => {
+      const match = String(o.id) === orderIdStr || 
+                    String(o.orderNumber) === orderIdStr || 
+                    (o.firestoreDocId && String(o.firestoreDocId) === orderIdStr);
+      if (match) {
+        return {
+          ...o,
+          ...updates,
+          paymentStatus: 'Paid',
+          isPaid: true
+        };
+      }
+      return o;
+    }));
+
+    // 2. Persist to Firestore
     if (isFirebaseConfigured) {
       try {
-        const firestoreId = targetOrder?.firestoreDocId;
+        let firestoreId = targetOrder?.firestoreDocId;
+        if (!firestoreId && orderIdStr.length > 15) firestoreId = orderIdStr;
+
         if (firestoreId) {
           await updateDoc(doc(db, 'orders', firestoreId), updates);
         } else {
-          const q = query(collection(db, 'orders'), where('orderNumber', '==', orderId));
-          const snap = await getDocs(q);
-          for (const d of snap.docs) {
-            await updateDoc(doc(db, 'orders', d.id), updates);
+          const numVal = Number(orderId);
+          const possibleValues = [orderId, orderIdStr];
+          if (!isNaN(numVal)) possibleValues.push(numVal);
+
+          const snap1 = await getDocs(query(collection(db, 'orders'), where('orderNumber', 'in', possibleValues)));
+          if (!snap1.empty) {
+            for (const d of snap1.docs) {
+              await updateDoc(doc(db, 'orders', d.id), updates);
+            }
+          } else {
+            const snap2 = await getDocs(query(collection(db, 'orders'), where('id', 'in', possibleValues)));
+            for (const d of snap2.docs) {
+              await updateDoc(doc(db, 'orders', d.id), updates);
+            }
           }
         }
       } catch (err) {
@@ -853,32 +936,78 @@ export function TableOrderProvider({ children }) {
       }
     }
 
-    localStore.updateOrderData(orderId, updates);
-    const updated = localStore.getOrders();
-    setOrders([...updated]);
+    // 3. Update localStorage fallback without clobbering active state
+    try {
+      localStore.updateOrderData(orderId, updates);
+    } catch (e) {
+      console.warn('localStore update error:', e);
+    }
+
     return updates;
   };
 
   // Mark a single order as Unpaid by Admin (for Cash orders)
   const markOrderAsUnpaidByAdmin = async (orderId) => {
+    const orderIdStr = String(orderId);
+    const targetOrder = orders.find(o => 
+      String(o.id) === orderIdStr || 
+      String(o.orderNumber) === orderIdStr || 
+      (o.firestoreDocId && String(o.firestoreDocId) === orderIdStr)
+    );
+
     const updates = {
-      paymentStatus: 'Pending',
+      paymentStatus: 'pending',
       paidAt: null,
       transactionId: null,
       updatedAt: new Date().toISOString()
     };
 
+    // 1. Immediately update React state
+    setOrders(prevOrders => prevOrders.map(o => {
+      const match = String(o.id) === orderIdStr || 
+                    String(o.orderNumber) === orderIdStr || 
+                    (o.firestoreDocId && String(o.firestoreDocId) === orderIdStr);
+      if (match) {
+        return {
+          ...o,
+          ...updates,
+          paymentStatus: 'pending',
+          isPaid: false
+        };
+      }
+      return o;
+    }));
+
+    // 2. Persist to Firestore
     if (isFirebaseConfigured) {
       try {
-        await updateDoc(doc(db, 'orders', orderId), updates);
+        let firestoreId = targetOrder?.firestoreDocId;
+        if (!firestoreId && orderIdStr.length > 15) firestoreId = orderIdStr;
+
+        if (firestoreId) {
+          await updateDoc(doc(db, 'orders', firestoreId), updates);
+        } else {
+          const numVal = Number(orderId);
+          const possibleValues = [orderId, orderIdStr];
+          if (!isNaN(numVal)) possibleValues.push(numVal);
+
+          const snap = await getDocs(query(collection(db, 'orders'), where('orderNumber', 'in', possibleValues)));
+          for (const d of snap.docs) {
+            await updateDoc(doc(db, 'orders', d.id), updates);
+          }
+        }
       } catch (err) {
         console.warn('Firebase mark order unpaid error:', err);
       }
     }
 
-    localStore.updateOrderData(orderId, updates);
-    const updated = localStore.getOrders();
-    setOrders([...updated]);
+    // 3. Update localStore fallback
+    try {
+      localStore.updateOrderData(orderId, updates);
+    } catch (e) {
+      console.warn('localStore update error:', e);
+    }
+
     return updates;
   };
 

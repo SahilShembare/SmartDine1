@@ -458,14 +458,17 @@ export default function DashboardOverview({
                           {!paid && (
                             <button
                               type="button"
-                              onClick={async () => {
-                                await markOrderAsPaidByAdmin(order.id, 'Cash (Collected at Counter)');
-                                if (order.tableNumber) {
-                                  await markTableAsPaidByAdmin(order.tableNumber, 'Cash (Collected at Counter)');
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  await markOrderAsPaidByAdmin(order.id, 'Cash (Collected at Counter)');
+                                  toast.success(`💰 Order #${order.id} marked as Paid!`, { icon: '✅' });
+                                } catch (err) {
+                                  console.error('Mark order paid error:', err);
+                                  toast.error(err.message || 'Failed to update payment');
                                 }
-                                toast.success(`💰 Order #${order.id} marked as Paid at Counter!`, { icon: '✅' });
                               }}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition active:scale-95 cursor-pointer"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold text-[11px] shadow-xs transition active:scale-95 cursor-pointer"
                               title="Mark as Paid at Counter"
                             >
                               <Check className="w-3.5 h-3.5" />
@@ -618,9 +621,14 @@ export default function DashboardOverview({
                     <button
                       type="button"
                       onClick={async () => {
-                        await markTableAsPaidByAdmin(selectedTableModal.table.tableNumber, 'Cash (Collected at Counter)');
-                        toast.success(`💰 Table ${selectedTableModal.table.tableNumber} bill marked as Paid!`, { icon: '✅' });
-                        setSelectedTableModal(null);
+                        try {
+                          await markTableAsPaidByAdmin(selectedTableModal.table.tableNumber, 'Cash (Collected at Counter)');
+                          toast.success(`💰 Table ${selectedTableModal.table.tableNumber} bill marked as Paid!`, { icon: '✅' });
+                          setSelectedTableModal(null);
+                        } catch (err) {
+                          console.error('Mark table paid error:', err);
+                          toast.error(err.message || 'Failed to update table payment');
+                        }
                       }}
                       className="w-full mt-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
                     >
@@ -758,12 +766,14 @@ export default function DashboardOverview({
                 <button
                   type="button"
                   onClick={async () => {
-                    await markOrderAsPaidByAdmin(selectedOrderModal.id, 'Cash (Collected at Counter)');
-                    if (selectedOrderModal.tableNumber) {
-                      await markTableAsPaidByAdmin(selectedOrderModal.tableNumber, 'Cash (Collected at Counter)');
+                    try {
+                      await markOrderAsPaidByAdmin(selectedOrderModal.id, 'Cash (Collected at Counter)');
+                      toast.success(`💰 Order #${selectedOrderModal.id} marked as Paid!`, { icon: '✅' });
+                      setSelectedOrderModal(prev => prev ? { ...prev, paymentStatus: 'Paid', isPaid: true } : null);
+                    } catch (err) {
+                      console.error('Modal mark paid error:', err);
+                      toast.error(err.message || 'Failed to update payment');
                     }
-                    toast.success(`💰 Order #${selectedOrderModal.id} marked as Paid at Counter!`, { icon: '✅' });
-                    setSelectedOrderModal(null);
                   }}
                   className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
                 >
