@@ -60,12 +60,20 @@ export default function CustomerWebBill() {
   // Robust targetOrder resolution across React state AND localStore
   const targetOrder = useMemo(() => {
     if (!effectiveOrderId) return null;
-    const effStr = String(effectiveOrderId);
-    const found = orders.find(o => String(o.id) === effStr || String(o.orderNumber) === effStr);
+    const effStr = String(effectiveOrderId).trim();
+    const matchOrder = (o) => (
+      String(o.id) === effStr || 
+      String(o.orderNumber) === effStr ||
+      (o.firestoreDocId && String(o.firestoreDocId) === effStr) ||
+      (o.orderNumber && formatOrderNumber(o.orderNumber) === effStr) ||
+      (o.id && formatOrderNumber(o.id) === effStr)
+    );
+
+    const found = orders.find(matchOrder);
     if (found) return found;
     try {
       const local = localStore.getOrders();
-      return local.find(o => String(o.id) === effStr || String(o.orderNumber) === effStr) || null;
+      return local.find(matchOrder) || null;
     } catch {
       return null;
     }
@@ -109,6 +117,7 @@ export default function CustomerWebBill() {
   // Helper to check if order is paid (defined before billData calculation)
   const isOrderPaid = (order) => {
     if (!order) return false;
+    if (order.isPaid === true) return true;
     const pStatus = String(order.paymentStatus || order.payment_status || '').trim().toLowerCase();
     if (
       !pStatus ||
@@ -119,8 +128,10 @@ export default function CustomerWebBill() {
     ) {
       return false;
     }
-    if (pStatus === 'paid' || pStatus === 'cash paid' || pStatus === 'online paid') {
-      return true;
+    if (pStatus === 'paid' || pStatus.includes('paid') || pStatus === 'settled' || pStatus === 'completed') {
+      if (!pStatus.includes('unpaid') && !pStatus.includes('not paid')) {
+        return true;
+      }
     }
     const txn = order.transactionId || order.razorpay_payment_id || '';
     if ((order.paidAt || order.paid_at) && txn && !txn.startsWith('PENDING') && !txn.startsWith('COUNTER')) {
@@ -189,11 +200,9 @@ export default function CustomerWebBill() {
   const receiptData = useMemo(() => {
     if (paymentSuccessData) return paymentSuccessData;
 
-    // 1. If targetOrder is specifically requested: ONLY return receipt if targetOrder is ACTUALLY PAID!
+    // 1. If targetOrder is specifically requested: ALWAYS return receipt for targetOrder whether paid or counter pending
     if (targetOrder) {
-      if (!isOrderPaid(targetOrder)) {
-        return null; // UNPAID orders MUST NEVER generate a paid receipt!
-      }
+      const isPaid = isOrderPaid(targetOrder);
       const items = (targetOrder.items || []).map(i => ({
         itemId: i.itemId || i.id,
         name: i.name,
@@ -214,7 +223,8 @@ export default function CustomerWebBill() {
         orderId: targetOrder.id,
         transactionId: targetOrder.transactionId || targetOrder.razorpay_payment_id || `TXN-${targetOrdNo}`,
         tableNumber: targetOrder.tableNumber || formattedTable,
-        paymentMethod: targetOrder.paymentMethod || targetOrder.payment_method || 'Online Verified (Paid)',
+        paymentMethod: targetOrder.paymentMethod || targetOrder.payment_method || (isPaid ? 'Online Verified (Paid)' : 'Pay at Counter'),
+        paymentStatus: targetOrder.paymentStatus || (isPaid ? 'PAID' : 'PENDING'),
         amount: total,
         discount: Number(targetOrder.discountAmount) || 0,
         subtotal: subtotal,
@@ -222,7 +232,8 @@ export default function CustomerWebBill() {
         items: items,
         paidAt: targetOrder.paidAt ? new Date(targetOrder.paidAt).toLocaleString() : (targetOrder.createdAt ? new Date(targetOrder.createdAt).toLocaleString() : new Date().toLocaleString()),
         orderCount: 1,
-        customerName: targetOrder.customerName || currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || `Table ${formattedTable} Guest`
+        customerName: targetOrder.customerName || currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || `Table ${formattedTable} Guest`,
+        isPaid: isPaid
       };
     }
 
@@ -283,6 +294,7 @@ export default function CustomerWebBill() {
         transactionId: targetTxnId || `TXN-${formatOrderNumber(latestOrder.id)}`,
         tableNumber: formattedTable,
         paymentMethod: latestOrder.paymentMethod || 'Online / Settle at Counter (Paid)',
+        paymentStatus: 'PAID',
         amount: total,
         discount: discount,
         subtotal: subtotal,
@@ -290,29 +302,48 @@ export default function CustomerWebBill() {
         items: items,
         paidAt: latestOrder.paidAt ? new Date(latestOrder.paidAt).toLocaleString() : (latestOrder.createdAt ? new Date(latestOrder.createdAt).toLocaleString() : new Date().toLocaleString()),
         orderCount: sameBatchOrders.length,
-        customerName: latestOrder.customerName || currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || `Table ${formattedTable} Guest`
+        customerName: latestOrder.customerName || currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || `Table ${formattedTable} Guest`,
+        isPaid: true
+      };
+    }
+
+    // 3. Fallback: If table has active items and user requested receipt, create table session receipt
+    if (billData && billData.consolidatedItems && billData.consolidatedItems.length > 0) {
+      return {
+        invoiceNumber: sessionInvoiceNumber,
+        orderNumber: billData.orderIds?.map(formatOrderNumber).join(', ') || 'ORD-TABLE',
+        orderId: billData.orderIds?.[0] || 'ORD-TABLE',
+        transactionId: 'TXN-COUNTER',
+        tableNumber: formattedTable,
+        paymentMethod: 'Pay at Counter',
+        paymentStatus: 'PENDING',
+        amount: billData.total,
+        discount: billData.discountAmount || 0,
+        subtotal: billData.subtotal,
+        tax: billData.tax,
+        items: billData.consolidatedItems,
+        paidAt: new Date().toLocaleString(),
+        orderCount: billData.orderCount || 1,
+        customerName: currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || `Table ${formattedTable} Guest`,
+        isPaid: false
       };
     }
 
     return null;
-  }, [paymentSuccessData, targetOrder, orders, formattedTable, currentUser, sessionInvoiceNumber]);
+  }, [paymentSuccessData, targetOrder, orders, formattedTable, currentUser, sessionInvoiceNumber, billData]);
 
   const effectiveReceipt = receiptData;
-  const hasSettledReceipt = Boolean(receiptData && (paymentSuccessData || (targetOrder ? isOrderPaid(targetOrder) : true)));
+  const hasSettledReceipt = Boolean(receiptData && (paymentSuccessData || receiptData.isPaid));
   const hasActiveUnpaidOrders = (billData.activeOrders && billData.activeOrders.length > 0) || (targetOrder && !isOrderPaid(targetOrder));
 
-  // Determine if viewing receipt:
-  // Show receipt ONLY when:
-  // 1. paymentSuccessData is set (just finished online payment right now)
-  // 2. OR There are NO active unpaid orders AND a settled receipt exists AND (showReceiptView || viewReceiptParam)
-  // 3. OR targetOrder is explicitly specified AND isOrderPaid(targetOrder) is true AND viewReceiptParam is true
-  // NEVER show settled receipt if customer or table has active unpaid orders!
+  // Determine if viewing receipt
   const [showReceiptView, setShowReceiptView] = useState(false);
 
   const isViewingReceipt = Boolean(
     paymentSuccessData || 
-    (!hasActiveUnpaidOrders && hasSettledReceipt && (showReceiptView || viewReceiptParam)) ||
-    (targetOrder && isOrderPaid(targetOrder) && viewReceiptParam)
+    (viewReceiptParam && effectiveReceipt) ||
+    (showReceiptView && effectiveReceipt) ||
+    (!hasActiveUnpaidOrders && hasSettledReceipt)
   );
 
   const activeReceipt = effectiveReceipt || {
@@ -1099,17 +1130,25 @@ export default function CustomerWebBill() {
 
         <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-6 space-y-4 animate-in zoom-in-95 duration-200">
           
-          {/* Header with Verified Badge */}
+          {/* Header with Verified / Status Badge */}
           <div className="text-center space-y-1">
-            <div className="w-12 h-12 rounded-full bg-emerald-950/80 text-emerald-400 border-2 border-emerald-500 flex items-center justify-center mx-auto shadow-glow">
-              <Check className="w-7 h-7 stroke-[3]" />
+            <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center mx-auto shadow-glow ${
+              receipt.isPaid
+                ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500'
+                : 'bg-amber-500/15 text-amber-400 border-amber-500'
+            }`}>
+              {receipt.isPaid ? (
+                <Check className="w-7 h-7 stroke-[3]" />
+              ) : (
+                <Clock className="w-7 h-7" />
+              )}
             </div>
             <h1 className="text-xl font-black text-white tracking-tight flex items-center justify-center gap-1.5">
-              <span>Bill Settled & Paid</span>
-              <span className="text-emerald-400">✅</span>
+              <span>{receipt.isPaid ? 'Bill Settled & Paid' : 'Table Bill Receipt'}</span>
+              <span>{receipt.isPaid ? '✅' : '🟠'}</span>
             </h1>
             <p className="text-xs text-slate-400">
-              Official Tax Invoice for Table #{tblNo}
+              {receipt.isPaid ? `Official Tax Invoice for Table #${tblNo}` : `Payment Pending for Table #${tblNo} (Pay at Counter)`}
             </p>
           </div>
 
@@ -1196,24 +1235,53 @@ export default function CustomerWebBill() {
               </div>
             </div>
 
-            {/* Official Stamp */}
-            <div className="p-2.5 rounded-xl bg-emerald-950/50 border border-emerald-500/30 flex items-center justify-center gap-1.5 text-center text-xs font-bold text-emerald-300">
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Paid & Verified Tax Invoice</span>
+            {/* Official Status Stamp */}
+            <div className={`p-2.5 rounded-xl border flex items-center justify-center gap-1.5 text-center text-xs font-bold ${
+              receipt.isPaid
+                ? 'bg-emerald-950/50 border-emerald-500/30 text-emerald-300'
+                : 'bg-amber-500/10 border-amber-500/30 text-amber-300'
+            }`}>
+              {receipt.isPaid ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Paid & Verified Tax Invoice</span>
+                </>
+              ) : (
+                <>
+                  <Clock className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
+                  <span>Pay at Counter (Pending Cash Settlement)</span>
+                </>
+              )}
             </div>
 
           </div>
 
           <div className="flex flex-col gap-2">
+            {!receipt.isPaid && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReceiptView(false);
+                  navigate(`/bill?table=${tblNo}${receipt.orderId ? `&orderId=${receipt.orderId}` : ''}`);
+                }}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <CreditCard className="w-4 h-4 text-white" />
+                <span>Pay Bill Online (UPI / Card / NetBanking)</span>
+              </button>
+            )}
+
             {/* Post-Payment Feedback Button */}
-            <button
-              type="button"
-              onClick={() => setShowBillFeedback(true)}
-              className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow transition flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-amber-200" />
-              <span>⭐ Rate Food & Dining Experience</span>
-            </button>
+            {receipt.isPaid && (
+              <button
+                type="button"
+                onClick={() => setShowBillFeedback(true)}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow transition flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-amber-200" />
+                <span>⭐ Rate Food & Dining Experience</span>
+              </button>
+            )}
 
             <Link
               to={`/menu?table=${tblNo}`}
@@ -1312,12 +1380,20 @@ export default function CustomerWebBill() {
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowReceiptView(true)}
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-[11px] border border-slate-700 transition flex items-center gap-1 shadow-xs cursor-pointer"
+            >
+              <Receipt className="w-3.5 h-3.5 text-amber-400" />
+              <span>View Bill Receipt</span>
+            </button>
             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border flex items-center gap-1 ${
               hasActiveUnpaidOrders
                 ? 'bg-amber-500/15 text-amber-400 border-amber-500/40 animate-pulse'
                 : 'bg-emerald-950 text-emerald-400 border-emerald-700'
             }`}>
-              {hasActiveUnpaidOrders && <Clock className="w-3 h-3" />}
+              {hasActiveUnpaidOrders && <Clock className="w-3.5 h-3.5" />}
               <span>{hasActiveUnpaidOrders ? 'UNPAID (Pay at Counter)' : 'PAID'}</span>
             </span>
             <span className="text-[11px] font-mono text-slate-400 hidden xs:inline">{sessionInvoiceNumber}</span>
