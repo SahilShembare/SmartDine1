@@ -7,11 +7,19 @@ const CORS_HEADERS = {
   'Content-Type': 'application/json'
 };
 
-export function processCheckDuplicateUser({ email, phone, name }) {
+export async function processCheckDuplicateUser({ email, phone, name }) {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanPhone = (phone || '').trim();
 
-  if (cleanEmail && isEmailRegistered(cleanEmail)) {
+  let isEmailReg = isEmailRegistered;
+  let isPhoneReg = isPhoneRegistered;
+  try {
+    const dbMod = await import(`./users-db.js?t=${Date.now()}`);
+    if (typeof dbMod.isEmailRegistered === 'function') isEmailReg = dbMod.isEmailRegistered;
+    if (typeof dbMod.isPhoneRegistered === 'function') isPhoneReg = dbMod.isPhoneRegistered;
+  } catch {}
+
+  if (cleanEmail && isEmailReg(cleanEmail)) {
     return {
       status: 200,
       data: {
@@ -22,7 +30,7 @@ export function processCheckDuplicateUser({ email, phone, name }) {
     };
   }
 
-  if (cleanPhone && isPhoneRegistered(cleanPhone)) {
+  if (cleanPhone && isPhoneReg(cleanPhone)) {
     return {
       status: 200,
       data: {
@@ -44,7 +52,7 @@ export const handler = async (event) => {
     try { body = typeof event.body === 'string' ? JSON.parse(event.body) : event.body; } catch {}
   }
   const query = event.queryStringParameters || {};
-  const res = processCheckDuplicateUser({
+  const res = await processCheckDuplicateUser({
     email: query.email || body.email,
     phone: query.phone || body.phone,
     name: query.name || body.name
@@ -60,7 +68,7 @@ export default async function defaultHandler(req, resOrContext) {
     try { body = await req.json(); } catch {}
     const url = new URL(req.url);
     const query = Object.fromEntries(url.searchParams.entries());
-    const res = processCheckDuplicateUser({
+    const res = await processCheckDuplicateUser({
       email: query.email || body.email,
       phone: query.phone || body.phone,
       name: query.name || body.name
@@ -81,7 +89,7 @@ export default async function defaultHandler(req, resOrContext) {
 
   const query = req.query || {};
   const body = req.body || {};
-  const result = processCheckDuplicateUser({
+  const result = await processCheckDuplicateUser({
     email: query.email || body.email,
     phone: query.phone || body.phone,
     name: query.name || body.name

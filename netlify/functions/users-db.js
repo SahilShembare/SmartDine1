@@ -9,16 +9,21 @@ const DB_PATH = path.resolve(__dirname, 'registered_users.json');
 const TMP_DB_PATH = path.resolve(os.tmpdir(), 'smartdine_registered_users.json');
 
 const INITIAL_USERS = [
-  { email: 'shembaresahil12@gmail.com', name: 'Sahil Shembare', phone: '9876543210', role: 'customer' },
-  { email: 'admin@smartdine.com', name: 'Master Admin', phone: '9999999999', role: 'admin' },
-  { email: 'kitchen@smartdine.com', name: 'Kitchen Chef', phone: '8888888888', role: 'kitchen' },
-  { email: 'customer@smartdine.com', name: 'VIP Customer', phone: '7777777777', role: 'customer' }
+  { email: 'admin@smartdine.com', name: 'Master Admin', phone: '9999999999', role: 'admin', password: 'admin123456' },
+  { email: 'kitchen@smartdine.com', name: 'Kitchen Chef', phone: '8888888888', role: 'kitchen', password: 'kitchen123456' }
 ];
 
 let memoryUsers = null;
 
+function sanitizeUsers(list) {
+  if (!Array.isArray(list)) return [...INITIAL_USERS];
+  // Filter out any legacy hardcoded customer accounts so users can freely register their own real emails
+  return list.filter(u => u && u.email && u.email.toLowerCase() !== 'customer@smartdine.com' && u.email.toLowerCase() !== 'shembaresahil12@gmail.com');
+}
+
 export function getRegisteredUsers() {
   if (memoryUsers && Array.isArray(memoryUsers) && memoryUsers.length > 0) {
+    memoryUsers = sanitizeUsers(memoryUsers);
     return memoryUsers;
   }
 
@@ -28,7 +33,7 @@ export function getRegisteredUsers() {
       const data = fs.readFileSync(TMP_DB_PATH, 'utf-8');
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        memoryUsers = parsed;
+        memoryUsers = sanitizeUsers(parsed);
         return memoryUsers;
       }
     }
@@ -40,7 +45,7 @@ export function getRegisteredUsers() {
       const data = fs.readFileSync(DB_PATH, 'utf-8');
       const parsed = JSON.parse(data);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        memoryUsers = parsed;
+        memoryUsers = sanitizeUsers(parsed);
         return memoryUsers;
       }
     }
@@ -76,7 +81,8 @@ export function isEmailRegistered(email) {
   if (!email) return false;
   const clean = email.trim().toLowerCase();
   const users = getRegisteredUsers();
-  return users.some(u => u.email && u.email.trim().toLowerCase() === clean);
+  // An email is registered if account has a confirmed password or privileged role
+  return users.some(u => u.email && u.email.trim().toLowerCase() === clean && (u.password || u.role === 'admin' || u.role === 'kitchen'));
 }
 
 export function isPhoneRegistered(phone) {
@@ -84,27 +90,40 @@ export function isPhoneRegistered(phone) {
   const clean = String(phone).replace(/\D/g, '');
   if (clean.length < 10) return false;
   const users = getRegisteredUsers();
-  return users.some(u => u.phone && String(u.phone).replace(/\D/g, '') === clean);
+  return users.some(u => u.phone && String(u.phone).replace(/\D/g, '') === clean && (u.password || u.role === 'admin' || u.role === 'kitchen'));
 }
 
-export function saveRegisteredUser({ name, email, phone, role = 'customer' }) {
+export function saveRegisteredUser({ name, email, phone, role = 'customer', password }) {
   if (!email) return false;
   const cleanEmail = email.trim().toLowerCase();
   const cleanPhone = phone ? String(phone).replace(/\D/g, '') : '';
   const users = [...getRegisteredUsers()];
 
-  const existing = users.find(u => u.email?.trim().toLowerCase() === cleanEmail);
-  if (existing) {
-    return false; // Already registered
+  const existingIndex = users.findIndex(u => u.email?.trim().toLowerCase() === cleanEmail);
+  if (existingIndex !== -1) {
+    // If account already has password, don't overwrite
+    if (users[existingIndex].password && !password) {
+      return false;
+    }
+    // Update existing record
+    users[existingIndex] = {
+      ...users[existingIndex],
+      name: name ? name.trim() : users[existingIndex].name,
+      phone: cleanPhone || users[existingIndex].phone,
+      role: role || users[existingIndex].role,
+      password: password || users[existingIndex].password,
+      updatedAt: new Date().toISOString()
+    };
+  } else {
+    users.push({
+      name: name ? name.trim() : 'Customer',
+      email: cleanEmail,
+      phone: cleanPhone,
+      role,
+      password: password || undefined,
+      registeredAt: new Date().toISOString()
+    });
   }
-
-  users.push({
-    name: name ? name.trim() : 'Customer',
-    email: cleanEmail,
-    phone: cleanPhone,
-    role,
-    registeredAt: new Date().toISOString()
-  });
 
   persistUsers(users);
   return true;

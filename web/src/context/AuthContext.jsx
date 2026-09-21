@@ -12,10 +12,8 @@ import {
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const DEFAULT_ACCOUNTS = [
-  { email: 'shembaresahil12@gmail.com', name: 'Sahil Shembare', role: 'customer' },
   { email: 'admin@smartdine.com', name: 'Master Admin', role: 'admin' },
-  { email: 'kitchen@smartdine.com', name: 'Kitchen Chef', role: 'kitchen' },
-  { email: 'customer@smartdine.com', name: 'VIP Customer', role: 'customer' }
+  { email: 'kitchen@smartdine.com', name: 'Kitchen Chef', role: 'kitchen' }
 ];
 
 function getRegisteredAccounts() {
@@ -25,7 +23,16 @@ function getRegisteredAccounts() {
       localStorage.setItem('smartdine_registered_users', JSON.stringify(DEFAULT_ACCOUNTS));
       return DEFAULT_ACCOUNTS;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      // Clean legacy hardcoded user test emails so real registration works smoothly
+      const cleaned = parsed.filter(u => u.email !== 'shembaresahil12@gmail.com' && u.email !== 'customer@smartdine.com');
+      if (cleaned.length !== parsed.length) {
+        localStorage.setItem('smartdine_registered_users', JSON.stringify(cleaned));
+      }
+      return cleaned;
+    }
+    return DEFAULT_ACCOUNTS;
   } catch {
     return DEFAULT_ACCOUNTS;
   }
@@ -146,9 +153,21 @@ export function AuthProvider({ children }) {
 
     const list = getRegisteredAccounts();
 
-    // 1. Check server-side registry API
+    // Helper for fast timeout on external network checks
+    const withTimeout = (promise, ms = 2500) =>
+      Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Network check timed out')), ms))
+      ]);
+
+    // 1. Check server-side registry API (Fast 2.5s AbortController)
     try {
-      const res = await fetch(`/api/check-duplicate-user?email=${encodeURIComponent(cleanEmail)}&phone=${encodeURIComponent(cleanPhone)}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch(`/api/check-duplicate-user?email=${encodeURIComponent(cleanEmail)}&phone=${encodeURIComponent(cleanPhone)}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const text = await res.text();
         const data = text ? JSON.parse(text) : {};
@@ -157,7 +176,7 @@ export function AuthProvider({ children }) {
         }
       }
     } catch (e) {
-      console.warn('Server API duplicate check note:', e);
+      // Gracefully continue on network timeout
     }
 
     // 2. Check if Email is already registered locally
@@ -199,11 +218,11 @@ export function AuthProvider({ children }) {
       }
     }
 
-    // 4. Firestore check for email
+    // 4. Firestore check for email (with 2.5s timeout)
     if (isFirebaseConfigured && db && cleanEmail) {
       try {
         const docRef = doc(db, 'registered_users', cleanEmail);
-        const snap = await getDoc(docRef);
+        const snap = await withTimeout(getDoc(docRef), 2500);
         if (snap.exists()) {
           return {
             isDuplicate: true,
@@ -213,14 +232,14 @@ export function AuthProvider({ children }) {
           };
         }
       } catch (e) {
-        console.warn('Firestore duplicate check note:', e);
+        // Continue if Firestore is slow or offline
       }
     }
 
-    // 5. Firebase Auth check for email
+    // 5. Firebase Auth check for email (with 2.5s timeout)
     if (isFirebaseConfigured && auth && cleanEmail) {
       try {
-        const methods = await fetchSignInMethodsForEmail(auth, cleanEmail);
+        const methods = await withTimeout(fetchSignInMethodsForEmail(auth, cleanEmail), 2500);
         if (methods && methods.length > 0) {
           return {
             isDuplicate: true,

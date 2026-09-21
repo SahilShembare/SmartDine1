@@ -88,12 +88,17 @@ export async function dispatchEmailOtp({ email, name = 'Customer', purpose = 're
 
   let lastErrorMsg = '';
   for (const att of attempts) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
+
     try {
       const res = await fetch(att.url, {
         method: att.method,
         headers: att.headers || {},
-        body: att.body || undefined
+        body: att.body || undefined,
+        signal: controller.signal
       });
+      clearTimeout(timeoutId);
 
       // Skip 404 or 405 and try next attempt
       if (res.status === 404 || res.status === 405) {
@@ -117,7 +122,7 @@ export async function dispatchEmailOtp({ email, name = 'Customer', purpose = 're
         };
       }
 
-      // If server returned an explicit error (like duplicate user), throw it immediately
+      // If server returned an explicit error (like duplicate user or validation error), throw it immediately
       if (data.error) {
         const err = new Error(data.error);
         if (data.error.includes('pehle se registered') || data.error.includes('already registered')) {
@@ -126,10 +131,11 @@ export async function dispatchEmailOtp({ email, name = 'Customer', purpose = 're
         throw err;
       }
     } catch (err) {
+      clearTimeout(timeoutId);
       if (err.isDuplicate || err.message?.includes('pehle se registered') || err.message?.includes('already registered')) {
         throw err;
       }
-      lastErrorMsg = err.message;
+      lastErrorMsg = err.name === 'AbortError' ? 'Network timeout while contacting email server' : err.message;
     }
   }
 

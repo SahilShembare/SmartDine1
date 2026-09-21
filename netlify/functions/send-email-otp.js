@@ -4,12 +4,22 @@ import { isEmailRegistered } from './users-db.js';
 const SMTP_USER = process.env.SMTP_USER || 'smartdine82@gmail.com';
 const SMTP_PASS = process.env.SMTP_PASS || 'qsefkvyvicukxuqi';
 
+// Optimized nodemailer transporter with IPv4 enforcement and connection pooling for instant delivery
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
+  pool: true,
+  maxConnections: 3,
+  maxMessages: 50,
+  family: 4, // Explicit IPv4 to eliminate 10-30s IPv6 DNS timeouts on Windows/ISPs
   auth: {
     user: SMTP_USER,
     pass: SMTP_PASS
-  }
+  },
+  connectionTimeout: 8000,
+  greetingTimeout: 6000,
+  socketTimeout: 12000
 });
 
 const CORS_HEADERS = {
@@ -31,13 +41,25 @@ export async function processSendEmailOtp({ email, name = 'Customer', purpose = 
     };
   }
 
-  // 🔒 STRICT RULE: Prevent duplicate registration for the same email
-  if (cleanPurpose === 'registration' && isEmailRegistered(cleanEmail)) {
+  // 🔒 STRICT RULE: Prevent duplicate registration only if the email is already fully registered with a password
+  let isRegistered = false;
+  try {
+    const dbMod = await import(`./users-db.js?t=${Date.now()}`);
+    if (typeof dbMod.isEmailRegistered === 'function') {
+      isRegistered = dbMod.isEmailRegistered(cleanEmail);
+    } else {
+      isRegistered = isEmailRegistered(cleanEmail);
+    }
+  } catch {
+    isRegistered = isEmailRegistered(cleanEmail);
+  }
+
+  if (cleanPurpose === 'registration' && isRegistered) {
     return {
       status: 400,
       data: {
         success: false,
-        error: `This Email "${cleanEmail}" is already registered. Repeat registration is not allowed. Please log in to continue.`
+        error: `This Email "${cleanEmail}" is already registered. Please log in to continue.`
       }
     };
   }
@@ -126,13 +148,19 @@ export async function processSendEmailOtp({ email, name = 'Customer', purpose = 
   </html>
   `;
 
-  await transporter.sendMail({
-    from: `"SmartDine" <${SMTP_USER}>`,
-    to: cleanEmail,
-    subject,
-    text: `Hello ${cleanName},\n\nYour SmartDine verification OTP is: ${otp}\n\nThis code is valid for 5 minutes only.\nDo not share it with anyone.`,
-    html
-  });
+  // Real email dispatch with timeout protection
+  await Promise.race([
+    transporter.sendMail({
+      from: `"SmartDine" <${SMTP_USER}>`,
+      to: cleanEmail,
+      subject,
+      text: `Hello ${cleanName},\n\nYour SmartDine verification OTP is: ${otp}\n\nThis code is valid for 5 minutes only.\nDo not share it with anyone.`,
+      html
+    }),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Email dispatch timed out. Please check network connection.')), 10000)
+    )
+  ]);
 
   return {
     status: 200,

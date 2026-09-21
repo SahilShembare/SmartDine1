@@ -154,7 +154,7 @@ export function TableOrderProvider({ children }) {
   // Last Sync timestamp
   const [lastSyncTime, setLastSyncTime] = useState(() => new Date().toLocaleTimeString());
 
-  // 3-Second Guaranteed Live Auto-Sync Engine (For Netlify and all client devices)
+  // Guaranteed Live Auto-Sync Engine (Gentle 60s backup + window visibility trigger to protect network performance)
   useEffect(() => {
     const syncAllData = async () => {
       try {
@@ -189,8 +189,28 @@ export function TableOrderProvider({ children }) {
       }
     };
 
-    const intervalId = setInterval(syncAllData, 3000);
-    return () => clearInterval(intervalId);
+    // Run initial sync on mount
+    syncAllData();
+
+    // Sync when tab becomes visible (user focuses the app)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncAllData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Gentle 60s backup interval (real-time listeners handle instant updates)
+    const intervalId = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        syncAllData();
+      }
+    }, 60000);
+
+    return () => {
+      clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Real-time synchronization listeners

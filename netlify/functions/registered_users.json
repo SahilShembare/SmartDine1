@@ -1,11 +1,5 @@
 [
   {
-    "email": "shembaresahil12@gmail.com",
-    "name": "Sahil Shembare",
-    "phone": "9876543210",
-    "role": "customer"
-  },
-  {
     "email": "admin@smartdine.com",
     "name": "Master Admin",
     "phone": "9999999999",
@@ -16,27 +10,5 @@
     "name": "Kitchen Chef",
     "phone": "8888888888",
     "role": "kitchen"
-  },
-  {
-    "email": "customer@smartdine.com",
-    "name": "VIP Customer",
-    "phone": "7777777777",
-    "role": "customer"
-  },
-  {
-    "name": "ips",
-    "email": "ipssahil123@gmail.com",
-    "phone": "7898758809",
-    "role": "customer",
-    "registeredAt": "2026-09-18T05:13:06.304Z"
-  },
-  {
-    "name": "royy",
-    "email": "smartdine82@gmail.com",
-    "phone": "9529582311",
-    "role": "customer",
-    "registeredAt": "2026-09-19T13:49:51.749Z",
-    "password": "Sah@1234",
-    "updatedAt": "2026-09-19T13:49:51.782Z"
   }
 ]

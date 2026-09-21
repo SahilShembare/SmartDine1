@@ -190,7 +190,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      // 🔒 Check if Name, Email, or Phone is ALREADY REGISTERED (Already filled)
+      // 🔒 Check if Name, Email, or Phone is ALREADY REGISTERED
       const duplicateCheck = await checkDuplicateRegistration({
         name: regName.trim(),
         email: regEmail.trim(),
@@ -207,7 +207,7 @@ export default function Login() {
         return;
       }
 
-      // Call backend API to send REAL OTP via Gmail SMTP (multi-endpoint resilient)
+      // Call backend API to send REAL OTP via Gmail SMTP
       const otpRes = await dispatchEmailOtp({
         email: regEmail.trim(),
         name: regName.trim(),
@@ -216,26 +216,24 @@ export default function Login() {
 
       const realOtp = String(otpRes.otp);
       setGeneratedOtp(realOtp);
+      setUserEnteredOtp(''); // Ensure OTP field is EMPTY - user must manually enter OTP received in email
       setRegStep(2);
       setOtpTimer(60);
       setSuccessMsg(`📧 Verification OTP has been dispatched to ${regEmail.trim()}! Please check your Inbox / Spam folder.`);
       toast.success(`Verification OTP sent to ${regEmail.trim()}! Check your inbox.`);
     } catch (err) {
-      console.warn('Email dispatch note:', err);
+      console.warn('Email dispatch error:', err);
       const isAlreadyRegistered = err.isDuplicate || (err.message && (err.message.includes('pehle se registered') || err.message.includes('already registered')));
       if (isAlreadyRegistered) {
         setError(err.message);
         toast.error(err.message, { duration: 5000, icon: '⚠️' });
         return;
       }
-      // Clean fallback in case of offline or SMTP network delay
-      const fallbackCode = String(Math.floor(100000 + Math.random() * 900000));
-      setGeneratedOtp(fallbackCode);
-      setRegStep(2);
-      setOtpTimer(60);
-      setUserEnteredOtp(fallbackCode); // Auto-fill so the user can verify in 1 click
-      setSuccessMsg(`🔑 Verification code generated: ${fallbackCode} (Auto-filled below)`);
-      toast('Verification code: ' + fallbackCode, { icon: '🔑', duration: 8000 });
+
+      // Real email is strictly required: do NOT auto-fill fake code and do NOT advance to step 2
+      const failMsg = err.message || 'Unable to connect to email service.';
+      setError(`Failed to dispatch OTP email: ${failMsg}. Please check your email address and click "Send Verification OTP" again.`);
+      toast.error(`Could not send OTP email: ${failMsg}`);
     } finally {
       setLoading(false);
     }
@@ -402,6 +400,7 @@ export default function Login() {
 
         const realCode = String(otpRes.otp);
         setGeneratedForgotOtp(realCode);
+        setUserEnteredForgotOtp(''); // Keep OTP blank - no auto-fill!
         setForgotOtpStep(true);
         setForgotOtpTimer(60);
         setSuccessMsg(`📧 Password reset OTP dispatched to ${id}! Please check your Inbox / Spam folder.`);
@@ -410,22 +409,16 @@ export default function Login() {
       } else {
         const code = String(Math.floor(100000 + Math.random() * 900000));
         setGeneratedForgotOtp(code);
+        setUserEnteredForgotOtp(''); // Keep OTP blank - no auto-fill!
         setForgotOtpStep(true);
         setForgotOtpTimer(60);
-        setForgotOtpInput(code);
         setSuccessMsg(`📱 Password reset OTP sent to +91 ${id}.`);
         toast.success(`Reset OTP sent to +91 ${id}!`);
       }
     } catch (err) {
-      console.warn('Forgot OTP dispatch note:', err);
-      // Clean fallback if offline
-      const code = String(Math.floor(100000 + Math.random() * 900000));
-      setGeneratedForgotOtp(code);
-      setForgotOtpStep(true);
-      setForgotOtpTimer(60);
-      setForgotOtpInput(code);
-      setSuccessMsg(`🔑 Password reset code: ${code}`);
-      toast.success(`Reset code: ${code}`);
+      console.warn('Forgot OTP dispatch error:', err);
+      setError(`Failed to send password reset code: ${err.message || 'Network error'}. Please try again.`);
+      toast.error(`Reset dispatch failed: ${err.message || 'Please retry'}`);
     } finally {
       setLoading(false);
     }
@@ -572,7 +565,7 @@ export default function Login() {
           {/* TAB 1: LOGIN */}
           {/* ========================================================= */}
           {activeTab === 'login' && (
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4" autoComplete="off">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Email Address or Mobile Number
@@ -582,6 +575,8 @@ export default function Login() {
                   <input
                     type="text"
                     required
+                    autoComplete="off"
+                    data-lpignore="true"
                     placeholder="Enter email address or mobile number"
                     value={loginIdentifier}
                     onChange={(e) => setLoginIdentifier(e.target.value)}
@@ -606,6 +601,8 @@ export default function Login() {
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
+                    autoComplete="off"
+                    data-lpignore="true"
                     placeholder="Enter your account password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -715,7 +712,7 @@ export default function Login() {
 
               {/* STEP 1: Name + Email + Mobile Number */}
               {regStep === 1 && (
-                <form onSubmit={handleSendRegisterOtp} className="space-y-3.5">
+                <form onSubmit={handleSendRegisterOtp} className="space-y-3.5" autoComplete="off">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Your Full Name</label>
                     <div className="relative">
@@ -723,6 +720,8 @@ export default function Login() {
                       <input
                         type="text"
                         required
+                        autoComplete="off"
+                        data-lpignore="true"
                         placeholder="Enter your full name"
                         value={regName}
                         onChange={(e) => setRegName(e.target.value)}
@@ -739,6 +738,8 @@ export default function Login() {
                       <input
                         type="email"
                         required
+                        autoComplete="off"
+                        data-lpignore="true"
                         placeholder="Enter your email address"
                         value={regEmail}
                         onChange={(e) => setRegEmail(e.target.value)}
@@ -756,6 +757,8 @@ export default function Login() {
                         type="tel"
                         required
                         maxLength={10}
+                        autoComplete="off"
+                        data-lpignore="true"
                         placeholder="Enter 10-digit mobile number"
                         value={regPhone}
                         onChange={(e) => setRegPhone(e.target.value.replace(/\D/g, ''))}
@@ -778,7 +781,7 @@ export default function Login() {
 
               {/* STEP 2: Enter & Verify 6-Digit OTP */}
               {regStep === 2 && (
-                <form onSubmit={handleVerifyRegisterOtp} className="space-y-4">
+                <form onSubmit={handleVerifyRegisterOtp} className="space-y-4" autoComplete="off">
                   <div className="text-center space-y-1">
                     <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-1 border border-emerald-500/30">
                       <KeyRound className="w-5 h-5" />
@@ -792,9 +795,16 @@ export default function Login() {
                   <div>
                     <input
                       type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       required
                       maxLength={6}
-                      autoComplete="one-time-code"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoCapitalize="off"
+                      spellCheck="false"
+                      data-lpignore="true"
+                      data-form-type="other"
                       placeholder="• • • • • •"
                       value={userEnteredOtp}
                       onChange={(e) => setUserEnteredOtp(e.target.value.replace(/\D/g, ''))}
@@ -841,7 +851,7 @@ export default function Login() {
 
               {/* STEP 3: Set Password & Complete */}
               {regStep === 3 && (
-                <form onSubmit={handleCompleteRegistration} className="space-y-3.5">
+                <form onSubmit={handleCompleteRegistration} className="space-y-3.5" autoComplete="off">
                   <div className="p-3 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-between text-xs text-emerald-300">
                     <span className="font-bold flex items-center gap-1.5 truncate">
                       <Check className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -860,6 +870,8 @@ export default function Login() {
                         type={showRegPassword ? 'text' : 'password'}
                         required
                         minLength={6}
+                        autoComplete="new-password"
+                        data-lpignore="true"
                         placeholder="At least 6 characters"
                         value={regPassword}
                         onChange={(e) => setRegPassword(e.target.value)}
@@ -883,6 +895,8 @@ export default function Login() {
                         type="password"
                         required
                         minLength={6}
+                        autoComplete="new-password"
+                        data-lpignore="true"
                         placeholder="Re-enter password"
                         value={regConfirmPassword}
                         onChange={(e) => setRegConfirmPassword(e.target.value)}
@@ -911,7 +925,7 @@ export default function Login() {
           {activeTab === 'forgot' && (
             <div>
               {!forgotOtpStep ? (
-                <form onSubmit={handleSendForgotOtp} className="space-y-3.5">
+                <form onSubmit={handleSendForgotOtp} className="space-y-3.5" autoComplete="off">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
                       Registered Mobile Number or Email
@@ -921,6 +935,8 @@ export default function Login() {
                       <input
                         type="text"
                         required
+                        autoComplete="off"
+                        data-lpignore="true"
                         placeholder="Enter registered mobile number or email"
                         value={forgotIdentifier}
                         onChange={(e) => setForgotIdentifier(e.target.value)}
@@ -952,7 +968,7 @@ export default function Login() {
                   </div>
                 </form>
               ) : (
-                <form onSubmit={handleVerifyForgotOtpAndReset} className="space-y-3.5">
+                <form onSubmit={handleVerifyForgotOtpAndReset} className="space-y-3.5" autoComplete="off">
                   {isDirectReset ? (
                     <div className="p-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-center space-y-1">
                       <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-emerald-400">
@@ -975,9 +991,16 @@ export default function Login() {
                         <label className="block text-xs font-semibold text-slate-300 mb-1">6-Digit Verification OTP</label>
                         <input
                           type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
                           required
                           maxLength={6}
-                          autoComplete="one-time-code"
+                          autoComplete="off"
+                          autoCorrect="off"
+                          autoCapitalize="off"
+                          spellCheck="false"
+                          data-lpignore="true"
+                          data-form-type="other"
                           placeholder="• • • • • •"
                           value={userEnteredForgotOtp}
                           onChange={(e) => setUserEnteredForgotOtp(e.target.value.replace(/\D/g, ''))}
@@ -1012,6 +1035,8 @@ export default function Login() {
                         type={showNewPassword ? 'text' : 'password'}
                         required
                         minLength={6}
+                        autoComplete="new-password"
+                        data-lpignore="true"
                         placeholder="At least 6 characters"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
@@ -1035,6 +1060,8 @@ export default function Login() {
                         type="password"
                         required
                         minLength={6}
+                        autoComplete="new-password"
+                        data-lpignore="true"
                         placeholder="Re-enter new password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
