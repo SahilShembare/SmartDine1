@@ -1,36 +1,57 @@
 /**
  * SmartDine API Client
- * Multi-host resilient helper for Netlify, Vercel, Vite, and Mobile environments.
+ * Multi-host resilient helper for Netlify, Vercel, Vite, Local Network, and Mobile environments.
  */
+
+const PROD_API_ORIGIN = 'https://smartdine12.netlify.app';
 
 function resolveUrl(path) {
   if (!path) return '';
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
-  // If running in Capacitor native webview without http origin, or standard browser
   if (typeof window !== 'undefined') {
     const origin = window.location?.origin;
-    if (origin && !origin.startsWith('null') && !origin.startsWith('file:')) {
-      return path; // Browser handles relative paths natively
+    if (origin && !origin.startsWith('null') && !origin.startsWith('file:') && !origin.startsWith('capacitor:')) {
+      return path; // Standard web browser handles relative paths natively
     }
   }
-  return path;
+  // Mobile/Capacitor/WebView without standard web origin
+  return `${PROD_API_ORIGIN}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
+function getCandidateUrls(endpointPath, queryParams = '') {
+  const clean = endpointPath.replace(/^\/+/, '');
+  const functionName = clean.replace(/^(api|\.netlify\/functions)\//, '');
+  const query = queryParams ? `?${queryParams.replace(/^\?/, '')}` : '';
+
+  const urls = [];
+
+  // 1. Current origin relative /api/
+  urls.push(resolveUrl(`/api/${functionName}${query}`));
+
+  // 2. Current origin relative /.netlify/functions/
+  urls.push(resolveUrl(`/.netlify/functions/${functionName}${query}`));
+
+  // 3. Guaranteed Production Netlify API (fallback for mobile, preview, or disconnected dev servers)
+  if (typeof window !== 'undefined') {
+    const origin = window.location?.origin || '';
+    if (!origin.includes('smartdine12.netlify.app')) {
+      urls.push(`${PROD_API_ORIGIN}/api/${functionName}${query}`);
+      urls.push(`${PROD_API_ORIGIN}/.netlify/functions/${functionName}${query}`);
+    }
+  }
+
+  // Deduplicate URLs while preserving order
+  return [...new Set(urls.filter(Boolean))];
 }
 
 export async function safeApiFetch(endpointPath, options = {}) {
-  const cleanPath = endpointPath.replace(/^\/+/, '');
   const method = (options.method || 'GET').toUpperCase();
   const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
   const body = options.body;
 
-  // Candidate URLs in priority order:
-  // 1. Standard /api/...
-  // 2. Direct Netlify Functions /.netlify/functions/...
-  const candidates = [
-    resolveUrl(`/${cleanPath}`),
-    resolveUrl(`/.netlify/functions/${cleanPath.replace(/^api\//, '')}`)
-  ];
+  const candidates = getCandidateUrls(endpointPath);
 
   let lastError = null;
   for (const url of candidates) {
@@ -51,7 +72,7 @@ export async function safeApiFetch(endpointPath, options = {}) {
       try {
         data = text ? JSON.parse(text) : {};
       } catch {
-        // Returned HTML (e.g. static index.html fallback)
+        // Returned HTML (e.g. static index.html SPA fallback)
         continue;
       }
 
@@ -65,28 +86,37 @@ export async function safeApiFetch(endpointPath, options = {}) {
 }
 
 /**
- * Robust Email OTP Dispatcher with multi-endpoint fallback and GET fallback
+ * Robust Email OTP Dispatcher with multi-endpoint fallback, GET fallback, and production Netlify fallback
  */
 export async function dispatchEmailOtp({ email, name = 'Customer', purpose = 'registration' }) {
   const cleanEmail = (email || '').trim();
   const cleanName = (name || 'Customer').trim();
   const payload = { email: cleanEmail, name: cleanName, purpose };
   const jsonBody = JSON.stringify(payload);
-
   const queryParams = `email=${encodeURIComponent(cleanEmail)}&name=${encodeURIComponent(cleanName)}&purpose=${encodeURIComponent(purpose)}`;
 
-  const attempts = [
-    // 1. Primary: POST /api/send-email-otp
-    { url: resolveUrl('/api/send-email-otp'), method: 'POST', body: jsonBody, headers: { 'Content-Type': 'application/json' } },
-    // 2. Direct Netlify Functions: POST /.netlify/functions/send-email-otp
-    { url: resolveUrl('/.netlify/functions/send-email-otp'), method: 'POST', body: jsonBody, headers: { 'Content-Type': 'application/json' } },
-    // 3. Fallback GET /api/send-email-otp (bypasses 405 Method Not Allowed on CDNs)
-    { url: resolveUrl(`/api/send-email-otp?${queryParams}`), method: 'GET' },
-    // 4. Fallback GET /.netlify/functions/send-email-otp
-    { url: resolveUrl(`/.netlify/functions/send-email-otp?${queryParams}`), method: 'GET' }
-  ];
+  const candidateBaseUrls = getCandidateUrls('send-email-otp');
+  const attempts = [];
+
+  for (const base of candidateBaseUrls) {
+    // 1. POST JSON attempt
+    attempts.push({
+      url: base,
+      method: 'POST',
+      body: jsonBody,
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    // 2. GET fallback attempt (bypasses CDN POST blocks)
+    const getUrl = base.includes('?') ? `${base}&${queryParams}` : `${base}?${queryParams}`;
+    attempts.push({
+      url: getUrl,
+      method: 'GET'
+    });
+  }
 
   let lastErrorMsg = '';
+
   for (const att of attempts) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout for resilient email delivery
@@ -102,6 +132,7 @@ export async function dispatchEmailOtp({ email, name = 'Customer', purpose = 're
 
       // Skip 404 or 405 and try next attempt
       if (res.status === 404 || res.status === 405) {
+        lastErrorMsg = `Endpoint returned ${res.status}`;
         continue;
       }
 
@@ -110,7 +141,8 @@ export async function dispatchEmailOtp({ email, name = 'Customer', purpose = 're
         const text = await res.text();
         data = text ? JSON.parse(text) : {};
       } catch {
-        // Non-JSON response (e.g. index.html SPA redirect) -> try next attempt
+        // Non-JSON response (e.g. index.html SPA redirect) -> try next candidate
+        lastErrorMsg = 'Server returned HTML instead of API response';
         continue;
       }
 
@@ -151,5 +183,5 @@ export async function dispatchEmailOtp({ email, name = 'Customer', purpose = 're
     }
   }
 
-  throw new Error(lastErrorMsg || 'Email delivery service is currently busy. Please try again.');
+  throw new Error(lastErrorMsg || 'Unable to deliver verification code. Please check your internet connection and try again.');
 }
