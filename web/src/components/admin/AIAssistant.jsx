@@ -62,8 +62,10 @@ export default function AIAssistant() {
       else if (s === 'served' || s === 'completed') servedOrdersCount++;
 
       const method = String(o.paymentMethod || 'Cash').toLowerCase();
-      const isOnline = method.includes('upi') || method.includes('online') || method.includes('razorpay') || method.includes('card') || method.includes('netbanking') || method.includes('net banking');
-      const isPaid = isOnline || p === 'paid' || !!o.paidAt;
+      const isCounter = method.includes('counter') || method.includes('cash') || method.includes('desk');
+      const isOnline = !isCounter && (method.includes('upi') || method.includes('online') || method.includes('razorpay') || method.includes('card') || method.includes('netbanking') || method.includes('net banking'));
+      const isUnpaidState = !p || p === 'pending' || p === 'unpaid' || p.includes('requested') || p.includes('awaiting');
+      const isPaid = !isUnpaidState && (isOnline || p === 'paid' || !!o.paidAt);
 
       if (isPaid) {
         totalSales += amt;

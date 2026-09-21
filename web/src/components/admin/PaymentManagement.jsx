@@ -13,14 +13,30 @@ import { useTableOrder } from '../../context/TableOrderContext';
 import toast from 'react-hot-toast';
 
 export default function PaymentManagement() {
-  const { orders = [], markOrderAsPaidByAdmin, markOrderAsUnpaidByAdmin } = useTableOrder();
+  const { 
+    orders = [], 
+    isOrderPaid: isContextOrderPaid, 
+    markOrderAsPaidByAdmin, 
+    markOrderAsUnpaidByAdmin,
+    markTableAsPaidByAdmin 
+  } = useTableOrder();
   const [filterPaymentStatus, setFilterPaymentStatus] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Online verification helper (UPI, Card, NetBanking are automatically Paid)
+  // Online verification helper (UPI, Card, NetBanking are automatically Paid ONLY if not counter/cash)
   const isOnlinePayment = (method) => {
     const m = String(method || '').toLowerCase();
+    if (m.includes('counter') || m.includes('cash') || m.includes('desk')) return false;
     return m.includes('upi') || m.includes('card') || m.includes('netbanking') || m.includes('net banking') || m.includes('razorpay') || m.includes('online');
+  };
+
+  const isPaidOrder = (order) => {
+    if (typeof isContextOrderPaid === 'function') return isContextOrderPaid(order);
+    const m = String(order?.paymentMethod || '').toLowerCase();
+    const isOnline = isOnlinePayment(m);
+    const p = String(order?.paymentStatus || '').toLowerCase();
+    if (!p || p === 'pending' || p === 'unpaid' || p.includes('requested') || p.includes('awaiting')) return false;
+    return isOnline || p === 'paid' || !!order?.paidAt;
   };
 
   // Payment Metrics
@@ -32,8 +48,7 @@ export default function PaymentManagement() {
 
     orders.forEach(o => {
       const method = String(o.paymentMethod || '').toLowerCase();
-      const isOnline = isOnlinePayment(method);
-      const isPaid = isOnline || String(o.paymentStatus || '').toLowerCase() === 'paid' || !!o.paidAt;
+      const isPaid = isPaidOrder(o);
       const s = String(o.status || '').toLowerCase();
       const amt = Number(o.amount || o.total) || 0;
 
@@ -57,8 +72,7 @@ export default function PaymentManagement() {
   // Filtered Payments List
   const filteredPayments = useMemo(() => {
     return orders.filter(o => {
-      const isOnline = isOnlinePayment(o.paymentMethod);
-      const isPaid = isOnline || String(o.paymentStatus || 'pending').toLowerCase() === 'paid' || !!o.paidAt;
+      const isPaid = isPaidOrder(o);
 
       if (filterPaymentStatus === 'paid' && !isPaid) return false;
       if (filterPaymentStatus === 'pending' && isPaid) return false;
@@ -76,8 +90,12 @@ export default function PaymentManagement() {
     });
   }, [orders, filterPaymentStatus, searchQuery]);
 
-  const handleMarkPaid = async (orderId) => {
-    await markOrderAsPaidByAdmin(orderId, 'Cash');
+  const handleMarkPaid = async (order) => {
+    const orderId = order.id || order.orderNumber;
+    await markOrderAsPaidByAdmin(orderId, 'Cash (Collected at Counter)');
+    if (order.tableNumber && markTableAsPaidByAdmin) {
+      await markTableAsPaidByAdmin(order.tableNumber, 'Cash (Collected at Counter)');
+    }
     toast.success(`Order #${orderId} marked as Paid (Cash Collected)`);
   };
 
@@ -230,9 +248,9 @@ export default function PaymentManagement() {
                 </tr>
               ) : (
                 filteredPayments.map((order) => {
-                  const method = order.paymentMethod || 'Cash';
+                  const method = order.paymentMethod || 'Pay at Counter';
                   const isOnline = isOnlinePayment(method);
-                  const isPaid = isOnline || String(order.paymentStatus || '').toLowerCase() === 'paid' || !!order.paidAt;
+                  const isPaid = isPaidOrder(order);
 
                   return (
                     <tr key={order.id} className="hover:bg-slate-50/70 transition">
@@ -291,11 +309,12 @@ export default function PaymentManagement() {
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => handleMarkPaid(order.id)}
-                                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-[11px] shadow-xs cursor-pointer transition"
+                                onClick={() => handleMarkPaid(order)}
+                                className="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold text-[11px] shadow-xs cursor-pointer transition flex items-center gap-1"
                                 title="Click to mark cash bill as Paid"
                               >
-                                Mark as Paid
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <span>Mark as Paid</span>
                               </button>
                             )}
                           </div>

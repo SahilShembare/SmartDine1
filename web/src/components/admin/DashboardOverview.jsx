@@ -13,7 +13,8 @@ import {
   Coffee,
   Check,
   ChevronRight,
-  Eye
+  Eye,
+  Banknote
 } from 'lucide-react';
 import { useTableOrder } from '../../context/TableOrderContext';
 import toast from 'react-hot-toast';
@@ -26,7 +27,10 @@ export default function DashboardOverview({
     orders = [], 
     tables = [], 
     updateOrderStatus,
-    updateTableStatus 
+    updateTableStatus,
+    isOrderPaid = () => false,
+    markOrderAsPaidByAdmin,
+    markTableAsPaidByAdmin
   } = useTableOrder();
 
   const [selectedTableModal, setSelectedTableModal] = useState(null);
@@ -44,12 +48,20 @@ export default function DashboardOverview({
   const todaySales = useMemo(() => {
     return orders
       .filter(o => {
-        const p = String(o.paymentStatus || '').toLowerCase();
         const s = String(o.status || '').toLowerCase();
-        return (p === 'paid' || !!o.paidAt) && s !== 'cancelled';
+        return isOrderPaid(o) && s !== 'cancelled';
       })
       .reduce((sum, o) => sum + (Number(o.amount || o.total) || 0), 0);
-  }, [orders]);
+  }, [orders, isOrderPaid]);
+
+  // Pending Counter/Cash Bills count
+  const pendingCounterBillsCount = useMemo(() => {
+    return orders.filter(o => {
+      const s = String(o.status || '').toLowerCase();
+      if (s === 'cancelled') return false;
+      return !isOrderPaid(o);
+    }).length;
+  }, [orders, isOrderPaid]);
 
   // Total Tables & Available Tables
   const totalTables = tables.length || 25;
@@ -329,6 +341,33 @@ export default function DashboardOverview({
         </div>
       </div>
 
+      {/* Pending Counter Bills Alert Bar */}
+      {pendingCounterBillsCount > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/80 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 shadow-xs">
+              <Banknote className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-sm font-bold text-amber-900 flex items-center gap-2">
+                <span>{pendingCounterBillsCount} Counter Bill{pendingCounterBillsCount > 1 ? 's' : ''} Pending Payment</span>
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+              </div>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Customer bills waiting for counter settlement. Click <strong>Mark as Paid</strong> once cash or card is collected.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateTab('payments')}
+            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition active:scale-95 cursor-pointer shrink-0 self-start sm:self-auto"
+          >
+            Open Payments Console →
+          </button>
+        </div>
+      )}
+
       {/* ============================================================ */}
       {/* 3. LIVE KITCHEN UPDATES TABLE                                */}
       {/* ============================================================ */}
@@ -362,11 +401,11 @@ export default function DashboardOverview({
                 <th className="px-5 py-3.5">Order ID</th>
                 <th className="px-4 py-3.5">Table</th>
                 <th className="px-4 py-3.5">Customer</th>
-                <th className="px-4 py-3.5">Dishes in Prep</th>
+                <th className="px-4 py-3.5">Dishes</th>
                 <th className="px-4 py-3.5">Amount</th>
-                <th className="px-4 py-3.5">Order Time</th>
+                <th className="px-4 py-3.5">Payment</th>
                 <th className="px-4 py-3.5">Kitchen Status</th>
-                <th className="px-5 py-3.5 text-right">Details</th>
+                <th className="px-5 py-3.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
@@ -378,11 +417,11 @@ export default function DashboardOverview({
                 </tr>
               ) : (
                 recentOrders.map((order) => {
-                  const currentStatus = String(order.status || 'pending').toLowerCase();
+                  const paid = isOrderPaid(order);
                   return (
                     <tr key={order.id} className="hover:bg-slate-50/70 transition">
                       <td className="px-5 py-3.5 font-bold text-slate-900">
-                        {order.id}
+                        #{order.id}
                       </td>
                       <td className="px-4 py-3.5">
                         <span className="inline-block px-2 py-0.5 rounded-md font-semibold text-xs bg-slate-100 text-slate-800 border border-slate-200">
@@ -398,21 +437,50 @@ export default function DashboardOverview({
                       <td className="px-4 py-3.5 font-bold text-slate-900">
                         ₹{Number(order.amount || order.total || 0).toLocaleString('en-IN')}
                       </td>
-                      <td className="px-4 py-3.5 text-slate-500">
-                        {formatOrderTime(order.createdAt)}
+                      <td className="px-4 py-3.5">
+                        {paid ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            Paid
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                            Counter (Pending)
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3.5">
                         {getStatusBadge(order.status)}
                       </td>
                       <td className="px-5 py-3.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedOrderModal(order)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition cursor-pointer"
-                        >
-                          <Eye className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>View</span>
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {!paid && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                await markOrderAsPaidByAdmin(order.id, 'Cash (Collected at Counter)');
+                                if (order.tableNumber) {
+                                  await markTableAsPaidByAdmin(order.tableNumber, 'Cash (Collected at Counter)');
+                                }
+                                toast.success(`💰 Order #${order.id} marked as Paid at Counter!`, { icon: '✅' });
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] shadow-xs transition active:scale-95 cursor-pointer"
+                              title="Mark as Paid at Counter"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Mark as Paid</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrderModal(order)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-[11px] transition cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>View</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -526,16 +594,40 @@ export default function DashboardOverview({
                 <span className="font-semibold text-slate-700">{selectedTableModal.table.capacity || 4} Persons</span>
               </div>
               {selectedTableModal.activeOrder && (
-                <div className="p-3 bg-slate-50 rounded-xl space-y-1 text-xs">
-                  <div className="font-semibold text-slate-800">
-                    Order: {selectedTableModal.activeOrder.id}
+                <div className="p-3 bg-slate-50 rounded-xl space-y-2 text-xs border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <div className="font-bold text-slate-800">
+                      Order: #{selectedTableModal.activeOrder.id}
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      isOrderPaid(selectedTableModal.activeOrder)
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {isOrderPaid(selectedTableModal.activeOrder) ? 'Paid' : 'Unpaid (Counter)'}
+                    </span>
                   </div>
                   <div className="text-slate-500">
                     Guest: {selectedTableModal.activeOrder.customerName}
                   </div>
-                  <div className="font-bold text-emerald-600">
-                    Bill: ₹{selectedTableModal.activeOrder.amount || selectedTableModal.activeOrder.total}
+                  <div className="font-bold text-emerald-600 flex items-center justify-between">
+                    <span>Bill Amount:</span>
+                    <span className="text-sm font-black">₹{selectedTableModal.activeOrder.amount || selectedTableModal.activeOrder.total}</span>
                   </div>
+                  {!isOrderPaid(selectedTableModal.activeOrder) && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await markTableAsPaidByAdmin(selectedTableModal.table.tableNumber, 'Cash (Collected at Counter)');
+                        toast.success(`💰 Table ${selectedTableModal.table.tableNumber} bill marked as Paid!`, { icon: '✅' });
+                        setSelectedTableModal(null);
+                      }}
+                      className="w-full mt-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Mark Table Bill as Paid</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -661,7 +753,29 @@ export default function DashboardOverview({
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 text-right">
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+              {!isOrderPaid(selectedOrderModal) ? (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await markOrderAsPaidByAdmin(selectedOrderModal.id, 'Cash (Collected at Counter)');
+                    if (selectedOrderModal.tableNumber) {
+                      await markTableAsPaidByAdmin(selectedOrderModal.tableNumber, 'Cash (Collected at Counter)');
+                    }
+                    toast.success(`💰 Order #${selectedOrderModal.id} marked as Paid at Counter!`, { icon: '✅' });
+                    setSelectedOrderModal(null);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Mark as Paid (₹{selectedOrderModal.amount || selectedOrderModal.total})</span>
+                </button>
+              ) : (
+                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Settled & Paid</span>
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setSelectedOrderModal(null)}

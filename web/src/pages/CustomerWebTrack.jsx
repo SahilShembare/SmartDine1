@@ -417,19 +417,27 @@ export default function CustomerWebTrack() {
           </div>
 
           <div className="pt-2 border-t border-slate-800 flex justify-between text-xs text-slate-400">
-            <span>Payment Method: {order.paymentMethod || 'Dine-In Billing'}</span>
-            <span className="text-emerald-400 font-black uppercase">{order.paymentStatus || 'Pending'}</span>
+            <span>Payment: {order.paymentMethod || 'Pay at Counter'}</span>
+            <span className={`font-black uppercase ${
+              String(order.paymentStatus || '').toLowerCase() === 'paid' ? 'text-emerald-400' : 'text-amber-400'
+            }`}>
+              {String(order.paymentStatus || '').toLowerCase() === 'paid' ? '🟢 PAID' : '🟠 PAY AT COUNTER (PENDING)'}
+            </span>
           </div>
         </div>
 
         {/* 7. ACTION BUTTONS: VIEW BILL RECEIPT & ORDER MORE */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Link
-            to={isTableAssigned ? `/bill?table=${order.tableNumber}&orderId=${order.id}&view=receipt` : `/bill?orderId=${order.id}&view=receipt`}
+            to={
+              String(order.paymentStatus || '').toLowerCase() === 'paid'
+                ? (isTableAssigned ? `/bill?table=${order.tableNumber}&orderId=${order.id}&view=receipt` : `/bill?orderId=${order.id}&view=receipt`)
+                : (isTableAssigned ? `/bill?table=${order.tableNumber}&orderId=${order.id}` : `/bill?orderId=${order.id}`)
+            }
             className="py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-white border border-amber-500/40 font-black text-sm transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
           >
             <Receipt className="w-4 h-4 text-amber-400" />
-            <span>View Bill Receipt</span>
+            <span>{String(order.paymentStatus || '').toLowerCase() === 'paid' ? 'View Bill Receipt' : 'View / Settle Bill'}</span>
           </Link>
 
           <Link

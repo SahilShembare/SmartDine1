@@ -30,7 +30,9 @@ export default function TableManagement() {
     updateTableStatus,
     addTable,
     deleteTable,
-    resetToRealTables
+    resetToRealTables,
+    isOrderPaid = () => false,
+    markTableAsPaidByAdmin
   } = useTableOrder();
 
   const [selectedTable, setSelectedTable] = useState(null);
@@ -608,14 +610,33 @@ export default function TableManagement() {
               </div>
 
               {selectedTable.currentOrder && (
-                <div className="p-3 bg-slate-50 rounded-xl space-y-1.5 border border-slate-100">
+                <div className="p-3 bg-slate-50 rounded-xl space-y-2 border border-slate-200">
                   <div className="flex items-center justify-between font-bold text-slate-900">
-                    <span>Order: {selectedTable.currentOrder.id}</span>
+                    <span>Order: #{selectedTable.currentOrder.id}</span>
                     <span className="text-emerald-600">₹{selectedTable.currentOrder.amount || selectedTable.currentOrder.total}</span>
                   </div>
-                  <div className="text-slate-600">
-                    Guest: {selectedTable.currentOrder.customerName}
+                  <div className="flex items-center justify-between text-slate-600 text-xs">
+                    <span>Guest: {selectedTable.currentOrder.customerName || 'Customer'}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      isOrderPaid(selectedTable.currentOrder) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {isOrderPaid(selectedTable.currentOrder) ? 'Paid' : 'Unpaid (Counter)'}
+                    </span>
                   </div>
+                  {!isOrderPaid(selectedTable.currentOrder) && markTableAsPaidByAdmin && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        await markTableAsPaidByAdmin(selectedTable.tableNumber, 'Cash (Collected at Counter)');
+                        toast.success(`💰 Table ${selectedTable.tableNumber} bill marked as Paid!`, { icon: '✅' });
+                        setSelectedTable(null);
+                      }}
+                      className="w-full mt-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Mark Table Bill as Paid</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>

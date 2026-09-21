@@ -44,10 +44,12 @@ export default function ReportManagement() {
         completedOrdersCount++;
       }
 
-      // Online payment methods (UPI, Card, NetBanking) are automatically Paid
+      // Online payment methods (UPI, Card, NetBanking) are automatically Paid ONLY if not counter/cash
       const method = String(order.paymentMethod || 'Cash').toLowerCase();
-      const isOnline = method.includes('upi') || method.includes('online') || method.includes('razorpay') || method.includes('card') || method.includes('netbanking') || method.includes('net banking');
-      const isPaid = isOnline || pStatus === 'paid' || !!order.paidAt;
+      const isCounter = method.includes('counter') || method.includes('cash') || method.includes('desk');
+      const isOnline = !isCounter && (method.includes('upi') || method.includes('online') || method.includes('razorpay') || method.includes('card') || method.includes('netbanking') || method.includes('net banking'));
+      const isUnpaidState = !pStatus || pStatus === 'pending' || pStatus === 'unpaid' || pStatus.includes('requested') || pStatus.includes('awaiting');
+      const isPaid = !isUnpaidState && (isOnline || pStatus === 'paid' || !!order.paidAt);
 
       if (isPaid) {
         dailySales += amount;

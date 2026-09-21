@@ -106,13 +106,20 @@ export default function CustomerWebBill() {
   const isOrderPaid = (order) => {
     if (!order) return false;
     const pStatus = String(order.paymentStatus || order.payment_status || '').trim().toLowerCase();
-    if (pStatus === 'unpaid' || pStatus === 'pending' || pStatus.includes('requested') || pStatus.includes('awaiting')) {
+    if (
+      !pStatus ||
+      pStatus === 'unpaid' || 
+      pStatus === 'pending' || 
+      pStatus.includes('requested') || 
+      pStatus.includes('awaiting')
+    ) {
       return false;
     }
     if (pStatus === 'paid' || pStatus === 'cash paid' || pStatus === 'online paid') {
       return true;
     }
-    if ((order.paidAt || order.paid_at) && (order.transactionId || order.razorpay_payment_id)) {
+    const txn = order.transactionId || order.razorpay_payment_id || '';
+    if ((order.paidAt || order.paid_at) && txn && !txn.startsWith('PENDING') && !txn.startsWith('COUNTER')) {
       return true;
     }
     return false;
@@ -237,20 +244,18 @@ export default function CustomerWebBill() {
     );
   });
 
-  const effectiveReceipt = paymentSuccessData || receiptData;
-  const hasSettledReceipt = Boolean(effectiveReceipt && ((effectiveReceipt.items && effectiveReceipt.items.length > 0) || Number(effectiveReceipt.amount) > 0));
-
   // Determine if viewing receipt:
-  // Show receipt when:
-  // - paymentSuccessData is set (just finished payment)
-  // - URL explicitly has view=receipt
-  // - showReceiptView is true (user clicked view receipt)
-  // - There are 0 active unpaid orders on table and a settled receipt exists
+  // Show receipt ONLY when:
+  // 1. paymentSuccessData is set (just finished payment in this session)
+  // 2. OR There are 0 active unpaid orders on table AND a settled receipt exists
+  // 3. OR targetOrder is explicitly specified, isOrderPaid(targetOrder) is true, AND viewReceiptParam is true
+  // NEVER show settled receipt if table has active unpaid orders!
+  const hasActiveUnpaidOrders = billData.activeOrders.length > 0;
+
   const isViewingReceipt = Boolean(
     paymentSuccessData || 
-    viewReceiptParam || 
-    (showReceiptView && hasSettledReceipt) ||
-    (billData.activeOrders.length === 0 && hasSettledReceipt)
+    (!hasActiveUnpaidOrders && hasSettledReceipt && (showReceiptView || viewReceiptParam || billData.activeOrders.length === 0)) ||
+    (targetOrder && isOrderPaid(targetOrder) && viewReceiptParam)
   );
 
   const activeReceipt = effectiveReceipt || {
@@ -1357,6 +1362,19 @@ export default function CustomerWebBill() {
           <div className="lg:col-span-7 p-4 sm:p-5 flex flex-col justify-between space-y-4">
             
             <div className="space-y-3">
+
+              {/* Active Cash/Counter Settlement Pending Banner */}
+              {(cashRequested || billData.activeOrders.some(o => String(o.paymentStatus || '').toLowerCase().includes('requested') || String(o.paymentMethod || '').toLowerCase().includes('counter'))) && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-amber-300 animate-in fade-in">
+                  <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
+                  <div className="text-xs space-y-0.5">
+                    <div className="font-bold text-white">🟠 Payment Pending at Counter</div>
+                    <p className="text-amber-200/80 text-[11px] leading-relaxed">
+                      Table #{formattedTable} bill of <strong>₹{billData.total.toFixed(0)}</strong> is currently pending. Please settle at the cash counter. Once received, the cashier will mark it as paid.
+                    </p>
+                  </div>
+                </div>
+              )}
               
               {/* Payment Mode Selector Tabs */}
               <div className="flex items-center justify-between">
@@ -1375,7 +1393,7 @@ export default function CustomerWebBill() {
                   { id: 'razorpay', label: 'Razorpay', icon: ShieldCheck, badge: 'FAST' },
                   { id: 'upi', label: 'Direct QR', icon: Smartphone },
                   { id: 'card', label: 'Cards', icon: CreditCard },
-                  { id: 'cash', label: 'Cash / Bill', icon: Banknote },
+                  { id: 'cash', label: 'Pay at Counter', icon: Banknote },
                 ].map((mode) => {
                   const Icon = mode.icon;
                   return (
@@ -1568,16 +1586,24 @@ export default function CustomerWebBill() {
                 </div>
               )}
 
-              {/* 4. CASH */}
+              {/* 4. PAY AT COUNTER */}
               {paymentMode === 'cash' && (
-                <div className="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/40 text-xs text-amber-300 space-y-1">
-                  <span className="font-bold text-white flex items-center gap-1">
-                    <Banknote className="w-4 h-4 text-orange-400" />
-                    <span>Pay at Cashier Counter / Captain</span>
-                  </span>
-                  <p className="text-[11px] text-amber-200/80">
-                    Settle ₹{billData.total.toFixed(0)} via cash or card swipe with your table captain.
+                <div className="p-3.5 rounded-2xl bg-amber-950/30 border border-amber-500/40 text-xs text-amber-300 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-white flex items-center gap-1.5">
+                      <Banknote className="w-4 h-4 text-orange-400" />
+                      <span>Pay at Reception / Cash Counter</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-bold border border-amber-500/30">
+                      Offline Settle
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                    Settle ₹{billData.total.toFixed(0)} via Cash, Table QR, or Card Swipe directly at the cash counter or with your table captain.
                   </p>
+                  <div className="p-2 rounded-xl bg-slate-950/80 border border-amber-500/20 text-[11px] text-slate-300">
+                    ℹ️ Your bill remains <strong>Unpaid</strong> until the cashier receives payment and marks it as Paid in the admin dashboard.
+                  </div>
                 </div>
               )}
 
@@ -1654,7 +1680,7 @@ export default function CustomerWebBill() {
                     : paymentMode === 'razorpay' 
                     ? `Pay Bill via Razorpay (₹${billData.total.toFixed(0)})` 
                     : paymentMode === 'cash' 
-                    ? `Request Cash Collection (₹${billData.total.toFixed(0)})` 
+                    ? (cashRequested ? `Counter Settlement Requested (₹${billData.total.toFixed(0)})` : `Pay at Counter (Request Settlement • ₹${billData.total.toFixed(0)})`) 
                     : `Pay Bill (₹${billData.total.toFixed(0)})`}
                 </span>
               </button>

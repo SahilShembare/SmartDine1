@@ -23,10 +23,15 @@ const getOrderDate = (order) => {
 
 // Helper to check if order is paid (online is auto-paid, or marked paid)
 const isOrderPaid = (order) => {
-  const method = String(order?.paymentMethod || '').toLowerCase();
-  const isOnline = method.includes('upi') || method.includes('card') || method.includes('netbanking') || method.includes('net banking') || method.includes('razorpay') || method.includes('online');
-  const pStatus = String(order?.paymentStatus || '').toLowerCase();
-  return isOnline || pStatus === 'paid' || !!order?.paidAt;
+  if (!order) return false;
+  const pStatus = String(order.paymentStatus || order.payment_status || '').toLowerCase().trim();
+  if (!pStatus || pStatus === 'pending' || pStatus === 'unpaid' || pStatus.includes('requested') || pStatus.includes('awaiting')) {
+    return false;
+  }
+  const method = String(order.paymentMethod || '').toLowerCase();
+  const isCounter = method.includes('counter') || method.includes('cash') || method.includes('desk');
+  const isOnline = !isCounter && (method.includes('upi') || method.includes('card') || method.includes('netbanking') || method.includes('net banking') || method.includes('razorpay') || method.includes('online'));
+  return isOnline || pStatus === 'paid' || !!order.paidAt;
 };
 
 export default function SalesAnalysis() {

@@ -57,8 +57,8 @@ export default function AdminPayments() {
     if (!o) return false;
     if (isOrderRefunded(o) || isOrderFailed(o)) return false;
     const p = String(o.paymentStatus || o.payment_status || '').trim().toUpperCase();
-    if (p === 'UNPAID' || p === 'PENDING' || p.includes('REQUESTED') || p.includes('AWAITING')) return false;
-    return p === 'PAID' || p.includes('PAID') || p.includes('RAZORPAY') || !!o.paid_at || !!o.paidAt;
+    if (!p || p === 'UNPAID' || p === 'PENDING' || p.includes('REQUESTED') || p.includes('AWAITING')) return false;
+    return p === 'PAID' || p.includes('PAID') || p.includes('RAZORPAY');
   };
 
   const paidOrders = orders.filter(o => isOrderPaid(o) && o.status !== 'cancelled');

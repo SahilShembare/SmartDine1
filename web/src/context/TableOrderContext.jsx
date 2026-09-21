@@ -375,10 +375,11 @@ export function TableOrderProvider({ children }) {
   // Check if an order has already been paid / cleared (defined before placeOrder)
   const isOrderPaid = (order) => {
     if (!order) return false;
-    const pStatus = String(order.paymentStatus || '').trim().toLowerCase();
+    const pStatus = String(order.paymentStatus || order.payment_status || '').trim().toLowerCase();
     
     // Explicitly un-paid or pending collection states
     if (
+      !pStatus ||
       pStatus === 'unpaid' || 
       pStatus === 'pending' || 
       pStatus.includes('requested') || 
@@ -392,7 +393,8 @@ export function TableOrderProvider({ children }) {
       return true;
     }
 
-    if (order.paidAt && order.transactionId && !order.transactionId.startsWith('PENDING')) {
+    // Order has paidAt and real verified transaction ID (not pending/counter placeholder)
+    if (order.paidAt && order.transactionId && !order.transactionId.startsWith('PENDING') && !order.transactionId.startsWith('COUNTER')) {
       return true;
     }
     return false;
@@ -461,16 +463,28 @@ export function TableOrderProvider({ children }) {
     const estimatedPrepMinutes = Math.min(45, Math.max(15, 15 + Math.floor(cartItemCount * 2)));
     const prepTimeRange = `${estimatedPrepMinutes}–${estimatedPrepMinutes + 5} min`;
     const finalPrepStartedAt = prepStartedAt || new Date().toISOString();
-    // Check if customer is paying with an online method (UPI, Card, Net Banking, Razorpay)
-    const isOnlineMethod = ['upi', 'card', 'netbanking', 'net banking', 'razorpay', 'online'].some(m => 
-      String(paymentMethod || '').toLowerCase().includes(m)
+
+    // Check if customer is paying via Counter / Cash / Desk (Offline settlement)
+    const mStr = String(paymentMethod || '').toLowerCase();
+    const isCounterOrCash = mStr.includes('counter') || mStr.includes('cash') || mStr.includes('desk') || String(paymentGateway || '').toLowerCase() === 'none';
+
+    // Only genuine Razorpay payments or explicitly verified online payments are auto-marked PAID
+    const isOnlineMethod = !isCounterOrCash && (
+      Boolean(razorpay_payment_id) || 
+      paymentGateway === 'Razorpay' ||
+      (String(paymentStatus || '').toUpperCase() === 'PAID')
     );
-    const finalPaymentStatus = isOnlineMethod ? 'PAID' : (String(paymentStatus || 'PENDING').toUpperCase());
-    const finalPaymentMethod = paymentMethod.includes('Razorpay') || paymentMethod.includes('Online') ? 'RAZORPAY' : (paymentMethod || 'CASH');
-    const finalGateway = finalPaymentMethod === 'RAZORPAY' ? 'Razorpay' : (paymentGateway || 'None');
+
+    const finalPaymentStatus = isOnlineMethod ? 'PAID' : 'PENDING';
+    const finalPaymentMethod = isCounterOrCash
+      ? 'Pay at Counter'
+      : (paymentMethod.includes('Razorpay') || paymentMethod.includes('Online') ? 'RAZORPAY' : (paymentMethod || 'Pay at Counter'));
+    const finalGateway = isOnlineMethod ? 'Razorpay' : 'None';
     const finalAmount = total !== null && total !== undefined ? Number(total) : cartTotal;
-    const finalPaidAt = (finalPaymentStatus === 'PAID' || isOnlineMethod) ? (paidAt || new Date().toISOString()) : null;
-    const finalTxnId = transactionId || razorpay_payment_id || (finalPaymentStatus === 'PAID' ? `TXN-${Date.now().toString().slice(-6)}` : null);
+    const finalPaidAt = finalPaymentStatus === 'PAID' ? (paidAt || new Date().toISOString()) : null;
+    const finalTxnId = isOnlineMethod 
+      ? (transactionId || razorpay_payment_id || `TXN-${Date.now().toString().slice(-6)}`) 
+      : (transactionId || `COUNTER-${Date.now().toString().slice(-6)}`);
 
     const allKnownOrders = (orders && orders.length > 0) ? orders : localStore.getOrders();
     const nextOrdNum = getNextOrderNumber(allKnownOrders);
@@ -704,6 +718,24 @@ export function TableOrderProvider({ children }) {
       paidAt: new Date().toISOString()
     };
 
+    if (isFirebaseConfigured) {
+      try {
+        const q = query(collection(db, 'orders'), where('tableNumber', '==', formatted));
+        const snap = await getDocs(q);
+        for (const d of snap.docs) {
+          const data = d.data();
+          if (data.paymentStatus !== 'Paid') {
+            await updateDoc(doc(db, 'orders', d.id), {
+              ...paidPayload,
+              updatedAt: new Date().toISOString()
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Firebase payTableBill error:', err);
+      }
+    }
+
     localStore.updateOrdersForTable(formatted, paidPayload);
     const updated = localStore.getOrders();
     setOrders([...updated]);
@@ -719,26 +751,45 @@ export function TableOrderProvider({ children }) {
     };
   };
 
-  // Customer requests cash payment (Admin / Cashier needs to collect cash at counter or table)
+  // Customer requests cash/counter payment (Admin / Cashier needs to collect at counter or table)
   const requestCashPaymentForTable = async (tableNum = currentTable) => {
     if (!tableNum) throw new Error('No active table found');
     const formatted = String(tableNum).padStart(2, '0');
 
-    localStore.updateOrdersForTable(formatted, {
+    const reqPayload = {
       paymentStatus: 'Cash Payment Requested',
-      paymentMethod: 'Cash (Awaiting Collection)',
+      paymentMethod: 'Pay at Counter',
       billRequestedAt: new Date().toISOString()
-    });
+    };
 
+    if (isFirebaseConfigured) {
+      try {
+        const q = query(collection(db, 'orders'), where('tableNumber', '==', formatted));
+        const snap = await getDocs(q);
+        for (const d of snap.docs) {
+          const data = d.data();
+          if (data.paymentStatus !== 'Paid') {
+            await updateDoc(doc(db, 'orders', d.id), {
+              ...reqPayload,
+              updatedAt: new Date().toISOString()
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Firebase requestCashPayment error:', err);
+      }
+    }
+
+    localStore.updateOrdersForTable(formatted, reqPayload);
     const updated = localStore.getOrders();
     setOrders([...updated]);
     return { tableNumber: formatted, status: 'Cash Payment Requested' };
   };
 
   // Admin marks table bill as paid (e.g. Received Cash at Counter / Handed to Captain)
-  const markTableAsPaidByAdmin = (tableNum, paymentMethod = 'Cash (Collected by Cashier)') => {
+  const markTableAsPaidByAdmin = async (tableNum, paymentMethod = 'Cash (Collected at Counter)') => {
     const formatted = String(tableNum).padStart(2, '0');
-    return payTableBill(formatted, {
+    return await payTableBill(formatted, {
       paymentMethod,
       transactionId: `CASH-${Date.now().toString().slice(-6)}`
     });
@@ -769,19 +820,34 @@ export function TableOrderProvider({ children }) {
     return updates;
   };
 
-  // Mark a single order as Paid by Admin (for Cash orders)
-  const markOrderAsPaidByAdmin = async (orderId, paymentMethod = 'Cash') => {
+  // Mark a single order as Paid by Admin (for Cash / Counter orders)
+  const markOrderAsPaidByAdmin = async (orderId, paymentMethod = 'Cash (Collected at Counter)') => {
+    const targetOrder = orders.find(o => o.id === orderId || o.orderNumber === orderId || o.firestoreDocId === orderId);
+    const allKnownOrders = (orders && orders.length > 0) ? orders : localStore.getOrders();
+    const assignedInvoice = targetOrder?.invoiceNumber || getNextInvoiceNumber(allKnownOrders);
+
     const updates = {
       paymentStatus: 'Paid',
       paymentMethod: paymentMethod,
+      invoiceNumber: assignedInvoice,
       paidAt: new Date().toISOString(),
       transactionId: `CASH-${Date.now().toString().slice(-6)}`,
+      status: targetOrder?.status === 'pending' || targetOrder?.status === 'ready' || targetOrder?.status === 'served' ? targetOrder.status : 'completed',
       updatedAt: new Date().toISOString()
     };
 
     if (isFirebaseConfigured) {
       try {
-        await updateDoc(doc(db, 'orders', orderId), updates);
+        const firestoreId = targetOrder?.firestoreDocId;
+        if (firestoreId) {
+          await updateDoc(doc(db, 'orders', firestoreId), updates);
+        } else {
+          const q = query(collection(db, 'orders'), where('orderNumber', '==', orderId));
+          const snap = await getDocs(q);
+          for (const d of snap.docs) {
+            await updateDoc(doc(db, 'orders', d.id), updates);
+          }
+        }
       } catch (err) {
         console.warn('Firebase mark order paid error:', err);
       }
@@ -1229,6 +1295,7 @@ export function TableOrderProvider({ children }) {
       setTables,
       orders,
       setOrders,
+      isOrderPaid,
       placeOrder,
       getTableActiveOrders,
       getCombinedTableBill,

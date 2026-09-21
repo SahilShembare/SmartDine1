@@ -472,8 +472,8 @@ export default function CustomerWebCart() {
 
       await submitOrderPlacement({
         mode: 'counter',
-        paymentMethodName: 'Pay at Counter (Cash / Card)',
-        paymentLabel: 'CASH / COUNTER',
+        paymentMethodName: 'Pay at Counter',
+        paymentLabel: 'PAY AT COUNTER',
         paymentStatus: 'PENDING',
         transactionId: `COUNTER-${Date.now()}`
       });
@@ -817,7 +817,7 @@ export default function CustomerWebCart() {
               <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
                 isPaid ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
               }`}>
-                {isPaid ? '🟢 VERIFIED PAID' : '🟠 PAY AT COUNTER'}
+                {isPaid ? '🟢 VERIFIED PAID' : '🟠 PAY AT COUNTER (PENDING)'}
               </span>
             </h4>
 
@@ -892,11 +892,11 @@ export default function CustomerWebCart() {
             </button>
 
             <Link
-              to={`/bill?table=${completedOrderData.tableNumber}&orderId=${completedOrderData.orderId}&view=receipt`}
+              to={isPaid ? `/bill?table=${completedOrderData.tableNumber}&orderId=${completedOrderData.orderId}&view=receipt` : `/bill?table=${completedOrderData.tableNumber}&orderId=${completedOrderData.orderId}`}
               className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs border border-slate-800 shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Receipt className="w-4 h-4 text-amber-400" />
-              <span>View & Print Bill Receipt</span>
+              <span>{isPaid ? 'View & Print Bill Receipt' : 'View / Settle Table Bill'}</span>
             </Link>
 
             <button
