@@ -68,7 +68,6 @@ export default function KitchenDashboard() {
 
   // Audio & Notification States
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [newOrderAlert, setNewOrderAlert] = useState(null);
   const [lastSyncTime, setLastSyncTime] = useState(() => new Date().toLocaleTimeString());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [kotSlipOrder, setKotSlipOrder] = useState(null); // Active order for Thermal KOT print modal
@@ -183,23 +182,37 @@ export default function KitchenDashboard() {
     }
   };
 
-  // Persistent tracking to guarantee an order is notified EXACTLY ONCE (no repeats)
+  // Persistent tracking to guarantee an order is notified EXACTLY ONCE (no repeats or double bells)
   const notifiedOrderIdsRef = useRef(new Set());
   const isInitialMountRef = useRef(true);
+  const lastAlertTimeRef = useRef(0);
+  const lastAlertOrderKeyRef = useRef(null);
 
-  // Initialize with existing orders so opening dashboard doesn't re-alert old orders
+  // Helper to extract all identifier keys for an order to guarantee 100% deduplication
+  const getOrderKeys = (o) => {
+    if (!o) return [];
+    const keys = [
+      o.id,
+      o.orderNumber,
+      o.firestoreDocId,
+      formatOrderNumber(o.id),
+      formatOrderNumber(o.orderNumber)
+    ].filter(Boolean).map(String);
+    return [...new Set(keys)];
+  };
+
+  // Initialize with existing orders on first load so opening dashboard doesn't re-alert old orders
   useEffect(() => {
-    if (orders && orders.length > 0) {
+    if (isInitialMountRef.current && orders && orders.length > 0) {
       orders.forEach(o => {
-        const key = o.id || o.orderNumber;
-        if (key) notifiedOrderIdsRef.current.add(key);
+        getOrderKeys(o).forEach(k => {
+          notifiedOrderIdsRef.current.add(k);
+          try { sessionStorage.setItem(`smartdine_notified_kot_${k}`, 'true'); } catch {}
+        });
       });
-      // Allow new orders after initial load settles
-      setTimeout(() => {
-        isInitialMountRef.current = false;
-      }, 1000);
+      isInitialMountRef.current = false;
     }
-  }, []);
+  }, [orders]);
 
   // 3-Second Active Auto-Refresh Interval
   useEffect(() => {
@@ -219,44 +232,56 @@ export default function KitchenDashboard() {
 
     // Find orders that have not been notified yet and are active
     const unnotified = orders.filter(o => {
-      const key = o.id || o.orderNumber;
-      if (!key) return false;
-      if (notifiedOrderIdsRef.current.has(key)) return false;
-      // Also check sessionStorage
-      try {
-        if (sessionStorage.getItem(`smartdine_notified_kot_${key}`)) {
-          notifiedOrderIdsRef.current.add(key);
-          return false;
-        }
-      } catch {}
       // Only alert on active/new orders
-      return o.status !== 'completed' && o.status !== 'cancelled';
+      const status = String(o.status || '').toLowerCase().trim();
+      if (status === 'completed' || status === 'cancelled') return false;
+
+      const keys = getOrderKeys(o);
+      if (keys.length === 0) return false;
+
+      // If ANY key was already notified, skip
+      const alreadyNotified = keys.some(k => 
+        notifiedOrderIdsRef.current.has(k) || 
+        (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(`smartdine_notified_kot_${k}`))
+      );
+      return !alreadyNotified;
     });
 
     if (unnotified.length > 0) {
       // Pick the latest order
       const latest = unnotified[0];
-      const orderKey = latest.id || latest.orderNumber;
-      const cleanOrderNo = formatOrderNumber(latest.orderNumber || latest.id);
+      const allKeys = getOrderKeys(latest);
+      const primaryKey = String(latest.orderNumber || latest.id || allKeys[0]);
 
-      // Mark ALL unnotified as notified IMMEDIATELY to prevent repeat loops
+      // Debounce protection: If alerted for this exact order within 4 seconds, ignore repeat events
+      const now = Date.now();
+      if (lastAlertOrderKeyRef.current === primaryKey && (now - lastAlertTimeRef.current) < 4000) {
+        return;
+      }
+
+      // Mark ALL keys of all unnotified orders as notified IMMEDIATELY to prevent repeat loops
       unnotified.forEach(o => {
-        const k = o.id || o.orderNumber;
-        if (k) {
+        getOrderKeys(o).forEach(k => {
           notifiedOrderIdsRef.current.add(k);
           try { sessionStorage.setItem(`smartdine_notified_kot_${k}`, 'true'); } catch {}
-        }
+        });
       });
 
+      lastAlertOrderKeyRef.current = primaryKey;
+      lastAlertTimeRef.current = now;
+
+      const cleanOrderNo = formatOrderNumber(latest.orderNumber || latest.id);
+
+      // 1. Audio and Browser System Notification (Single call, silent: true on OS level)
       if (soundEnabled) {
         showOrderNotification(
           `🔔 New Order: Table ${latest.tableNumber || '01'}!`,
-          `Order #${cleanOrderNo} • ${latest.items?.length || 0} items`
+          `Order #${cleanOrderNo} • ${latest.items?.length || 0} items`,
+          `kot-${primaryKey}`
         );
       }
-      setNewOrderAlert(latest);
 
-      // Pop-up Toast Alert (fired only once)
+      // 2. SINGLE Unified In-App Toast Alert (No duplicate floating banner)
       toast.custom((t) => (
         <div className="p-4 rounded-2xl bg-slate-900 border-2 border-orange-500 shadow-[0_10px_35px_rgba(232,117,42,0.45)] text-white flex items-center gap-3.5 max-w-md w-full animate-in slide-in-from-top duration-300">
           <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-black shrink-0 animate-bounce">
@@ -296,9 +321,7 @@ export default function KitchenDashboard() {
             </button>
           </div>
         </div>
-      ), { duration: 8000, id: `kot-${orderKey}` });
-
-      setTimeout(() => setNewOrderAlert(null), 9000);
+      ), { duration: 8000, id: `kot-${primaryKey}` });
     }
   }, [orders, soundEnabled]);
 
@@ -311,9 +334,8 @@ export default function KitchenDashboard() {
       total: 620,
       items: [{ name: 'Paneer Butter Masala', quantity: 2 }, { name: 'Butter Naan', quantity: 4 }]
     };
-    setNewOrderAlert(testOrder);
 
-    // Pop-up Toast Alert for Test Bell
+    // Pop-up Toast Alert for Test Bell (Single toast only)
     toast.custom((t) => (
       <div className="p-4 rounded-2xl bg-slate-900 border-2 border-orange-500 shadow-[0_10px_35px_rgba(232,117,42,0.45)] text-white flex items-center gap-3.5 max-w-md w-full animate-in slide-in-from-top duration-300">
         <div className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-black shrink-0 animate-bounce">
@@ -330,20 +352,10 @@ export default function KitchenDashboard() {
             2x Paneer Butter Masala, 4x Butter Naan
           </p>
           <span className="text-[11px] font-extrabold text-amber-400">
-            6 dishes to prepare
+            6 dishes to prepare • Test Alert
           </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              toast.dismiss(t.id);
-              setActiveTab('pending');
-            }}
-            className="px-3 py-1.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-black text-xs shadow cursor-pointer transition active:scale-95"
-          >
-            View
-          </button>
           <button
             type="button"
             onClick={() => toast.dismiss(t.id)}
@@ -353,9 +365,7 @@ export default function KitchenDashboard() {
           </button>
         </div>
       </div>
-    ), { duration: 7000 });
-
-    setTimeout(() => setNewOrderAlert(null), 7000);
+    ), { duration: 5000, id: `test-sound-${testOrder.id}` });
   };
 
   const handleStatusUpdate = async (orderId, newStatus) => {
@@ -930,49 +940,6 @@ export default function KitchenDashboard() {
           </div>
         </header>
 
-        {/* ================================================================== */}
-        {/* 2. FLOATING NEW ORDER ALERT BANNER                                 */}
-        {/* ================================================================== */}
-        {newOrderAlert && (
-          <div className="fixed top-20 right-6 z-50 max-w-md w-full animate-in slide-in-from-top duration-300 px-4">
-            <div className="p-4 rounded-2xl bg-gradient-to-r from-orange-600 via-amber-600 to-orange-600 text-white shadow-[0_0_35px_rgba(232,117,42,0.45)] border-2 border-white/30 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-xl bg-white text-orange-600 flex items-center justify-center font-black animate-bounce shadow-md">
-                  <BellRing className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="font-black text-sm flex items-center gap-1.5">
-                    <span>New Order: Table {newOrderAlert.tableNumber || '01'}!</span>
-                    <span className="text-[10px] font-mono font-bold bg-black/25 px-1.5 py-0.5 rounded">#{newOrderAlert.id}</span>
-                  </h4>
-                  <p className="text-xs text-orange-100 font-semibold mt-0.5">
-                    {newOrderAlert.items?.length || 1} items to prepare
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('pending');
-                    setNewOrderAlert(null);
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-white text-orange-600 font-black text-xs shadow hover:bg-orange-50 cursor-pointer"
-                >
-                  View
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNewOrderAlert(null)}
-                  className="p-1 rounded-lg text-white/80 hover:text-white cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="p-4 lg:p-6 space-y-5 max-w-[1920px] w-full mx-auto">
           

@@ -93,17 +93,17 @@ export function requestNotificationPermission() {
 }
 
 export function showOrderNotification(title, body, tag = 'order-alert') {
-  // 1. Play sound
+  // 1. Play crisp restaurant order bell sound chime
   playOrderBellSound();
 
-  // 2. Trigger System Notification if permitted
+  // 2. Trigger System Notification if permitted (silent: true prevents OS double-sound)
   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
     try {
       new Notification(title, {
         body: body,
         icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f97316'><path d='M12 2a9 9 0 0 0-9 9v7l-2 2v1h22v-1l-2-2v-7a9 9 0 0 0-9-9zm0 22a3 3 0 0 0 3-3H9a3 3 0 0 0 3 3z'/></svg>",
         tag: tag,
-        requireInteraction: true
+        silent: true
       });
     } catch (e) {
       console.warn('Notification error', e);
