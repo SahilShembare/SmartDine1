@@ -55,7 +55,7 @@ export default function CustomerWebBill() {
   
   // Resolve target order: check URL orderId first, then last order placed from this browser session
   const lastPlacedOrderId = localStorage.getItem('smartdine_last_order_id');
-  const effectiveOrderId = orderIdParam || (viewReceiptParam ? lastPlacedOrderId : null);
+  const effectiveOrderId = orderIdParam || lastPlacedOrderId || null;
   
   // Robust targetOrder resolution across React state AND localStore
   const targetOrder = useMemo(() => {
@@ -129,68 +129,50 @@ export default function CustomerWebBill() {
     return false;
   };
 
-  // If targetOrder is known and UNPAID, ensure it is included in the active bill items
+  // If targetOrder is known, display specifically targetOrder so other orders on this table do not pollute the bill
   const billData = useMemo(() => {
-    if (!targetOrder || isOrderPaid(targetOrder)) {
-      return rawBillData;
-    }
+    if (targetOrder) {
+      const items = (targetOrder.items || []).map(i => ({
+        itemId: i.itemId || i.id,
+        name: i.name,
+        price: Number(i.price) || 0,
+        quantity: Number(i.quantity) || 1,
+        totalPrice: (Number(i.price) || 0) * (Number(i.quantity) || 1),
+        isVeg: i.isVeg !== false
+      }));
+      const subtotal = Number(targetOrder.subtotal) || items.reduce((sum, i) => sum + i.totalPrice, 0);
+      const disc = Number(targetOrder.discountAmount) || discountAmount || 0;
+      const discountedSub = Math.max(0, subtotal - disc);
+      const tax = Number(targetOrder.tax) || Math.round(discountedSub * 0.05 * 100) / 100;
+      const total = Number(targetOrder.total) || Math.round((discountedSub + tax) * 100) / 100;
+      const isPaid = isOrderPaid(targetOrder);
 
-    // targetOrder is UNPAID: ensure it's part of activeOrders
-    const alreadyIn = rawBillData.activeOrders.some(o => 
-      String(o.id) === String(targetOrder.id) || String(o.orderNumber) === String(targetOrder.orderNumber)
-    );
-
-    if (alreadyIn) {
       return {
-        ...rawBillData,
-        hasUnpaid: true,
-        billStatus: rawBillData.billStatus === 'Paid' ? 'Unpaid (Pay at Counter)' : rawBillData.billStatus
+        tableNumber: targetOrder.tableNumber || formattedTable,
+        activeOrders: isPaid ? [] : [targetOrder],
+        clearedOrders: isPaid ? [targetOrder] : [],
+        clearedOrderCount: 0,
+        totalClearedAmount: 0,
+        orderCount: 1,
+        orderIds: [targetOrder.orderNumber || targetOrder.id],
+        invoiceNumber: targetOrder.invoiceNumber || sessionInvoiceNumber,
+        consolidatedItems: items,
+        subtotal,
+        discountAmount: disc,
+        tax,
+        total,
+        isPaid,
+        hasUnpaid: !isPaid,
+        billStatus: isPaid ? 'Paid' : 'Unpaid (Pay at Counter)'
       };
     }
 
-    // Merge targetOrder items
-    const combinedOrders = [targetOrder, ...rawBillData.activeOrders];
-    const itemMap = new Map();
-    combinedOrders.forEach(order => {
-      (order.items || []).forEach(item => {
-        const key = item.itemId || item.name;
-        if (itemMap.has(key)) {
-          const exist = itemMap.get(key);
-          exist.quantity += (Number(item.quantity) || 1);
-          exist.totalPrice += ((Number(item.price) || 0) * (Number(item.quantity) || 1));
-        } else {
-          itemMap.set(key, {
-            itemId: item.itemId || item.id,
-            name: item.name,
-            price: Number(item.price) || 0,
-            quantity: Number(item.quantity) || 1,
-            totalPrice: (Number(item.price) || 0) * (Number(item.quantity) || 1),
-            isVeg: item.isVeg !== false
-          });
-        }
-      });
-    });
-
-    const consolidatedItems = Array.from(itemMap.values());
-    const subtotal = consolidatedItems.reduce((sum, i) => sum + i.totalPrice, 0);
-    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
-    const tax = Math.round(discountedSubtotal * 0.05 * 100) / 100;
-    const total = Math.round((discountedSubtotal + tax) * 100) / 100;
-
     return {
       ...rawBillData,
-      activeOrders: combinedOrders,
-      orderCount: combinedOrders.length,
-      orderIds: combinedOrders.map(o => o.orderNumber || o.id),
-      consolidatedItems,
-      subtotal,
-      discountAmount,
-      tax,
-      total,
-      hasUnpaid: true,
-      billStatus: 'Unpaid (Pay at Counter)'
+      clearedOrderCount: 0,
+      totalClearedAmount: 0
     };
-  }, [rawBillData, targetOrder, discountAmount]);
+  }, [rawBillData, targetOrder, discountAmount, formattedTable, sessionInvoiceNumber]);
 
   // Deterministic, persistent GST Tax Invoice Number for this session/table
   const sessionInvoiceNumber = useMemo(() => {
@@ -1361,25 +1343,6 @@ export default function CustomerWebBill() {
                   </span>
                 )}
               </div>
-
-              {/* Cleared Orders Notice with View Receipt button */}
-              {billData.clearedOrderCount > 0 && (
-                <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 text-xs text-emerald-400 font-bold flex items-center justify-between">
-                  <div>
-                    <span>Previous Orders Settled: </span>
-                    <span className="text-white font-extrabold">₹{billData.totalClearedAmount.toFixed(0)}</span>
-                    <span className="text-[10px] ml-1 text-emerald-400 font-normal">(Paid ✅)</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowReceiptView(true)}
-                    className="px-2.5 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] transition cursor-pointer flex items-center gap-1 shadow-sm"
-                  >
-                    <Receipt className="w-3 h-3" />
-                    <span>View Paid Receipt</span>
-                  </button>
-                </div>
-              )}
 
               {/* Items List (Scrollable if many dishes) */}
               {billData.consolidatedItems.length === 0 ? (

@@ -685,7 +685,7 @@ export function TableOrderProvider({ children }) {
     return orders.filter(o => {
       const matchTable = String(o.tableNumber).padStart(2, '0') === formatted || 
                          String(o.tableNumber).toLowerCase() === String(tableNum).toLowerCase();
-      return matchTable && !isOrderPaid(o) && o.status !== 'cancelled';
+      return matchTable && isOrderToday(o) && !isOrderPaid(o) && o.status !== 'cancelled';
     });
   };
 
@@ -696,7 +696,7 @@ export function TableOrderProvider({ children }) {
     return orders.filter(o => {
       const matchTable = String(o.tableNumber).padStart(2, '0') === formatted || 
                          String(o.tableNumber).toLowerCase() === String(tableNum).toLowerCase();
-      return matchTable && isOrderPaid(o) && o.status !== 'cancelled';
+      return matchTable && isOrderToday(o) && isOrderPaid(o) && o.status !== 'cancelled';
     });
   };
 
