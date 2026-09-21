@@ -89,7 +89,7 @@ export async function dispatchEmailOtp({ email, name = 'Customer', purpose = 're
   let lastErrorMsg = '';
   for (const att of attempts) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 9000);
+    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout for resilient email delivery
 
     try {
       const res = await fetch(att.url, {
@@ -122,20 +122,32 @@ export async function dispatchEmailOtp({ email, name = 'Customer', purpose = 're
         };
       }
 
-      // If server returned an explicit error (like duplicate user or validation error), throw it immediately
-      if (data.error) {
-        const err = new Error(data.error);
-        if (data.error.includes('pehle se registered') || data.error.includes('already registered')) {
+      // Check server returned error message (handles standard { error } and Netlify { errorMessage })
+      const serverErr = data.error || data.errorMessage;
+      if (serverErr) {
+        const err = new Error(serverErr);
+        if (serverErr.includes('pehle se registered') || serverErr.includes('already registered')) {
           err.isDuplicate = true;
+          throw err;
         }
-        throw err;
+        // If client-side validation error (400), don't retry alternative endpoints
+        if (res.status === 400) {
+          throw err;
+        }
+        lastErrorMsg = serverErr;
+      } else if (!res.ok) {
+        lastErrorMsg = `Server error (${res.status})`;
       }
     } catch (err) {
       clearTimeout(timeoutId);
       if (err.isDuplicate || err.message?.includes('pehle se registered') || err.message?.includes('already registered')) {
         throw err;
       }
-      lastErrorMsg = err.name === 'AbortError' ? 'Network timeout while contacting email server' : err.message;
+      if (err.name === 'AbortError') {
+        lastErrorMsg = 'Network connection timed out while sending OTP. Please check your internet connection.';
+      } else if (err.message) {
+        lastErrorMsg = err.message;
+      }
     }
   }
 

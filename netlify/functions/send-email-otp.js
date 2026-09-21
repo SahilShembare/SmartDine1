@@ -4,22 +4,19 @@ import { isEmailRegistered } from './users-db.js';
 const SMTP_USER = process.env.SMTP_USER || 'smartdine82@gmail.com';
 const SMTP_PASS = process.env.SMTP_PASS || 'qsefkvyvicukxuqi';
 
-// Optimized nodemailer transporter with IPv4 enforcement and connection pooling for instant delivery
+// Optimized nodemailer transporter with direct TLS connection and IPv4 enforcement
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
   secure: true,
-  pool: true,
-  maxConnections: 3,
-  maxMessages: 50,
-  family: 4, // Explicit IPv4 to eliminate 10-30s IPv6 DNS timeouts on Windows/ISPs
+  family: 4, // Explicit IPv4 to eliminate 10-30s IPv6 DNS timeouts
   auth: {
     user: SMTP_USER,
     pass: SMTP_PASS
   },
-  connectionTimeout: 8000,
-  greetingTimeout: 6000,
-  socketTimeout: 12000
+  connectionTimeout: 15000,
+  greetingTimeout: 15000,
+  socketTimeout: 20000
 });
 
 const CORS_HEADERS = {
@@ -44,14 +41,9 @@ export async function processSendEmailOtp({ email, name = 'Customer', purpose = 
   // 🔒 STRICT RULE: Prevent duplicate registration only if the email is already fully registered with a password
   let isRegistered = false;
   try {
-    const dbMod = await import(`./users-db.js?t=${Date.now()}`);
-    if (typeof dbMod.isEmailRegistered === 'function') {
-      isRegistered = dbMod.isEmailRegistered(cleanEmail);
-    } else {
-      isRegistered = isEmailRegistered(cleanEmail);
-    }
-  } catch {
     isRegistered = isEmailRegistered(cleanEmail);
+  } catch (e) {
+    console.warn('Duplicate check warning:', e);
   }
 
   if (cleanPurpose === 'registration' && isRegistered) {
@@ -148,7 +140,7 @@ export async function processSendEmailOtp({ email, name = 'Customer', purpose = 
   </html>
   `;
 
-  // Real email dispatch with timeout protection
+  // Real email dispatch with timeout protection (25 seconds)
   await Promise.race([
     transporter.sendMail({
       from: `"SmartDine" <${SMTP_USER}>`,
@@ -158,7 +150,7 @@ export async function processSendEmailOtp({ email, name = 'Customer', purpose = 
       html
     }),
     new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Email dispatch timed out. Please check network connection.')), 10000)
+      setTimeout(() => reject(new Error('Email dispatch timed out. Please check network connection.')), 25000)
     )
   ]);
 

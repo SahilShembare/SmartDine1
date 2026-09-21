@@ -3,9 +3,20 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DB_PATH = path.resolve(__dirname, 'registered_users.json');
+function getDirname() {
+  try {
+    if (typeof __dirname !== 'undefined' && __dirname) return __dirname;
+  } catch {}
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta?.url) {
+      return path.dirname(fileURLToPath(import.meta.url));
+    }
+  } catch {}
+  return process.cwd();
+}
+
+const currentDir = getDirname();
+const DB_PATH = path.resolve(currentDir, 'registered_users.json');
 const TMP_DB_PATH = path.resolve(os.tmpdir(), 'smartdine_registered_users.json');
 
 const INITIAL_USERS = [
@@ -22,11 +33,6 @@ function sanitizeUsers(list) {
 }
 
 export function getRegisteredUsers() {
-  if (memoryUsers && Array.isArray(memoryUsers) && memoryUsers.length > 0) {
-    memoryUsers = sanitizeUsers(memoryUsers);
-    return memoryUsers;
-  }
-
   // 1. Try TMP_DB_PATH (writable in serverless)
   try {
     if (fs.existsSync(TMP_DB_PATH)) {
@@ -51,6 +57,11 @@ export function getRegisteredUsers() {
     }
   } catch (err) {
     console.warn('Note reading DB_PATH:', err.message);
+  }
+
+  if (memoryUsers && Array.isArray(memoryUsers) && memoryUsers.length > 0) {
+    memoryUsers = sanitizeUsers(memoryUsers);
+    return memoryUsers;
   }
 
   // 3. Fallback to INITIAL_USERS
