@@ -312,24 +312,73 @@ export function TableOrderProvider({ children }) {
           }).filter(isRealOrder);
           setOrders(ords);
         }
+      }, (err) => {
+        console.warn('Firestore orders listener error, falling back to local store:', err);
+        setOrders(localStore.getOrders().filter(isRealOrder));
       });
+
+      // Always listen to cross-tab local updates and storage events so all tabs sync in 0ms
+      const handleLocalUpdate = (e) => {
+        if (e.detail?.collection === 'orders') {
+          const fresh = (e.detail.data || []).filter(isRealOrder);
+          setOrders(prev => {
+            const map = new Map();
+            fresh.forEach(o => map.set(String(o.id), o));
+            prev.forEach(o => {
+              if (!map.has(String(o.id))) map.set(String(o.id), o);
+            });
+            return Array.from(map.values());
+          });
+        }
+        if (e.detail?.collection === 'menuItems') setMenuItems(e.detail.data);
+        if (e.detail?.collection === 'categories') setCategories(e.detail.data);
+        if (e.detail?.collection === 'tables') setTables(e.detail.data);
+      };
+
+      const handleStorageEvent = (e) => {
+        if (e.key === 'smartdine_orders' || e.key === 'smartdine_order_sync_ping') {
+          const fresh = localStore.getOrders().filter(isRealOrder);
+          setOrders(prev => {
+            const map = new Map();
+            fresh.forEach(o => map.set(String(o.id), o));
+            prev.forEach(o => {
+              if (!map.has(String(o.id))) map.set(String(o.id), o);
+            });
+            return Array.from(map.values());
+          });
+        }
+      };
+
+      window.addEventListener('smartdine_db_update', handleLocalUpdate);
+      window.addEventListener('storage', handleStorageEvent);
 
       return () => {
         unsubMenu();
         unsubCategories();
         unsubTables();
         unsubOrders();
+        window.removeEventListener('smartdine_db_update', handleLocalUpdate);
+        window.removeEventListener('storage', handleStorageEvent);
       };
     } else {
-      // Listen to cross-tab local updates
+      // Listen to cross-tab local updates when Firebase is not configured
       const handleLocalUpdate = (e) => {
         if (e.detail?.collection === 'orders') setOrders((e.detail.data || []).filter(isRealOrder));
         if (e.detail?.collection === 'menuItems') setMenuItems(e.detail.data);
         if (e.detail?.collection === 'categories') setCategories(e.detail.data);
         if (e.detail?.collection === 'tables') setTables(e.detail.data);
       };
+      const handleStorageEvent = (e) => {
+        if (e.key === 'smartdine_orders' || e.key === 'smartdine_order_sync_ping') {
+          setOrders(localStore.getOrders().filter(isRealOrder));
+        }
+      };
       window.addEventListener('smartdine_db_update', handleLocalUpdate);
-      return () => window.removeEventListener('smartdine_db_update', handleLocalUpdate);
+      window.addEventListener('storage', handleStorageEvent);
+      return () => {
+        window.removeEventListener('smartdine_db_update', handleLocalUpdate);
+        window.removeEventListener('storage', handleStorageEvent);
+      };
     }
   }, []);
 
@@ -574,13 +623,28 @@ export function TableOrderProvider({ children }) {
 
     if (isFirebaseConfigured) {
       try {
-        await addDoc(collection(db, 'orders'), orderData);
+        const docRef = await addDoc(collection(db, 'orders'), orderData);
+        if (docRef?.id) {
+          orderData.firestoreDocId = docRef.id;
+        }
       } catch (err) {
         console.warn('Firebase addDoc order error, using local fallback:', err);
       }
     }
     const created = localStore.addOrder(orderData);
     orderId = created.id || nextOrdNum;
+
+    // Immediately update local React state so this tab has the order right away
+    setOrders(prev => {
+      const filtered = prev.filter(o => String(o.id) !== String(created.id) && String(o.orderNumber) !== String(created.orderNumber));
+      return [created, ...filtered];
+    });
+
+    // Notify other components & tabs immediately (e.g. Kitchen Dashboard)
+    try {
+      window.dispatchEvent(new CustomEvent('smartdine_db_update', { detail: { collection: 'orders', data: localStore.getOrders() } }));
+      localStorage.setItem('smartdine_order_sync_ping', String(Date.now()));
+    } catch {}
 
     setLatestPlacedOrderId(orderId);
     localStorage.setItem('smartdine_last_order_id', orderId);
@@ -600,22 +664,22 @@ export function TableOrderProvider({ children }) {
   const getTableActiveOrders = (tableNum = currentTable) => {
     if (!tableNum) return [];
     const formatted = String(tableNum).padStart(2, '0');
-    return orders.filter(o => 
-      String(o.tableNumber).padStart(2, '0') === formatted && 
-      !isOrderPaid(o) &&
-      o.status !== 'cancelled'
-    );
+    return orders.filter(o => {
+      const matchTable = String(o.tableNumber).padStart(2, '0') === formatted || 
+                         String(o.tableNumber).toLowerCase() === String(tableNum).toLowerCase();
+      return matchTable && !isOrderPaid(o) && o.status !== 'cancelled';
+    });
   };
 
   // Get previously paid / cleared orders for this table session
   const getTablePaidOrders = (tableNum = currentTable) => {
     if (!tableNum) return [];
     const formatted = String(tableNum).padStart(2, '0');
-    return orders.filter(o => 
-      String(o.tableNumber).padStart(2, '0') === formatted && 
-      isOrderPaid(o) &&
-      o.status !== 'cancelled'
-    );
+    return orders.filter(o => {
+      const matchTable = String(o.tableNumber).padStart(2, '0') === formatted || 
+                         String(o.tableNumber).toLowerCase() === String(tableNum).toLowerCase();
+      return matchTable && isOrderPaid(o) && o.status !== 'cancelled';
+    });
   };
 
   // Consolidate all orders in the current dining session into ONE single final bill
@@ -655,14 +719,16 @@ export function TableOrderProvider({ children }) {
     const total = Math.round((discountedSubtotal + tax) * 100) / 100;
 
     // Check overall table bill status
+    const hasUnpaid = activeOrders.length > 0;
+    const isPaid = activeOrders.length === 0 && clearedOrders.length > 0;
     const isCashRequested = activeOrders.some(o => 
       String(o.paymentStatus || '').toLowerCase().includes('cash') || 
-      String(o.paymentMethod || '').toLowerCase().includes('cash')
+      String(o.paymentMethod || '').toLowerCase().includes('cash') ||
+      String(o.paymentMethod || '').toLowerCase().includes('counter')
     );
     const isBillRequested = activeOrders.some(o => 
       String(o.paymentStatus || '').toLowerCase().includes('requested')
     ) || isCashRequested;
-    const isPaid = activeOrders.length === 0;
 
     const totalClearedAmount = clearedOrders.reduce((sum, o) => sum + (o.total || 0), 0);
     const existingTableInvoice = clearedOrders.find(o => o.invoiceNumber)?.invoiceNumber || 
@@ -682,7 +748,11 @@ export function TableOrderProvider({ children }) {
       discountAmount,
       tax,
       total,
-      billStatus: isPaid ? 'Paid' : isCashRequested ? 'Cash Payment Requested' : isBillRequested ? 'Bill Requested' : 'Pending'
+      isPaid,
+      hasUnpaid,
+      billStatus: hasUnpaid 
+        ? (isCashRequested ? 'Payment Pending at Counter' : isBillRequested ? 'Bill Requested' : 'Unpaid (Pay at Counter)')
+        : (isPaid ? 'Paid' : 'No Active Orders')
     };
   };
 

@@ -35,6 +35,7 @@ import {
 import { openRazorpayPayment } from '../utils/razorpay';
 import CustomerFeedbackModal from '../components/CustomerFeedbackModal';
 import { formatOrderNumber, formatInvoiceNumber, getOrAssignInvoiceNumber, getNextInvoiceNumber } from '../utils/orderNumber';
+import { localStore } from '../firebase/config';
 
 export default function CustomerWebBill() {
   const navigate = useNavigate();
@@ -55,7 +56,21 @@ export default function CustomerWebBill() {
   // Resolve target order: check URL orderId first, then last order placed from this browser session
   const lastPlacedOrderId = localStorage.getItem('smartdine_last_order_id');
   const effectiveOrderId = orderIdParam || (viewReceiptParam ? lastPlacedOrderId : null);
-  const targetOrder = effectiveOrderId ? orders.find(o => o.id === effectiveOrderId) : null;
+  
+  // Robust targetOrder resolution across React state AND localStore
+  const targetOrder = useMemo(() => {
+    if (!effectiveOrderId) return null;
+    const effStr = String(effectiveOrderId);
+    const found = orders.find(o => String(o.id) === effStr || String(o.orderNumber) === effStr);
+    if (found) return found;
+    try {
+      const local = localStore.getOrders();
+      return local.find(o => String(o.id) === effStr || String(o.orderNumber) === effStr) || null;
+    } catch {
+      return null;
+    }
+  }, [effectiveOrderId, orders]);
+
   const tableParam = searchParams.get('table') || targetOrder?.tableNumber || currentTable || '01';
   const formattedTable = String(tableParam).padStart(2, '0');
 
@@ -89,20 +104,9 @@ export default function CustomerWebBill() {
   const [showBillFeedback, setShowBillFeedback] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
 
-  const billData = getCombinedTableBill(formattedTable, discountAmount);
+  const rawBillData = getCombinedTableBill(formattedTable, discountAmount);
 
-  // Deterministic, persistent GST Tax Invoice Number for this session/table
-  const sessionInvoiceNumber = useMemo(() => {
-    if (targetOrder?.invoiceNumber) return formatInvoiceNumber(targetOrder.invoiceNumber);
-    if (billData.invoiceNumber) return formatInvoiceNumber(billData.invoiceNumber);
-    const existingPaid = (orders || []).find(o => 
-      String(o.tableNumber).padStart(2, '0') === formattedTable && o.invoiceNumber
-    );
-    if (existingPaid?.invoiceNumber) return formatInvoiceNumber(existingPaid.invoiceNumber);
-    return getOrAssignInvoiceNumber(targetOrder || billData.activeOrders, orders);
-  }, [targetOrder, billData.invoiceNumber, billData.activeOrders, orders, formattedTable]);
-
-  // Helper to check if order is paid
+  // Helper to check if order is paid (defined before billData calculation)
   const isOrderPaid = (order) => {
     if (!order) return false;
     const pStatus = String(order.paymentStatus || order.payment_status || '').trim().toLowerCase();
@@ -125,12 +129,89 @@ export default function CustomerWebBill() {
     return false;
   };
 
+  // If targetOrder is known and UNPAID, ensure it is included in the active bill items
+  const billData = useMemo(() => {
+    if (!targetOrder || isOrderPaid(targetOrder)) {
+      return rawBillData;
+    }
+
+    // targetOrder is UNPAID: ensure it's part of activeOrders
+    const alreadyIn = rawBillData.activeOrders.some(o => 
+      String(o.id) === String(targetOrder.id) || String(o.orderNumber) === String(targetOrder.orderNumber)
+    );
+
+    if (alreadyIn) {
+      return {
+        ...rawBillData,
+        hasUnpaid: true,
+        billStatus: rawBillData.billStatus === 'Paid' ? 'Unpaid (Pay at Counter)' : rawBillData.billStatus
+      };
+    }
+
+    // Merge targetOrder items
+    const combinedOrders = [targetOrder, ...rawBillData.activeOrders];
+    const itemMap = new Map();
+    combinedOrders.forEach(order => {
+      (order.items || []).forEach(item => {
+        const key = item.itemId || item.name;
+        if (itemMap.has(key)) {
+          const exist = itemMap.get(key);
+          exist.quantity += (Number(item.quantity) || 1);
+          exist.totalPrice += ((Number(item.price) || 0) * (Number(item.quantity) || 1));
+        } else {
+          itemMap.set(key, {
+            itemId: item.itemId || item.id,
+            name: item.name,
+            price: Number(item.price) || 0,
+            quantity: Number(item.quantity) || 1,
+            totalPrice: (Number(item.price) || 0) * (Number(item.quantity) || 1),
+            isVeg: item.isVeg !== false
+          });
+        }
+      });
+    });
+
+    const consolidatedItems = Array.from(itemMap.values());
+    const subtotal = consolidatedItems.reduce((sum, i) => sum + i.totalPrice, 0);
+    const discountedSubtotal = Math.max(0, subtotal - discountAmount);
+    const tax = Math.round(discountedSubtotal * 0.05 * 100) / 100;
+    const total = Math.round((discountedSubtotal + tax) * 100) / 100;
+
+    return {
+      ...rawBillData,
+      activeOrders: combinedOrders,
+      orderCount: combinedOrders.length,
+      orderIds: combinedOrders.map(o => o.orderNumber || o.id),
+      consolidatedItems,
+      subtotal,
+      discountAmount,
+      tax,
+      total,
+      hasUnpaid: true,
+      billStatus: 'Unpaid (Pay at Counter)'
+    };
+  }, [rawBillData, targetOrder, discountAmount]);
+
+  // Deterministic, persistent GST Tax Invoice Number for this session/table
+  const sessionInvoiceNumber = useMemo(() => {
+    if (targetOrder?.invoiceNumber) return formatInvoiceNumber(targetOrder.invoiceNumber);
+    if (billData.invoiceNumber) return formatInvoiceNumber(billData.invoiceNumber);
+    const existingPaid = (orders || []).find(o => 
+      String(o.tableNumber).padStart(2, '0') === formattedTable && o.invoiceNumber
+    );
+    if (existingPaid?.invoiceNumber) return formatInvoiceNumber(existingPaid.invoiceNumber);
+    return getOrAssignInvoiceNumber(targetOrder || billData.activeOrders, orders);
+  }, [targetOrder, billData.invoiceNumber, billData.activeOrders, orders, formattedTable]);
+
   // Compute settled receipt data for table or target order
   const receiptData = useMemo(() => {
     if (paymentSuccessData) return paymentSuccessData;
 
-    // 1. If targetOrder is specifically requested (by URL orderId or customer's placed order)
+    // 1. If targetOrder is specifically requested: ONLY return receipt if targetOrder is ACTUALLY PAID!
     if (targetOrder) {
+      if (!isOrderPaid(targetOrder)) {
+        return null; // UNPAID orders MUST NEVER generate a paid receipt!
+      }
       const items = (targetOrder.items || []).map(i => ({
         itemId: i.itemId || i.id,
         name: i.name,
@@ -180,7 +261,6 @@ export default function CustomerWebBill() {
       const targetTxnId = latestOrder.transactionId || latestOrder.razorpay_payment_id;
 
       // Group ONLY orders that share the EXACT same settlement transaction ID (e.g. combined table payment)
-      // DO NOT combine orders that were settled in different transactions!
       const sameBatchOrders = (targetTxnId && !targetTxnId.startsWith('TXN-'))
         ? sortedPaid.filter(o => (o.transactionId || o.razorpay_payment_id) === targetTxnId)
         : [latestOrder];
@@ -235,26 +315,21 @@ export default function CustomerWebBill() {
     return null;
   }, [paymentSuccessData, targetOrder, orders, formattedTable, currentUser, sessionInvoiceNumber]);
 
-  // Display mode: show receipt if view=receipt OR table has zero unpaid dishes but has settled orders
-  const [showReceiptView, setShowReceiptView] = useState(() => {
-    return Boolean(
-      viewReceiptParam || 
-      (billData.activeOrders.length === 0 && (billData.clearedOrders || []).length > 0) ||
-      (targetOrder && isOrderPaid(targetOrder))
-    );
-  });
+  const effectiveReceipt = receiptData;
+  const hasSettledReceipt = Boolean(receiptData && (paymentSuccessData || (targetOrder ? isOrderPaid(targetOrder) : true)));
+  const hasActiveUnpaidOrders = (billData.activeOrders && billData.activeOrders.length > 0) || (targetOrder && !isOrderPaid(targetOrder));
 
   // Determine if viewing receipt:
   // Show receipt ONLY when:
-  // 1. paymentSuccessData is set (just finished payment in this session)
-  // 2. OR There are 0 active unpaid orders on table AND a settled receipt exists
-  // 3. OR targetOrder is explicitly specified, isOrderPaid(targetOrder) is true, AND viewReceiptParam is true
-  // NEVER show settled receipt if table has active unpaid orders!
-  const hasActiveUnpaidOrders = billData.activeOrders.length > 0;
+  // 1. paymentSuccessData is set (just finished online payment right now)
+  // 2. OR There are NO active unpaid orders AND a settled receipt exists AND (showReceiptView || viewReceiptParam)
+  // 3. OR targetOrder is explicitly specified AND isOrderPaid(targetOrder) is true AND viewReceiptParam is true
+  // NEVER show settled receipt if customer or table has active unpaid orders!
+  const [showReceiptView, setShowReceiptView] = useState(false);
 
   const isViewingReceipt = Boolean(
     paymentSuccessData || 
-    (!hasActiveUnpaidOrders && hasSettledReceipt && (showReceiptView || viewReceiptParam || billData.activeOrders.length === 0)) ||
+    (!hasActiveUnpaidOrders && hasSettledReceipt && (showReceiptView || viewReceiptParam)) ||
     (targetOrder && isOrderPaid(targetOrder) && viewReceiptParam)
   );
 
@@ -1204,7 +1279,7 @@ export default function CustomerWebBill() {
   }
 
   // ================= EMPTY TABLE STATE (NO ACTIVE & NO CLEARED ORDERS) =================
-  if (billData.activeOrders.length === 0 && !hasSettledReceipt) {
+  if (billData.activeOrders.length === 0 && !hasSettledReceipt && !targetOrder) {
     return (
       <div className="min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans selection:bg-orange-500 selection:text-white">
         <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
@@ -1255,12 +1330,13 @@ export default function CustomerWebBill() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border ${
-              billData.billStatus === 'Bill Requested'
-                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse'
-                : 'bg-slate-800 text-slate-300 border-slate-700'
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border flex items-center gap-1 ${
+              hasActiveUnpaidOrders
+                ? 'bg-amber-500/15 text-amber-400 border-amber-500/40 animate-pulse'
+                : 'bg-emerald-950 text-emerald-400 border-emerald-700'
             }`}>
-              {billData.billStatus}
+              {hasActiveUnpaidOrders && <Clock className="w-3 h-3" />}
+              <span>{hasActiveUnpaidOrders ? 'UNPAID (Pay at Counter)' : 'PAID'}</span>
             </span>
             <span className="text-[11px] font-mono text-slate-400 hidden xs:inline">{sessionInvoiceNumber}</span>
           </div>
@@ -1364,13 +1440,20 @@ export default function CustomerWebBill() {
             <div className="space-y-3">
 
               {/* Active Cash/Counter Settlement Pending Banner */}
-              {(cashRequested || billData.activeOrders.some(o => String(o.paymentStatus || '').toLowerCase().includes('requested') || String(o.paymentMethod || '').toLowerCase().includes('counter'))) && (
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-amber-300 animate-in fade-in">
-                  <Clock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
-                  <div className="text-xs space-y-0.5">
-                    <div className="font-bold text-white">🟠 Payment Pending at Counter</div>
-                    <p className="text-amber-200/80 text-[11px] leading-relaxed">
-                      Table #{formattedTable} bill of <strong>₹{billData.total.toFixed(0)}</strong> is currently pending. Please settle at the cash counter. Once received, the cashier will mark it as paid.
+              {(hasActiveUnpaidOrders || cashRequested || billData.activeOrders.some(o => String(o.paymentStatus || '').toLowerCase().includes('requested') || String(o.paymentMethod || '').toLowerCase().includes('counter'))) && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-amber-300 animate-in fade-in">
+                  <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
+                  <div className="text-xs space-y-1">
+                    <div className="font-bold text-white flex items-center gap-2">
+                      <span>🟠 Bill Status: UNPAID (Pay at Counter)</span>
+                      {targetOrder && (
+                        <span className="text-[10px] font-mono text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+                          #{formatOrderNumber(targetOrder.orderNumber || targetOrder.id)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-amber-200/90 text-[11px] leading-relaxed">
+                      Order sent to kitchen! Table #{formattedTable} bill of <strong className="text-white font-mono">₹{billData.total.toFixed(0)}</strong> is currently <strong>UNPAID</strong>. Please settle at the reception / cash counter or complete payment online below.
                     </p>
                   </div>
                 </div>
