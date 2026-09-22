@@ -366,7 +366,7 @@ export default function Navbar() {
                   </div>
                 )}
               </div>
-            ) : (!isHomePage && !isAdminPage && !isLoginPage && !isScanPage) ? (
+            ) : (!isHomePage && !isAdminPage && !isLoginPage && !isScanPage && !isMenuPage) ? (
               /* CUSTOMER HEADER ACTIONS (Profile) */
               <div className="flex items-center gap-2">
                 <Link
