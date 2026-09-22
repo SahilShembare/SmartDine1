@@ -8,6 +8,7 @@ import KitchenUpdates from '../components/admin/KitchenUpdates';
 import MenuManagement from '../components/admin/MenuManagement';
 import TableManagement from '../components/admin/TableManagement';
 import CustomerManagement from '../components/admin/CustomerManagement';
+import FeedbackManagement from '../components/admin/FeedbackManagement';
 import PaymentManagement from '../components/admin/PaymentManagement';
 import ReportManagement from '../components/admin/ReportManagement';
 import SalesAnalysis from '../components/admin/SalesAnalysis';
@@ -25,6 +26,7 @@ export default function AdminDashboard({ initialTab = 'dashboard' }) {
     if (raw === 'orders') return 'kitchen';
     if (raw === 'analytics') return 'reports';
     if (raw === 'categories') return 'menu';
+    if (raw === 'feedback' || raw === 'feedbacks') return 'feedback';
     return raw;
   };
 
@@ -96,6 +98,10 @@ export default function AdminDashboard({ initialTab = 'dashboard' }) {
 
           {activeTab === 'customers' && (
             <CustomerManagement />
+          )}
+
+          {activeTab === 'feedback' && (
+            <FeedbackManagement />
           )}
 
           {activeTab === 'payments' && (

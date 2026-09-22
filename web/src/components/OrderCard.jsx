@@ -240,7 +240,14 @@ export default function OrderCard({
               )}
             </div>
 
-            <div className="mt-1">
+            <div className="mt-1 flex items-center gap-1 justify-end flex-wrap">
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                order?.isPaid || String(order?.paymentStatus || '').toLowerCase() === 'paid'
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                  : 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+              }`}>
+                {order?.isPaid || String(order?.paymentStatus || '').toLowerCase() === 'paid' ? '✓ Paid' : 'Pending Pay'}
+              </span>
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${badge.bg}`}>
                 {badge.pulse && <span className="w-1.5 h-1.5 rounded-full bg-current animate-ping shrink-0" />}
                 <span>{badge.label}</span>

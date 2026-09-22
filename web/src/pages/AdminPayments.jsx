@@ -57,6 +57,9 @@ export default function AdminPayments() {
   const isOrderPaid = (o) => {
     if (!o) return false;
     if (isOrderRefunded(o) || isOrderFailed(o)) return false;
+    if (o.isPaid === true) return true;
+    const txn = String(o.transactionId || o.razorpay_payment_id || '').trim();
+    if (txn && (txn.startsWith('pay_') || txn.startsWith('TXN_PAY'))) return true;
     const p = String(o.paymentStatus || o.payment_status || '').trim().toUpperCase();
     if (!p || p === 'UNPAID' || p === 'PENDING' || p.includes('REQUESTED') || p.includes('AWAITING')) return false;
     return p === 'PAID' || p.includes('PAID') || p.includes('RAZORPAY');

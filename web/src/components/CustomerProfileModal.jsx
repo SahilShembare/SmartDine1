@@ -12,16 +12,13 @@ import {
   LogOut, 
   ShoppingBag, 
   Clock, 
-  Crown, 
   Sparkles, 
   Check, 
   Edit2, 
   LogIn,
   ChevronRight,
   ShieldCheck,
-  UtensilsCrossed,
-  Camera,
-  Upload
+  UtensilsCrossed
 } from 'lucide-react';
 
 export default function CustomerProfileModal({ isOpen, onClose }) {
@@ -30,36 +27,12 @@ export default function CustomerProfileModal({ isOpen, onClose }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const avatarInputRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [displayName, setDisplayName] = useState(currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || '');
   const [phone, setPhone] = useState(currentUser?.phoneNumber || localStorage.getItem('smartdine_guest_phone') || '');
-  const [avatarUrl, setAvatarUrl] = useState(currentUser?.photoURL || localStorage.getItem('smartdine_guest_avatar') || '');
   const [saving, setSaving] = useState(false);
 
   if (!isOpen) return null;
-
-  const handleAvatarUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Please select an image smaller than 5MB');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result;
-      setAvatarUrl(result);
-      localStorage.setItem('smartdine_guest_avatar', result);
-      if (currentUser && updateProfile) {
-        updateProfile({ photoURL: result }).catch(() => {});
-      }
-      toast.success('Profile picture updated!', { icon: '📸' });
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleSaveProfile = async (e) => {
     e.preventDefault();
@@ -67,13 +40,12 @@ export default function CustomerProfileModal({ isOpen, onClose }) {
     try {
       if (currentUser && updateProfile) {
         await updateProfile({ 
-          displayName: displayName.trim(),
-          photoURL: avatarUrl 
+          displayName: displayName.trim()
         });
       }
       localStorage.setItem('smartdine_guest_name', displayName.trim());
       localStorage.setItem('smartdine_guest_phone', phone.trim());
-      if (avatarUrl) localStorage.setItem('smartdine_guest_avatar', avatarUrl);
+      localStorage.removeItem('smartdine_guest_avatar');
       toast.success('Profile updated successfully!', { icon: '✨' });
       setIsEditing(false);
     } catch (err) {
@@ -128,15 +100,6 @@ export default function CustomerProfileModal({ isOpen, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/65 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       
-      {/* Hidden file input for Avatar Photo */}
-      <input 
-        type="file" 
-        ref={avatarInputRef} 
-        accept="image/*" 
-        onChange={handleAvatarUpload} 
-        className="hidden" 
-      />
-
       <div 
         className="bg-slate-900 border border-slate-800 rounded-t-3xl sm:rounded-3xl w-full max-w-md overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-300 max-h-[90vh] flex flex-col justify-between text-white"
         onClick={(e) => e.stopPropagation()}
@@ -154,39 +117,11 @@ export default function CustomerProfileModal({ isOpen, onClose }) {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Avatar with Royal Golden Ring and Camera Change Button */}
-            <div className="relative group/avatar">
-              <div 
-                onClick={() => avatarInputRef.current?.click()}
-                title="Tap to change profile picture"
-                className="w-16 h-16 rounded-full bg-gradient-to-tr from-orange-600 to-amber-500 p-0.5 shadow-lg flex items-center justify-center cursor-pointer overflow-hidden relative"
-              >
-                {avatarUrl ? (
-                  <img 
-                    src={avatarUrl} 
-                    alt="Customer Profile" 
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-amber-400 font-black text-2xl">
-                    {displayName ? displayName.charAt(0).toUpperCase() : <User className="w-8 h-8" />}
-                  </div>
-                )}
-                
-                {/* Hover / Tap Camera overlay */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity rounded-full">
-                  <Camera className="w-5 h-5 text-amber-400" />
-                </div>
+            {/* User Initials / Monogram Badge */}
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 p-0.5 shadow-lg flex items-center justify-center shrink-0">
+              <div className="w-full h-full rounded-[14px] bg-slate-900 flex items-center justify-center text-amber-400 font-black text-xl shadow-inner">
+                {displayName ? displayName.charAt(0).toUpperCase() : <User className="w-7 h-7" />}
               </div>
-
-              <button
-                type="button"
-                onClick={() => avatarInputRef.current?.click()}
-                title="Change Photo"
-                className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:brightness-110 shadow-md transition cursor-pointer"
-              >
-                <Camera className="w-3.5 h-3.5" />
-              </button>
             </div>
 
             {/* Identity Info */}
@@ -217,19 +152,9 @@ export default function CustomerProfileModal({ isOpen, onClose }) {
           {/* Edit Profile Form */}
           {isEditing && (
             <form onSubmit={handleSaveProfile} className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-md space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider">
-                  Update Customer Information
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  className="text-[11px] font-bold text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <Camera className="w-3.5 h-3.5" />
-                  <span>Upload Photo</span>
-                </button>
-              </div>
+              <h4 className="text-xs font-black text-amber-400 uppercase tracking-wider">
+                Update Customer Information
+              </h4>
               <div>
                 <label className="block text-[11px] font-bold text-slate-400 mb-1">Your Full Name</label>
                 <input

@@ -61,7 +61,8 @@ function playRestaurantBellChime() {
 }
 
 const SERVICE_REASONS = [
-  { id: 'water', label: 'Water Refill', icon: Droplets, desc: 'Drinking water for table' },
+  { id: 'water_bottle', label: 'Packaged Water Bottle', icon: Droplets, desc: 'Mineral Water Bottle (1L) • ₹20 (Add to Bill)' },
+  { id: 'water', label: 'Regular Water Refill', icon: Droplets, desc: 'Complimentary drinking water' },
   { id: 'cutlery', label: 'Extra Cutlery', icon: Utensils, desc: 'Spoons, forks, plates' },
   { id: 'clean', label: 'Clean Table', icon: Sparkles, desc: 'Wipe / clear dishes' },
   { id: 'condiments', label: 'Sauces & Spices', icon: Flame, desc: 'Chutneys, salt, pepper' },
@@ -82,7 +83,7 @@ export default function CallWaiterModal({ isOpen, onClose, defaultTable = null }
   const { currentUser } = useAuth();
 
   const [selectedTable, setSelectedTable] = useState(defaultTable || currentTable || '01');
-  const [selectedReason, setSelectedReason] = useState('water');
+  const [selectedReason, setSelectedReason] = useState('water_bottle');
   const [customNote, setCustomNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 

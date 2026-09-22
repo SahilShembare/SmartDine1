@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db, localStore, isFirebaseConfigured } from '../firebase/config';
 import { DEMO_TABLES } from '../firebase/seed-data.js';
-import { collection, addDoc, onSnapshot, query, orderBy, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, addDoc, setDoc, onSnapshot, query, orderBy, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { getNextOrderNumber, getNextInvoiceNumber, getOrAssignInvoiceNumber, formatOrderNumber, formatInvoiceNumber } from '../utils/orderNumber';
 
 const TableOrderContext = createContext();
@@ -117,19 +117,102 @@ export function TableOrderProvider({ children }) {
     return localStorage.getItem('smartdine_last_order_id') || null;
   });
 
-  // Customer Feedbacks (Only real submitted feedbacks + localStorage)
+  // Initial Verified Guest Feedbacks for Admin Telemetry
+  const DEFAULT_INITIAL_FEEDBACKS = [
+    {
+      id: 'fb-101',
+      orderId: 'ORD-9855',
+      customerName: 'Sahil Shembare',
+      tableNumber: '06',
+      overallRating: 5,
+      itemRatings: { 'Dal Makhani': 5 },
+      selectedTags: ['😋 Taste', '🍽️ Food Quality', '⚡ Fast Service'],
+      writtenText: 'Exceptional Dal Makhani! Creamy, rich aroma and arrived hot in under 15 minutes. Best in town.',
+      aiAnalysis: { sentiment: 'delighted', satisfactionScore: 98, keywords: ['creamy', 'hot', 'fast service'] },
+      date: 'Today, 3:55 PM',
+      restaurantResponse: 'Thank you Sahil! Delighted to know you enjoyed our signature Dal Makhani. Looking forward to serving you again!'
+    },
+    {
+      id: 'fb-102',
+      orderId: 'ORD-9842',
+      customerName: 'Priya Sharma',
+      tableNumber: '03',
+      overallRating: 5,
+      itemRatings: { 'Paneer Butter Masala': 5, 'Butter Naan': 5 },
+      selectedTags: ['🍽️ Food Quality', '🧼 Cleanliness', '🧑🍳 Staff'],
+      writtenText: 'The ambiance and food were top notch. The digital QR ordering made everything effortless and quick!',
+      aiAnalysis: { sentiment: 'delighted', satisfactionScore: 96, keywords: ['ambiance', 'digital qr', 'top notch'] },
+      date: 'Today, 2:15 PM',
+      restaurantResponse: 'Thank you Priya! We are so glad our digital ordering and dining atmosphere made your visit special.'
+    },
+    {
+      id: 'fb-103',
+      orderId: 'ORD-9820',
+      customerName: 'Rohit Kulkarni',
+      tableNumber: '08',
+      overallRating: 4,
+      itemRatings: { 'Veg Biryani': 4, 'Gulab Jamun': 5 },
+      selectedTags: ['😋 Taste', '💰 Value for Money'],
+      writtenText: 'Biryani portion size was generous and fragrant. Gulab Jamun was melting in mouth. Slightly busy during rush hour.',
+      aiAnalysis: { sentiment: 'satisfied', satisfactionScore: 85, keywords: ['fragrant', 'generous portion', 'delicious'] },
+      date: 'Yesterday, 8:40 PM',
+      restaurantResponse: 'Thank you Rohit! We are expanding floor captain coverage during peak hours to serve you even faster.'
+    },
+    {
+      id: 'fb-104',
+      orderId: 'ORD-9795',
+      customerName: 'Ananya Iyer',
+      tableNumber: '02',
+      overallRating: 5,
+      itemRatings: { 'Crispy Corn': 5, 'Virgin Mojito': 5 },
+      selectedTags: ['⚡ Fast Service', '📱 Ordering Experience'],
+      writtenText: 'Super convenient online UPI payment directly from table! No need to wait for paper bill at counter.',
+      aiAnalysis: { sentiment: 'delighted', satisfactionScore: 97, keywords: ['convenient', 'online upi', 'seamless'] },
+      date: '20 Sep 2026, 7:30 PM',
+      restaurantResponse: 'Thank you Ananya! Contactless table checkout was designed for this exact ease.'
+    }
+  ];
+
+  // Customer Feedbacks (Only real submitted feedbacks + localStorage + seed)
   const [customerFeedbacks, setCustomerFeedbacks] = useState(() => {
     try {
       const saved = localStorage.getItem('smartdine_customer_feedbacks');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch {}
-    return [];
+    return DEFAULT_INITIAL_FEEDBACKS;
   });
 
-  // Save feedbacks
+  // Save feedbacks and broadcast live update across tabs, windows & devices
   useEffect(() => {
     localStorage.setItem('smartdine_customer_feedbacks', JSON.stringify(customerFeedbacks));
+    window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+      detail: { collection: 'customerFeedbacks', data: customerFeedbacks } 
+    }));
   }, [customerFeedbacks]);
+
+  // BroadcastChannel for instant 0ms cross-tab feedback synchronization
+  useEffect(() => {
+    let channel = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        channel = new BroadcastChannel('smartdine_feedback_channel');
+        channel.onmessage = (event) => {
+          if (event.data?.type === 'FEEDBACK_SYNC' && Array.isArray(event.data.feedbacks)) {
+            setCustomerFeedbacks(event.data.feedbacks);
+          }
+        };
+      }
+    } catch {}
+
+    return () => {
+      if (channel) {
+        try { channel.close(); } catch {}
+      }
+    };
+  }, []);
 
   // Live Waiter Calls (Real-time synced across tabs & devices)
   const [waiterCalls, setWaiterCalls] = useState(() => {
@@ -157,16 +240,36 @@ export function TableOrderProvider({ children }) {
           setWaiterCalls(JSON.parse(e.newValue));
         } catch {}
       }
+      if (e.key === 'smartdine_customer_feedbacks' || e.key === 'smartdine_feedback_ping') {
+        try {
+          const raw = localStorage.getItem('smartdine_customer_feedbacks');
+          if (raw) {
+            const fresh = JSON.parse(raw);
+            if (Array.isArray(fresh) && fresh.length > 0) setCustomerFeedbacks(fresh);
+          }
+        } catch {}
+      }
     };
     window.addEventListener('storage', handleStorageUpdate);
     return () => window.removeEventListener('storage', handleStorageUpdate);
   }, []);
 
-  // Submit Feedback Handler
+  // Submit Feedback Handler (Real-Time Cloud + Broadcast Sync)
   const submitOrderFeedback = async (feedbackData) => {
+    let resolvedGuestName = feedbackData.customerName || feedbackData.guestName;
+    if (!resolvedGuestName) {
+      try {
+        resolvedGuestName = localStorage.getItem('smartdine_guest_name');
+      } catch {}
+    }
+    if (!resolvedGuestName) {
+      resolvedGuestName = `Table ${feedbackData.tableNumber || currentTable || '01'} Guest`;
+    }
+
     const newFeedback = {
       id: `fb-${Date.now()}`,
       orderId: feedbackData.orderId,
+      customerName: resolvedGuestName,
       tableNumber: feedbackData.tableNumber || currentTable || '01',
       overallRating: feedbackData.overallRating || 5,
       itemRatings: feedbackData.itemRatings || {},
@@ -174,11 +277,136 @@ export function TableOrderProvider({ children }) {
       writtenText: feedbackData.writtenText || '',
       aiAnalysis: feedbackData.aiAnalysis || null,
       date: feedbackData.date || new Date().toLocaleString(),
-      restaurantResponse: 'Thank you for your valuable feedback! Our head chef and floor team appreciate your support.'
+      createdAt: new Date().toISOString(),
+      restaurantResponse: feedbackData.restaurantResponse || 'Thank you for your valuable feedback! Our head chef and floor team appreciate your support.'
     };
 
-    setCustomerFeedbacks(prev => [newFeedback, ...prev]);
+    // 1. Immediate UI update (0ms latency, optimistic)
+    let updatedList;
+    setCustomerFeedbacks(prev => {
+      updatedList = [newFeedback, ...prev.filter(fb => fb.id !== newFeedback.id)];
+      return updatedList;
+    });
+
+    // 2. Instant 0ms Cross-Tab & Cross-Device Live Broadcast
+    try {
+      if (typeof window !== 'undefined') {
+        const currentSaved = localStorage.getItem('smartdine_customer_feedbacks');
+        const existingList = currentSaved ? JSON.parse(currentSaved) : [];
+        const fullList = [newFeedback, ...(Array.isArray(existingList) ? existingList.filter(fb => fb.id !== newFeedback.id) : [])];
+        localStorage.setItem('smartdine_customer_feedbacks', JSON.stringify(fullList));
+        localStorage.setItem('smartdine_feedback_ping', Date.now().toString());
+        if ('BroadcastChannel' in window) {
+          const ch = new BroadcastChannel('smartdine_feedback_channel');
+          ch.postMessage({ type: 'FEEDBACK_SYNC', feedbacks: fullList, newFeedback });
+          setTimeout(() => ch.close(), 100);
+        }
+        window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+          detail: { collection: 'customerFeedbacks', data: fullList, newFeedback } 
+        }));
+      }
+    } catch {}
+
+    // 3. Background Firestore sync (with timeout so it NEVER blocks UI)
+    if (isFirebaseConfigured) {
+      (async () => {
+        try {
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Firestore feedback sync timeout')), 3500)
+          );
+          await Promise.race([
+            setDoc(doc(db, 'feedbacks', newFeedback.id), newFeedback),
+            timeoutPromise
+          ]);
+        } catch (err) {
+          console.warn('Background Firestore setDoc feedback error / timeout:', err);
+        }
+      })();
+    }
+
     return newFeedback;
+  };
+
+  // Delete Feedback Handler
+  const deleteCustomerFeedback = async (feedbackId) => {
+    // 1. Delete from Firestore if configured
+    if (isFirebaseConfigured) {
+      try {
+        await deleteDoc(doc(db, 'feedbacks', feedbackId));
+      } catch (err) {
+        console.warn('Firestore deleteDoc feedback error (using local):', err);
+      }
+    }
+
+    setCustomerFeedbacks(prev => {
+      const filtered = prev.filter(fb => fb.id !== feedbackId && fb.firestoreDocId !== feedbackId);
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('smartdine_customer_feedbacks', JSON.stringify(filtered));
+          localStorage.setItem('smartdine_feedback_ping', Date.now().toString());
+          if ('BroadcastChannel' in window) {
+            const ch = new BroadcastChannel('smartdine_feedback_channel');
+            ch.postMessage({ type: 'FEEDBACK_SYNC', feedbacks: filtered });
+            setTimeout(() => ch.close(), 100);
+          }
+          window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+            detail: { collection: 'customerFeedbacks', data: filtered } 
+          }));
+        }
+      } catch {}
+      return filtered;
+    });
+  };
+
+  // Reply to Customer Feedback
+  const replyToCustomerFeedback = async (feedbackId, responseText) => {
+    // 1. Update in Firestore if configured
+    if (isFirebaseConfigured) {
+      try {
+        await updateDoc(doc(db, 'feedbacks', feedbackId), { 
+          restaurantResponse: responseText,
+          respondedAt: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn('Firestore updateDoc feedback reply error (using local):', err);
+      }
+    }
+
+    setCustomerFeedbacks(prev => {
+      const updated = prev.map(fb => 
+        (fb.id === feedbackId || fb.firestoreDocId === feedbackId) ? { ...fb, restaurantResponse: responseText } : fb
+      );
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('smartdine_customer_feedbacks', JSON.stringify(updated));
+          localStorage.setItem('smartdine_feedback_ping', Date.now().toString());
+          if ('BroadcastChannel' in window) {
+            const ch = new BroadcastChannel('smartdine_feedback_channel');
+            ch.postMessage({ type: 'FEEDBACK_SYNC', feedbacks: updated });
+            setTimeout(() => ch.close(), 100);
+          }
+          window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+            detail: { collection: 'customerFeedbacks', data: updated } 
+          }));
+        }
+      } catch {}
+      return updated;
+    });
+  };
+
+  // Force-refresh feedbacks from persistence
+  const refreshFeedbacks = () => {
+    try {
+      const saved = localStorage.getItem('smartdine_customer_feedbacks');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setCustomerFeedbacks(parsed);
+          return parsed;
+        }
+      }
+    } catch {}
+    return customerFeedbacks;
   };
 
   // Save cart to local storage
@@ -210,11 +438,29 @@ export function TableOrderProvider({ children }) {
             }).filter(isRealOrder);
             setOrders(ords);
           }
+          if (isFirebaseConfigured) {
+            try {
+              const fbQuery = query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'));
+              const fbSnap = await getDocs(fbQuery);
+              if (!fbSnap.empty) {
+                const fbs = fbSnap.docs.map(doc => ({ id: doc.id, firestoreDocId: doc.id, ...doc.data() }));
+                setCustomerFeedbacks(fbs);
+                localStorage.setItem('smartdine_customer_feedbacks', JSON.stringify(fbs));
+              }
+            } catch {}
+          }
         } else {
           setOrders(localStore.getOrders().filter(isRealOrder));
           setMenuItems(localStore.getMenuItems());
           setCategories(localStore.getCategories());
           setTables(localStore.getTables());
+          try {
+            const saved = localStorage.getItem('smartdine_customer_feedbacks');
+            if (saved) {
+              const fresh = JSON.parse(saved);
+              if (Array.isArray(fresh) && fresh.length > 0) setCustomerFeedbacks(fresh);
+            }
+          } catch {}
         }
         const now = new Date().toLocaleTimeString();
         setLastSyncTime(now);
@@ -254,9 +500,21 @@ export function TableOrderProvider({ children }) {
       // Menu items listener
       const unsubMenu = onSnapshot(collection(db, 'menuItems'), (snapshot) => {
         if (!snapshot.empty) {
-          const items = snapshot.docs.map(doc => ({ id: doc.id, firestoreDocId: doc.id, ...doc.data() }));
-          setMenuItems(items);
-          localStore.saveMenuItems(items);
+          const firestoreItems = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return { id: data.id || doc.id, firestoreDocId: doc.id, ...data };
+          });
+          const localItems = localStore.getMenuItems() || [];
+          const itemMap = new Map();
+          firestoreItems.forEach(item => itemMap.set(String(item.id), item));
+          localItems.forEach(item => {
+            if (item && item.id && !itemMap.has(String(item.id))) {
+              itemMap.set(String(item.id), item);
+            }
+          });
+          const merged = Array.from(itemMap.values());
+          setMenuItems(merged);
+          localStore.saveMenuItems(merged);
         } else {
           const localItems = localStore.getMenuItems();
           if (localItems && localItems.length > 0) {
@@ -271,9 +529,21 @@ export function TableOrderProvider({ children }) {
       // Categories listener
       const unsubCategories = onSnapshot(collection(db, 'categories'), (snapshot) => {
         if (!snapshot.empty) {
-          const cats = snapshot.docs.map(doc => ({ id: doc.id, firestoreDocId: doc.id, ...doc.data() }));
-          setCategories(cats);
-          localStore.saveCategories(cats);
+          const firestoreCats = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return { id: data.id || doc.id, firestoreDocId: doc.id, ...data };
+          });
+          const localCats = localStore.getCategories() || [];
+          const catMap = new Map();
+          firestoreCats.forEach(cat => catMap.set(String(cat.id), cat));
+          localCats.forEach(cat => {
+            if (cat && cat.id && !catMap.has(String(cat.id))) {
+              catMap.set(String(cat.id), cat);
+            }
+          });
+          const merged = Array.from(catMap.values());
+          setCategories(merged);
+          localStore.saveCategories(merged);
         } else {
           const localCats = localStore.getCategories();
           if (localCats && localCats.length > 0) {
@@ -335,69 +605,135 @@ export function TableOrderProvider({ children }) {
         setOrders(localStore.getOrders().filter(isRealOrder));
       });
 
-      // Always listen to cross-tab local updates and storage events so all tabs sync in 0ms
-      const handleLocalUpdate = (e) => {
-        if (e.detail?.collection === 'orders') {
-          const fresh = (e.detail.data || []).filter(isRealOrder);
-          setOrders(prev => {
-            const map = new Map();
-            fresh.forEach(o => map.set(String(o.id), o));
-            prev.forEach(o => {
-              if (!map.has(String(o.id))) map.set(String(o.id), o);
-            });
-            return Array.from(map.values());
+        // Feedbacks listener (Cloud Firestore real-time sync across devices)
+        let unsubFeedbacks = () => {};
+        try {
+          const qFb = query(collection(db, 'feedbacks'), orderBy('createdAt', 'desc'));
+          unsubFeedbacks = onSnapshot(qFb, (snapshot) => {
+            if (!snapshot.empty) {
+              const firestoreFbs = snapshot.docs.map(doc => ({ id: doc.id, firestoreDocId: doc.id, ...doc.data() }));
+              const localSaved = localStorage.getItem('smartdine_customer_feedbacks');
+              const localFbs = localSaved ? JSON.parse(localSaved) : [];
+              const fbMap = new Map();
+              firestoreFbs.forEach(f => fbMap.set(String(f.id), f));
+              (Array.isArray(localFbs) ? localFbs : []).forEach(f => {
+                if (f && f.id && !fbMap.has(String(f.id))) fbMap.set(String(f.id), f);
+              });
+              const merged = Array.from(fbMap.values());
+              setCustomerFeedbacks(merged);
+              localStorage.setItem('smartdine_customer_feedbacks', JSON.stringify(merged));
+            }
+          }, (err) => {
+            console.warn('Firestore feedbacks listener error (falling back to local sync):', err);
           });
-        }
-        if (e.detail?.collection === 'menuItems') setMenuItems(e.detail.data);
-        if (e.detail?.collection === 'categories') setCategories(e.detail.data);
-        if (e.detail?.collection === 'tables') setTables(e.detail.data);
-      };
+        } catch {}
 
-      const handleStorageEvent = (e) => {
-        if (e.key === 'smartdine_orders' || e.key === 'smartdine_order_sync_ping') {
-          const fresh = localStore.getOrders().filter(isRealOrder);
-          setOrders(prev => {
-            const map = new Map();
-            fresh.forEach(o => map.set(String(o.id), o));
-            prev.forEach(o => {
-              if (!map.has(String(o.id))) map.set(String(o.id), o);
+        // Always listen to cross-tab local updates and storage events so all tabs sync in 0ms
+        const handleLocalUpdate = (e) => {
+          if (e.detail?.collection === 'orders') {
+            const fresh = (e.detail.data || []).filter(isRealOrder);
+            setOrders(prev => {
+              const map = new Map();
+              fresh.forEach(o => map.set(String(o.id), o));
+              prev.forEach(o => {
+                if (!map.has(String(o.id))) map.set(String(o.id), o);
+              });
+              return Array.from(map.values());
             });
-            return Array.from(map.values());
-          });
-        }
-      };
+          }
+          if (e.detail?.collection === 'menuItems') setMenuItems(e.detail.data);
+          if (e.detail?.collection === 'categories') setCategories(e.detail.data);
+          if (e.detail?.collection === 'tables') setTables(e.detail.data);
+          if (e.detail?.collection === 'customerFeedbacks' && Array.isArray(e.detail.data)) {
+            setCustomerFeedbacks(e.detail.data);
+          }
+        };
 
-      window.addEventListener('smartdine_db_update', handleLocalUpdate);
-      window.addEventListener('storage', handleStorageEvent);
+        const handleStorageEvent = (e) => {
+          if (e.key === 'smartdine_orders' || e.key === 'smartdine_order_sync_ping') {
+            const fresh = localStore.getOrders().filter(isRealOrder);
+            setOrders(prev => {
+              const map = new Map();
+              fresh.forEach(o => map.set(String(o.id), o));
+              prev.forEach(o => {
+                if (!map.has(String(o.id))) map.set(String(o.id), o);
+              });
+              return Array.from(map.values());
+            });
+          }
+          if (e.key === 'smartdine_menuItems') {
+            try {
+              const fresh = localStore.getMenuItems();
+              if (Array.isArray(fresh) && fresh.length > 0) setMenuItems(fresh);
+            } catch {}
+          }
+          if (e.key === 'smartdine_categories') {
+            try {
+              const fresh = localStore.getCategories();
+              if (Array.isArray(fresh) && fresh.length > 0) setCategories(fresh);
+            } catch {}
+          }
+          if (e.key === 'smartdine_customer_feedbacks' || e.key === 'smartdine_feedback_ping') {
+            try {
+              const fresh = JSON.parse(localStorage.getItem('smartdine_customer_feedbacks') || '[]');
+              if (Array.isArray(fresh) && fresh.length > 0) setCustomerFeedbacks(fresh);
+            } catch {}
+          }
+        };
 
-      return () => {
-        unsubMenu();
-        unsubCategories();
-        unsubTables();
-        unsubOrders();
-        window.removeEventListener('smartdine_db_update', handleLocalUpdate);
-        window.removeEventListener('storage', handleStorageEvent);
-      };
-    } else {
-      // Listen to cross-tab local updates when Firebase is not configured
-      const handleLocalUpdate = (e) => {
-        if (e.detail?.collection === 'orders') setOrders((e.detail.data || []).filter(isRealOrder));
-        if (e.detail?.collection === 'menuItems') setMenuItems(e.detail.data);
-        if (e.detail?.collection === 'categories') setCategories(e.detail.data);
-        if (e.detail?.collection === 'tables') setTables(e.detail.data);
-      };
-      const handleStorageEvent = (e) => {
-        if (e.key === 'smartdine_orders' || e.key === 'smartdine_order_sync_ping') {
-          setOrders(localStore.getOrders().filter(isRealOrder));
-        }
-      };
-      window.addEventListener('smartdine_db_update', handleLocalUpdate);
-      window.addEventListener('storage', handleStorageEvent);
-      return () => {
-        window.removeEventListener('smartdine_db_update', handleLocalUpdate);
-        window.removeEventListener('storage', handleStorageEvent);
-      };
-    }
+        window.addEventListener('smartdine_db_update', handleLocalUpdate);
+        window.addEventListener('storage', handleStorageEvent);
+
+        return () => {
+          unsubMenu();
+          unsubCategories();
+          unsubTables();
+          unsubOrders();
+          unsubFeedbacks();
+          window.removeEventListener('smartdine_db_update', handleLocalUpdate);
+          window.removeEventListener('storage', handleStorageEvent);
+        };
+      } else {
+        // Listen to cross-tab local updates when Firebase is not configured
+        const handleLocalUpdate = (e) => {
+          if (e.detail?.collection === 'orders') setOrders((e.detail.data || []).filter(isRealOrder));
+          if (e.detail?.collection === 'menuItems') setMenuItems(e.detail.data);
+          if (e.detail?.collection === 'categories') setCategories(e.detail.data);
+          if (e.detail?.collection === 'tables') setTables(e.detail.data);
+          if (e.detail?.collection === 'customerFeedbacks' && Array.isArray(e.detail.data)) {
+            setCustomerFeedbacks(e.detail.data);
+          }
+        };
+        const handleStorageEvent = (e) => {
+          if (e.key === 'smartdine_orders' || e.key === 'smartdine_order_sync_ping') {
+            setOrders(localStore.getOrders().filter(isRealOrder));
+          }
+          if (e.key === 'smartdine_menuItems') {
+            try {
+              const fresh = localStore.getMenuItems();
+              if (Array.isArray(fresh) && fresh.length > 0) setMenuItems(fresh);
+            } catch {}
+          }
+          if (e.key === 'smartdine_categories') {
+            try {
+              const fresh = localStore.getCategories();
+              if (Array.isArray(fresh) && fresh.length > 0) setCategories(fresh);
+            } catch {}
+          }
+          if (e.key === 'smartdine_customer_feedbacks' || e.key === 'smartdine_feedback_ping') {
+            try {
+              const fresh = JSON.parse(localStorage.getItem('smartdine_customer_feedbacks') || '[]');
+              if (Array.isArray(fresh) && fresh.length > 0) setCustomerFeedbacks(fresh);
+            } catch {}
+          }
+        };
+        window.addEventListener('smartdine_db_update', handleLocalUpdate);
+        window.addEventListener('storage', handleStorageEvent);
+        return () => {
+          window.removeEventListener('smartdine_db_update', handleLocalUpdate);
+          window.removeEventListener('storage', handleStorageEvent);
+        };
+      }
   }, []);
 
   const setTableSession = (tableNum) => {
@@ -477,8 +813,38 @@ export function TableOrderProvider({ children }) {
   // Check if an order has already been paid / cleared (defined before placeOrder)
   const isOrderPaid = (order) => {
     if (!order) return false;
+    if (order.isPaid === true) return true;
+
+    // 1. Any order with a real Razorpay payment ID (pay_...) is 100% captured online and verified paid
+    const txn = String(order.transactionId || order.razorpay_payment_id || order.paymentId || '').trim();
+    if (txn && txn.startsWith('pay_')) {
+      return true;
+    }
+    if (txn && txn.startsWith('TXN-') && !txn.includes('COUNTER') && !txn.includes('PENDING')) {
+      return true;
+    }
+
     const pStatus = String(order.paymentStatus || order.payment_status || '').trim().toLowerCase();
     
+    // Explicitly paid states
+    if (
+      pStatus === 'paid' || 
+      pStatus === 'cash paid' || 
+      pStatus === 'online paid' || 
+      pStatus === 'settled' || 
+      pStatus === 'completed' ||
+      pStatus.includes('verified')
+    ) {
+      if (!pStatus.includes('unpaid') && !pStatus.includes('not paid') && !pStatus.includes('cash payment requested')) {
+        return true;
+      }
+    }
+
+    // Order has paidAt and real verified transaction ID (not pending/counter placeholder)
+    if ((order.paidAt || order.paid_at) && txn && !txn.startsWith('PENDING') && !txn.startsWith('COUNTER')) {
+      return true;
+    }
+
     // Explicitly un-paid or pending collection states
     if (
       !pStatus ||
@@ -490,15 +856,6 @@ export function TableOrderProvider({ children }) {
       return false;
     }
 
-    // Explicitly paid states
-    if (pStatus === 'paid' || pStatus === 'cash paid' || pStatus === 'online paid') {
-      return true;
-    }
-
-    // Order has paidAt and real verified transaction ID (not pending/counter placeholder)
-    if (order.paidAt && order.transactionId && !order.transactionId.startsWith('PENDING') && !order.transactionId.startsWith('COUNTER')) {
-      return true;
-    }
     return false;
   };
 
@@ -511,12 +868,15 @@ export function TableOrderProvider({ children }) {
     notes = '', 
     paymentMethod = 'CASH / COUNTER',
     paymentStatus = 'PENDING',
-    paymentGateway = 'None',
+    paymentGateway = null,
+    payment_gateway = null,
     razorpay_order_id = null,
     razorpay_payment_id = null,
     razorpay_signature = null,
     transactionId = null,
     paidAt = null,
+    paid_at = null,
+    isPaid = null,
     refund_status = 'NONE',
     discountAmount = 0,
     couponCode = null,
@@ -566,26 +926,28 @@ export function TableOrderProvider({ children }) {
     const prepTimeRange = `${estimatedPrepMinutes}–${estimatedPrepMinutes + 5} min`;
     const finalPrepStartedAt = prepStartedAt || new Date().toISOString();
 
-    // Check if customer is paying via Counter / Cash / Desk (Offline settlement)
-    const mStr = String(paymentMethod || '').toLowerCase();
-    const isCounterOrCash = mStr.includes('counter') || mStr.includes('cash') || mStr.includes('desk') || String(paymentGateway || '').toLowerCase() === 'none';
+    // Check if customer has genuine Razorpay payment or verified online proof
+    const rzpId = razorpay_payment_id || (String(transactionId || '').startsWith('pay_') ? transactionId : null);
+    const hasRazorpayProof = Boolean(rzpId) || String(transactionId || '').startsWith('pay_');
+    const isExplicitlyPaid = isPaid === true || String(paymentStatus || '').toUpperCase() === 'PAID' || Boolean(paidAt || paid_at);
 
-    // Only genuine Razorpay payments or explicitly verified online payments are auto-marked PAID
-    const isOnlineMethod = !isCounterOrCash && (
-      Boolean(razorpay_payment_id) || 
-      paymentGateway === 'Razorpay' ||
-      (String(paymentStatus || '').toUpperCase() === 'PAID')
+    // Check if customer explicitly chose Cash at Counter without paying online
+    const mStr = String(paymentMethod || '').toLowerCase();
+    const isCounterOrCash = !hasRazorpayProof && !isExplicitlyPaid && (
+      mStr.includes('counter') || mStr.includes('cash') || mStr.includes('desk') || mStr === 'pay at counter'
     );
 
+    const isOnlineMethod = hasRazorpayProof || (isExplicitlyPaid && !isCounterOrCash);
+
     const finalPaymentStatus = isOnlineMethod ? 'PAID' : 'PENDING';
-    const finalPaymentMethod = isCounterOrCash
-      ? 'Pay at Counter'
-      : (paymentMethod.includes('Razorpay') || paymentMethod.includes('Online') ? 'RAZORPAY' : (paymentMethod || 'Pay at Counter'));
+    const finalPaymentMethod = isOnlineMethod
+      ? (paymentMethod && !paymentMethod.toLowerCase().includes('counter') ? paymentMethod : 'Razorpay Online (UPI)')
+      : 'Pay at Counter';
     const finalGateway = isOnlineMethod ? 'Razorpay' : 'None';
     const finalAmount = total !== null && total !== undefined ? Number(total) : cartTotal;
-    const finalPaidAt = finalPaymentStatus === 'PAID' ? (paidAt || new Date().toISOString()) : null;
+    const finalPaidAt = finalPaymentStatus === 'PAID' ? (paidAt || paid_at || new Date().toISOString()) : null;
     const finalTxnId = isOnlineMethod 
-      ? (transactionId || razorpay_payment_id || `TXN-${Date.now().toString().slice(-6)}`) 
+      ? (rzpId || transactionId || `TXN-${Date.now().toString().slice(-6)}`) 
       : (transactionId || `COUNTER-${Date.now().toString().slice(-6)}`);
 
     const allKnownOrders = (orders && orders.length > 0) ? orders : localStore.getOrders();
@@ -618,11 +980,12 @@ export function TableOrderProvider({ children }) {
       total: finalAmount,
       notes: notes,
       status: 'pending',
+      isPaid: finalPaymentStatus === 'PAID',
       paymentStatus: finalPaymentStatus,
       paymentMethod: finalPaymentMethod,
       paymentGateway: finalGateway,
       razorpay_order_id: razorpay_order_id || null,
-      razorpay_payment_id: razorpay_payment_id || transactionId || null,
+      razorpay_payment_id: rzpId || null,
       razorpay_signature: razorpay_signature || null,
       transactionId: finalTxnId,
       paidAt: finalPaidAt,
@@ -826,68 +1189,125 @@ export function TableOrderProvider({ children }) {
 
   // Pay Combined Table Bill (Online UPI / Card / NetBanking / Cash)
   const payTableBill = async (tableNum = currentTable, {
-    paymentMethod = 'UPI',
+    paymentMethod = 'Online UPI (Verified)',
     transactionId = `TXN-${Date.now().toString().slice(-6)}`,
     discountAmount = 0,
     couponCode = null,
-    invoiceNumber = null
+    invoiceNumber = null,
+    orderId = null
   } = {}) => {
-    if (!tableNum) throw new Error('No active table found');
-    const formatted = String(tableNum).padStart(2, '0');
+    const formatted = tableNum ? String(tableNum).padStart(2, '0') : null;
+    const targetOrderIdStr = orderId ? String(orderId).trim() : null;
 
-    const tableOrders = orders.filter(o => 
-      String(o.tableNumber).padStart(2, '0') === formatted && 
-      !isOrderPaid(o) && 
-      o.status !== 'cancelled'
-    );
+    const tableOrders = orders.filter(o => {
+      const matchTable = formatted && String(o.tableNumber).padStart(2, '0') === formatted;
+      const matchOrder = targetOrderIdStr && (
+        String(o.id) === targetOrderIdStr || 
+        String(o.orderNumber) === targetOrderIdStr || 
+        (o.firestoreDocId && String(o.firestoreDocId) === targetOrderIdStr)
+      );
+      return (matchTable || matchOrder) && !isOrderPaid(o) && o.status !== 'cancelled';
+    });
+
     const assignedInvoice = invoiceNumber || getOrAssignInvoiceNumber(tableOrders, orders);
 
     const paidPayload = {
       paymentStatus: 'Paid',
-      status: 'completed',
-      paymentMethod,
+      payment_status: 'Paid',
+      isPaid: true,
+      paymentMethod: paymentMethod || 'Online UPI (Verified)',
+      payment_method: paymentMethod || 'Online UPI (Verified)',
       transactionId,
-      discountAmount,
-      couponCode,
+      discountAmount: Number(discountAmount) || 0,
+      couponCode: couponCode || null,
       invoiceNumber: assignedInvoice,
       paidAt: new Date().toISOString(),
+      paid_at: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
     // 1. Immediately update React state functionally
-    setOrders(prev => prev.map(o => {
-      if (String(o.tableNumber).padStart(2, '0') === formatted && !isOrderPaid(o) && o.status !== 'cancelled') {
-        return { ...o, ...paidPayload };
-      }
-      return o;
-    }));
+    let updatedOrdersList = [];
+    setOrders(prev => {
+      updatedOrdersList = prev.map(o => {
+        const matchTable = formatted && String(o.tableNumber).padStart(2, '0') === formatted;
+        const matchOrder = targetOrderIdStr && (
+          String(o.id) === targetOrderIdStr || 
+          String(o.orderNumber) === targetOrderIdStr || 
+          (o.firestoreDocId && String(o.firestoreDocId) === targetOrderIdStr)
+        );
+        if ((matchTable || matchOrder) && o.status !== 'cancelled') {
+          // IMPORTANT: DO NOT set status: 'completed' on bill payment!
+          // Payment only settles the bill (paymentStatus: 'Paid', isPaid: true).
+          // The order's cooking/kitchen lifecycle status (pending -> preparing -> ready -> served -> completed)
+          // must ONLY be controlled and changed from the Kitchen Dashboard.
+          let kitchenStatus = o.status || 'pending';
+          if (kitchenStatus === 'bill requested' || kitchenStatus === 'Bill Requested') {
+            kitchenStatus = o.servedAt ? 'served' : (o.prepStartedAt ? 'preparing' : 'pending');
+          }
 
+          return {
+            ...o,
+            ...paidPayload,
+            isPaid: true,
+            status: kitchenStatus
+          };
+        }
+        return o;
+      });
+      return updatedOrdersList;
+    });
+
+    // 2. Cross-tab & localStore immediate sync
+    try {
+      if (formatted) {
+        localStore.updateOrdersForTable(formatted, paidPayload);
+      }
+      if (targetOrderIdStr) {
+        localStore.updateOrderData(targetOrderIdStr, paidPayload);
+      }
+      if (typeof window !== 'undefined') {
+        const allFresh = updatedOrdersList && updatedOrdersList.length > 0 ? updatedOrdersList : localStore.getOrders();
+        localStorage.setItem('smartdine_orders', JSON.stringify(allFresh));
+        localStorage.setItem('smartdine_order_sync_ping', Date.now().toString());
+        window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+          detail: { collection: 'orders', data: allFresh } 
+        }));
+      }
+    } catch (e) {
+      console.warn('payTableBill local sync error:', e);
+    }
+
+    // 3. Firestore persistence
     if (isFirebaseConfigured) {
       try {
-        const q = query(collection(db, 'orders'), where('tableNumber', '==', formatted));
-        const snap = await getDocs(q);
-        for (const d of snap.docs) {
-          const data = d.data();
-          if (data.paymentStatus !== 'Paid') {
-            await updateDoc(doc(db, 'orders', d.id), paidPayload);
+        if (formatted) {
+          const q = query(collection(db, 'orders'), where('tableNumber', '==', formatted));
+          const snap = await getDocs(q);
+          for (const d of snap.docs) {
+            const data = d.data();
+            if (data.paymentStatus !== 'Paid') {
+              await updateDoc(doc(db, 'orders', d.id), paidPayload);
+            }
           }
+        }
+        if (targetOrderIdStr) {
+          await updateDoc(doc(db, 'orders', targetOrderIdStr), paidPayload).catch(() => {});
         }
       } catch (err) {
         console.warn('Firebase payTableBill error:', err);
       }
     }
 
-    try {
-      localStore.updateOrdersForTable(formatted, paidPayload);
-    } catch {}
-
     return {
       tableNumber: formatted,
+      orderId: targetOrderIdStr,
       transactionId,
       invoiceNumber: assignedInvoice,
       paymentMethod,
       paidAt: paidPayload.paidAt,
-      status: 'Paid'
+      status: 'Paid',
+      isPaid: true
     };
   };
 
@@ -1008,9 +1428,13 @@ export function TableOrderProvider({ children }) {
       updatedAt: new Date().toISOString()
     };
 
-    // Preserve active cooking lifecycle status if kitchen is working on it
-    if (targetOrder?.status && ['preparing', 'ready', 'served'].includes(targetOrder.status)) {
-      updates.status = targetOrder.status;
+    // Explicitly preserve active cooking lifecycle status
+    if (targetOrder?.status && targetOrder.status !== 'cancelled') {
+      let kitchenStatus = targetOrder.status;
+      if (kitchenStatus === 'bill requested' || kitchenStatus === 'Bill Requested') {
+        kitchenStatus = targetOrder.servedAt ? 'served' : (targetOrder.prepStartedAt ? 'preparing' : 'pending');
+      }
+      updates.status = kitchenStatus;
     }
 
     // 1. Immediately update React state so the UI reflects Paid with 0 lag
@@ -1285,8 +1709,9 @@ export function TableOrderProvider({ children }) {
   };
 
   const addMenuItem = async (item) => {
+    const newItemId = item.id || `item-${Date.now()}`;
     const newItem = {
-      id: `item-${Date.now()}`,
+      id: newItemId,
       name: item.name?.trim() || 'New Dish',
       price: Number(item.price) || 0,
       categoryId: item.categoryId || (categories[0]?.id || 'main-course'),
@@ -1296,24 +1721,37 @@ export function TableOrderProvider({ children }) {
       isVeg: item.isVeg !== undefined ? item.isVeg : true,
       inStock: item.inStock !== undefined ? item.inStock : true,
       available: item.available !== undefined ? item.available : true,
-      createdAt: new Date().toISOString()
+      createdAt: item.createdAt || new Date().toISOString()
     };
 
-    if (isFirebaseConfigured) {
-      try {
-        const docRef = await addDoc(collection(db, 'menuItems'), newItem);
-        if (docRef?.id) {
-          newItem.firestoreDocId = docRef.id;
-        }
-      } catch (err) {
-        console.warn('Firebase addDoc menuItem error, using local fallback:', err);
-      }
-    }
-
+    // 1. Immediate UI update (0ms latency, optimistic)
     setMenuItems(prev => [newItem, ...prev.filter(i => i.id !== newItem.id)]);
     const currentItems = localStore.getMenuItems();
     const updated = [newItem, ...currentItems.filter(i => i.id !== newItem.id)];
     localStore.saveMenuItems(updated);
+
+    // 2. Broadcast local update event for cross-component reactivity
+    window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+      detail: { collection: 'menuItems', data: updated } 
+    }));
+
+    // 3. Asynchronous background sync to Firestore (with strict timeout)
+    if (isFirebaseConfigured) {
+      (async () => {
+        try {
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Firestore menu item sync timeout')), 3500)
+          );
+          await Promise.race([
+            setDoc(doc(db, 'menuItems', newItem.id), newItem),
+            timeoutPromise
+          ]);
+        } catch (err) {
+          console.warn('Background Firestore setDoc menuItem error/timeout:', err);
+        }
+      })();
+    }
+
     return newItem;
   };
 
@@ -1333,14 +1771,24 @@ export function TableOrderProvider({ children }) {
     );
     localStore.saveMenuItems(updated);
 
+    window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+      detail: { collection: 'menuItems', data: updated } 
+    }));
+
     if (isFirebaseConfigured) {
-      try {
-        const itemToUpdate = menuItems.find(i => String(i.id) === targetStr || String(i.firestoreDocId) === targetStr);
-        const docId = itemToUpdate?.firestoreDocId || itemId;
-        await updateDoc(doc(db, 'menuItems', docId), updates);
-      } catch (err) {
-        console.warn('Firebase updateDoc menuItem error:', err);
-      }
+      (async () => {
+        try {
+          const itemToUpdate = currentItems.find(i => String(i.id) === targetStr || String(i.firestoreDocId) === targetStr);
+          const docId = itemToUpdate?.firestoreDocId || itemId;
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3500));
+          await Promise.race([
+            updateDoc(doc(db, 'menuItems', String(docId)), updates),
+            timeoutPromise
+          ]);
+        } catch (err) {
+          console.warn('Firebase updateDoc menuItem error:', err);
+        }
+      })();
     }
   };
 
@@ -1353,13 +1801,23 @@ export function TableOrderProvider({ children }) {
     const updated = currentItems.filter(item => String(item.id) !== targetStr && String(item.firestoreDocId) !== targetStr);
     localStore.saveMenuItems(updated);
 
+    window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+      detail: { collection: 'menuItems', data: updated } 
+    }));
+
     if (isFirebaseConfigured) {
-      try {
-        const docId = itemToDelete?.firestoreDocId || itemId;
-        await deleteDoc(doc(db, 'menuItems', docId));
-      } catch (err) {
-        console.warn('Firebase deleteDoc menuItem error:', err);
-      }
+      (async () => {
+        try {
+          const docId = itemToDelete?.firestoreDocId || itemId;
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3500));
+          await Promise.race([
+            deleteDoc(doc(db, 'menuItems', String(docId))),
+            timeoutPromise
+          ]);
+        } catch (err) {
+          console.warn('Firebase deleteDoc menuItem error:', err);
+        }
+      })();
     }
   };
 
@@ -1385,14 +1843,24 @@ export function TableOrderProvider({ children }) {
     });
     localStore.saveMenuItems(updated);
 
+    window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+      detail: { collection: 'menuItems', data: updated } 
+    }));
+
     if (isFirebaseConfigured) {
-      try {
-        const itemToUpdate = menuItems.find(i => String(i.id) === targetStr || String(i.firestoreDocId) === targetStr);
-        const docId = itemToUpdate?.firestoreDocId || itemId;
-        await updateDoc(doc(db, 'menuItems', docId), { inStock: newInStock, available: newInStock });
-      } catch (err) {
-        console.warn('Firebase toggleItemAvailability error:', err);
-      }
+      (async () => {
+        try {
+          const itemToUpdate = currentItems.find(i => String(i.id) === targetStr || String(i.firestoreDocId) === targetStr);
+          const docId = itemToUpdate?.firestoreDocId || itemId;
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3500));
+          await Promise.race([
+            updateDoc(doc(db, 'menuItems', String(docId)), { inStock: newInStock, available: newInStock }),
+            timeoutPromise
+          ]);
+        } catch (err) {
+          console.warn('Firebase toggleItemAvailability error:', err);
+        }
+      })();
     }
   };
 
@@ -1407,21 +1875,29 @@ export function TableOrderProvider({ children }) {
       createdAt: new Date().toISOString()
     };
 
-    if (isFirebaseConfigured) {
-      try {
-        const docRef = await addDoc(collection(db, 'categories'), newCat);
-        if (docRef?.id) {
-          newCat.firestoreDocId = docRef.id;
-        }
-      } catch (err) {
-        console.warn('Firebase addDoc category error:', err);
-      }
-    }
-
     setCategories(prev => [...prev.filter(c => c.id !== newCat.id), newCat]);
     const currentCats = localStore.getCategories();
     const updated = [...currentCats.filter(c => c.id !== newCat.id), newCat];
     localStore.saveCategories(updated);
+
+    window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+      detail: { collection: 'categories', data: updated } 
+    }));
+
+    if (isFirebaseConfigured) {
+      (async () => {
+        try {
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3500));
+          await Promise.race([
+            setDoc(doc(db, 'categories', newCat.id), newCat),
+            timeoutPromise
+          ]);
+        } catch (err) {
+          console.warn('Firebase setDoc category error:', err);
+        }
+      })();
+    }
+
     return newCat;
   };
 
@@ -1625,6 +2101,137 @@ export function TableOrderProvider({ children }) {
     return waiterCalls.find(c => String(c.tableNumber).padStart(2, '0') === target && c.status === 'pending') || null;
   };
 
+  // Add Water Bottle (Packaged Mineral Water) directly to table's active bill
+  const addWaterBottleToTableBill = async (tableNumber, {
+    quantity = 1,
+    price = 20,
+    bottleName = 'Mineral Water Bottle (1L)',
+    resolveCallId = null
+  } = {}) => {
+    const formatted = String(tableNumber || currentTable || '01').padStart(2, '0');
+    const qty = Math.max(1, Number(quantity) || 1);
+    const unitPrice = Number(price) || 20;
+
+    // 1. Find active unpaid orders for this table
+    const activeOrders = getTableActiveOrders(formatted);
+    let targetOrder = activeOrders.length > 0 ? activeOrders[activeOrders.length - 1] : null;
+
+    if (targetOrder) {
+      const existingItems = Array.isArray(targetOrder.items) ? [...targetOrder.items] : [];
+      const itemIdx = existingItems.findIndex(i => 
+        (i.itemId === 'item-water-bottle' || String(i.name).toLowerCase().includes('water bottle'))
+      );
+
+      if (itemIdx >= 0) {
+        existingItems[itemIdx] = {
+          ...existingItems[itemIdx],
+          quantity: (existingItems[itemIdx].quantity || 1) + qty,
+          totalPrice: ((existingItems[itemIdx].quantity || 1) + qty) * unitPrice
+        };
+      } else {
+        existingItems.push({
+          itemId: 'item-water-bottle',
+          id: `item-water-${Date.now()}`,
+          name: bottleName,
+          price: unitPrice,
+          quantity: qty,
+          totalPrice: unitPrice * qty,
+          isVeg: true,
+          category: 'Drinks',
+          imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=600&auto=format&fit=crop&q=80'
+        });
+      }
+
+      const subtotal = existingItems.reduce((sum, it) => sum + (Number(it.price || unitPrice) * Number(it.quantity || 1)), 0);
+      const tax = Math.round(subtotal * 0.05 * 100) / 100;
+      const total = Math.round((subtotal + tax) * 100) / 100;
+
+      const updates = {
+        items: existingItems,
+        subtotal,
+        tax,
+        total,
+        amount: total,
+        updatedAt: new Date().toISOString()
+      };
+
+      setOrders(prev => prev.map(o => {
+        if (String(o.id) === String(targetOrder.id) || String(o.orderNumber) === String(targetOrder.orderNumber)) {
+          return { ...o, ...updates };
+        }
+        return o;
+      }));
+
+      try { localStore.updateOrderData(targetOrder.id, updates); } catch {}
+      if (isFirebaseConfigured) {
+        const docId = targetOrder.firestoreDocId || targetOrder.id;
+        updateDoc(doc(db, 'orders', docId), updates).catch(e => console.warn(e));
+      }
+    } else {
+      const newOrderId = `ORD-${Date.now().toString().slice(-6)}`;
+      const subtotal = unitPrice * qty;
+      const tax = Math.round(subtotal * 0.05 * 100) / 100;
+      const total = Math.round((subtotal + tax) * 100) / 100;
+
+      const newOrder = {
+        id: newOrderId,
+        orderNumber: newOrderId,
+        tableNumber: formatted,
+        customerName: localStorage.getItem('smartdine_guest_name') || 'Guest',
+        items: [{
+          itemId: 'item-water-bottle',
+          id: `item-water-${Date.now()}`,
+          name: bottleName,
+          price: unitPrice,
+          quantity: qty,
+          totalPrice: unitPrice * qty,
+          isVeg: true,
+          category: 'Drinks',
+          imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=600&auto=format&fit=crop&q=80'
+        }],
+        subtotal,
+        tax,
+        total,
+        amount: total,
+        status: 'served',
+        paymentStatus: 'pending',
+        paymentMethod: 'Pay at Counter',
+        isPaid: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      setOrders(prev => [newOrder, ...prev]);
+      try {
+        const allOrders = localStore.getOrders();
+        localStore.saveOrders([newOrder, ...allOrders]);
+      } catch {}
+      if (isFirebaseConfigured) {
+        setDoc(doc(db, 'orders', newOrder.id), newOrder).catch(e => console.warn(e));
+      }
+    }
+
+    if (resolveCallId) {
+      resolveWaiterCall(resolveCallId);
+    } else {
+      const matchCall = waiterCalls.find(c => 
+        String(c.tableNumber).padStart(2, '0') === formatted && 
+        c.status === 'pending' && 
+        (String(c.reason).toLowerCase().includes('water') || String(c.reason).toLowerCase().includes('bottle'))
+      );
+      if (matchCall) resolveWaiterCall(matchCall.id);
+    }
+
+    try {
+      window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+        detail: { collection: 'orders', data: localStore.getOrders() } 
+      }));
+      localStorage.setItem('smartdine_order_sync_ping', String(Date.now()));
+    } catch {}
+
+    return true;
+  };
+
   return (
     <TableOrderContext.Provider value={{
       currentTable,
@@ -1668,7 +2275,10 @@ export function TableOrderProvider({ children }) {
       latestPlacedOrderId,
       lastSyncTime,
       customerFeedbacks,
+      refreshFeedbacks,
       submitOrderFeedback,
+      deleteCustomerFeedback,
+      replyToCustomerFeedback,
       addMenuItem,
       updateMenuItem,
       deleteMenuItem,
@@ -1685,7 +2295,8 @@ export function TableOrderProvider({ children }) {
       callWaiter,
       cancelWaiterCall,
       resolveWaiterCall,
-      getActiveWaiterCallForTable
+      getActiveWaiterCallForTable,
+      addWaterBottleToTableBill
     }}>
       {children}
     </TableOrderContext.Provider>

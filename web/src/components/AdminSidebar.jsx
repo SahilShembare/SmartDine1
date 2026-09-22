@@ -12,7 +12,8 @@ import {
   Settings, 
   LogOut, 
   X, 
-  Utensils 
+  Utensils,
+  MessageSquareHeart
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTableOrder } from '../context/TableOrderContext';
@@ -25,7 +26,7 @@ export default function AdminSidebar({
   setMobileOpen 
 }) {
   const { logout } = useAuth();
-  const { orders = [] } = useTableOrder();
+  const { orders = [], customerFeedbacks = [] } = useTableOrder();
   const navigate = useNavigate();
 
   const activeKitchenCount = orders.filter(o => {
@@ -45,6 +46,13 @@ export default function AdminSidebar({
     { id: 'menu', label: 'Menu Management', icon: UtensilsCrossed },
     { id: 'tables', label: 'Tables', icon: Grid3X3 },
     { id: 'customers', label: 'Customers', icon: Users },
+    { 
+      id: 'feedback', 
+      label: '⭐ Customer Feedback', 
+      icon: MessageSquareHeart, 
+      badge: customerFeedbacks.length > 0 ? `${customerFeedbacks.length}` : null,
+      badgeColor: 'bg-amber-100 text-amber-800'
+    },
     { id: 'payments', label: 'Payments', icon: CreditCard },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'sales-analysis', label: '📈 Sales Analysis', icon: TrendingUp },
@@ -129,19 +137,19 @@ export default function AdminSidebar({
               </button>
             );
           })}
-        </div>
-      </div>
 
-      {/* Footer / Logout */}
-      <div className="p-4 border-t border-slate-100">
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-        >
-          <LogOut className="w-4 h-4 text-rose-500" />
-          <span>Logout</span>
-        </button>
+          {/* Logout Button directly below Settings */}
+          <div className="pt-2 border-t border-slate-100 mt-2">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer"
+            >
+              <LogOut className="w-4 h-4 text-rose-500" />
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -50,7 +50,6 @@ export default function CustomerWebMenu() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isCallWaiterOpen, setIsCallWaiterOpen] = useState(false);
   const guestName = currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || '';
-  const avatarUrl = currentUser?.photoURL || localStorage.getItem('smartdine_guest_avatar') || '';
   const { 
     currentTable, 
     setTableSession, 
@@ -262,12 +261,8 @@ export default function CustomerWebMenu() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-amber-400/40 text-slate-200 text-xs font-bold transition shadow-sm cursor-pointer"
                 title="Customer Profile & Preferences"
               >
-                <div className="w-5 h-5 rounded-full bg-gradient-to-r from-orange-600 to-amber-600 text-white flex items-center justify-center text-[10px] font-black shadow-sm overflow-hidden">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                  ) : (
-                    <span>{guestName ? guestName.charAt(0).toUpperCase() : <User className="w-3 h-3" />}</span>
-                  )}
+                <div className="w-5 h-5 rounded-full bg-gradient-to-r from-orange-600 to-amber-600 text-white flex items-center justify-center text-[10px] font-black shadow-sm">
+                  {guestName ? guestName.charAt(0).toUpperCase() : <User className="w-3 h-3" />}
                 </div>
                 <span className="max-w-[85px] sm:max-w-[120px] truncate">
                   {guestName || 'My Profile'}

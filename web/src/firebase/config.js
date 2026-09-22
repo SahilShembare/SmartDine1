@@ -106,7 +106,34 @@ export const localStore = {
   },
   
   // Real orders start empty unless real customer orders have been placed
-  getOrders: () => getLocalData('orders', []),
+  getOrders: () => {
+    const raw = getLocalData('orders', []);
+    if (!Array.isArray(raw)) return [];
+    let changed = false;
+    const reconciled = raw.map(o => {
+      const txn = String(o.transactionId || o.razorpay_payment_id || o.paymentId || '').trim();
+      if (txn.startsWith('pay_')) {
+        const pStatus = String(o.paymentStatus || '').toUpperCase();
+        if (pStatus !== 'PAID' || o.isPaid !== true) {
+          changed = true;
+          return {
+            ...o,
+            paymentStatus: 'PAID',
+            isPaid: true,
+            paymentMethod: (o.paymentMethod && !o.paymentMethod.toLowerCase().includes('counter')) 
+              ? o.paymentMethod 
+              : 'Razorpay Online (UPI)',
+            paidAt: o.paidAt || o.createdAt || new Date().toISOString()
+          };
+        }
+      }
+      return o;
+    });
+    if (changed) {
+      setLocalData('orders', reconciled);
+    }
+    return reconciled;
+  },
   saveOrders: (orders) => setLocalData('orders', orders),
 
   resetToRealData: () => {
@@ -132,7 +159,8 @@ export const localStore = {
       queuePosition: orderData.queuePosition || null,
       estimatedWaitingMinutes: orderData.estimatedWaitingMinutes || null,
       status: orderData.status || 'pending',
-      paymentStatus: 'pending',
+      paymentStatus: orderData.paymentStatus || 'pending',
+      isPaid: Boolean(orderData.isPaid || String(orderData.transactionId || orderData.razorpay_payment_id || '').startsWith('pay_')),
       ...orderData,
       id: orderNumber,
       orderNumber: orderNumber

@@ -14,7 +14,11 @@ import {
   Check,
   ChevronRight,
   Eye,
-  Banknote
+  Banknote,
+  Star,
+  MessageSquareHeart,
+  Droplets,
+  Bell
 } from 'lucide-react';
 import { useTableOrder } from '../../context/TableOrderContext';
 import toast from 'react-hot-toast';
@@ -26,6 +30,10 @@ export default function DashboardOverview({
   const { 
     orders = [], 
     tables = [], 
+    customerFeedbacks = [],
+    waiterCalls = [],
+    resolveWaiterCall,
+    addWaterBottleToTableBill,
     updateOrderStatus,
     updateTableStatus,
     isOrderPaid = () => false,
@@ -37,6 +45,10 @@ export default function DashboardOverview({
 
   const [selectedTableModal, setSelectedTableModal] = useState(null);
   const [selectedOrderModal, setSelectedOrderModal] = useState(null);
+
+  const pendingWaiterCalls = useMemo(() => {
+    return (waiterCalls || []).filter(c => c.status === 'pending');
+  }, [waiterCalls]);
 
   // Fallback real order filter
   const isOrderReal = (o) => {
@@ -109,6 +121,21 @@ export default function DashboardOverview({
       .filter(o => isOrderPaid(o) && String(o.status || '').toLowerCase() !== 'cancelled')
       .reduce((sum, o) => sum + (Number(o.amount || o.total) || 0), 0);
   }, [realOrders, isOrderPaid]);
+
+  // Customer Feedback metrics
+  const avgRating = useMemo(() => {
+    if (!customerFeedbacks || customerFeedbacks.length === 0) return '5.0';
+    const sum = customerFeedbacks.reduce((acc, fb) => acc + (Number(fb.overallRating) || 5), 0);
+    return (sum / customerFeedbacks.length).toFixed(1);
+  }, [customerFeedbacks]);
+
+  const positiveFeedbackCount = useMemo(() => {
+    return (customerFeedbacks || []).filter(fb => (Number(fb.overallRating) || 5) >= 4).length;
+  }, [customerFeedbacks]);
+
+  const recentFeedbacks = useMemo(() => {
+    return (customerFeedbacks || []).slice(0, 4);
+  }, [customerFeedbacks]);
 
   // Total Tables & Available Tables
   const totalTables = tables.length || 25;
@@ -250,9 +277,9 @@ export default function DashboardOverview({
     <div className="space-y-6 max-w-7xl mx-auto">
       
       {/* ============================================================ */}
-      {/* 1. DASHBOARD OVERVIEW: ONLY 4 SIMPLE SUMMARY CARDS           */}
+      {/* 1. DASHBOARD OVERVIEW: SUMMARY STAT CARDS                    */}
       {/* ============================================================ */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         
         {/* Daily Orders (Today) */}
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-sm transition">
@@ -344,6 +371,33 @@ export default function DashboardOverview({
           </div>
         </div>
 
+        {/* Customer Feedback & Ratings */}
+        <div 
+          onClick={() => onNavigateTab('feedback')}
+          className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-amber-300 transition cursor-pointer group"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-amber-700 transition">
+              Customer Feedback
+            </span>
+            <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:scale-105 transition">
+              <Star className="w-5 h-5 fill-amber-400 text-amber-500" />
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="text-3xl font-bold text-slate-900 tracking-tight flex items-baseline gap-1.5">
+              <span>{avgRating}</span>
+              <span className="text-sm font-bold text-amber-500">★ Stars</span>
+            </div>
+            <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
+              <span>{customerFeedbacks.length} Reviews</span>
+              <span className="text-[11px] font-semibold text-emerald-600">
+                {positiveFeedbackCount} Positive
+              </span>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* ============================================================ */}
@@ -418,6 +472,86 @@ export default function DashboardOverview({
           >
             Open Payments Console →
           </button>
+        </div>
+      )}
+
+      {/* Live Floor Assistance & Waiter / Water Bottle Calls */}
+      {pendingWaiterCalls.length > 0 && (
+        <div className="bg-gradient-to-r from-blue-50 via-sky-50 to-indigo-50 border border-blue-200/90 rounded-2xl p-4 shadow-xs animate-in fade-in space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 shadow-xs">
+                <Bell className="w-5 h-5 animate-bounce" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-blue-950 flex items-center gap-2">
+                  <span>{pendingWaiterCalls.length} Live Floor / Waiter Request{pendingWaiterCalls.length > 1 ? 's' : ''}</span>
+                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping" />
+                </div>
+                <p className="text-xs text-blue-700 mt-0.5">
+                  Customers requesting floor service or water bottle. You can directly add water bottles to their active bill.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('tables')}
+              className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition active:scale-95 cursor-pointer shrink-0 self-start sm:self-auto"
+            >
+              Floor & Tables →
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1 border-t border-blue-200/50">
+            {pendingWaiterCalls.map((call) => {
+              const isWater = String(call.reason || '').toLowerCase().includes('water') || String(call.notes || '').toLowerCase().includes('water') || String(call.reason || '').toLowerCase().includes('bottle');
+              return (
+                <div key={call.id} className="p-3 bg-white/90 rounded-xl border border-blue-200/70 shadow-xs flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded-lg bg-slate-900 text-white font-black text-xs">
+                        Table {call.tableNumber}
+                      </span>
+                      <span className="text-xs font-bold text-slate-800 truncate">
+                        {call.reason || 'Assistance'}
+                      </span>
+                    </div>
+                    {call.notes && (
+                      <p className="text-[11px] text-slate-500 italic truncate mt-0.5">"{call.notes}"</p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isWater && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          await addWaterBottleToTableBill(call.tableNumber, { resolveCallId: call.id, quantity: 1, price: 20 });
+                          toast.success(`💧 Added 1x Water Bottle to Table ${call.tableNumber} bill! (₹20)`, { icon: '🍾' });
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                        title="Add Mineral Water Bottle to this Table's active bill"
+                      >
+                        <Droplets className="w-3.5 h-3.5" />
+                        <span>+ Bill ₹20</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resolveWaiterCall && resolveWaiterCall(call.id);
+                        toast.success(`Table ${call.tableNumber} request attended! ✓`);
+                      }}
+                      className="px-2 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition cursor-pointer"
+                      title="Mark call attended"
+                    >
+                      ✓
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -623,6 +757,118 @@ export default function DashboardOverview({
         </div>
       </div>
 
+      {/* ============================================================ */}
+      {/* 4. LIVE CUSTOMER FEEDBACK & REVIEWS SECTION                  */}
+      {/* ============================================================ */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                <MessageSquareHeart className="w-4 h-4" />
+              </div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <span>Live Customer Feedback & Reviews</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Live updates active" />
+              </h2>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Live guest reviews, dining ratings, and real-time customer feedback
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200/60 text-amber-800 text-xs font-bold flex items-center gap-1.5">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+              <span>{avgRating} Avg ({customerFeedbacks.length} Reviews)</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => onNavigateTab('feedback')}
+              className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
+            >
+              <span>Feedback Console</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-4 sm:p-5">
+          {recentFeedbacks.length === 0 ? (
+            <div className="py-8 text-center text-slate-400 text-xs space-y-1.5">
+              <MessageSquareHeart className="w-8 h-8 mx-auto text-slate-300" />
+              <p className="font-semibold text-slate-700">No customer feedback yet</p>
+              <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
+                When diners submit their meal ratings and comments from the digital bill, their reviews appear here live in real time.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {recentFeedbacks.map((fb) => (
+                <div 
+                  key={fb.id}
+                  onClick={() => onNavigateTab('feedback')}
+                  className="p-4 rounded-2xl bg-slate-50/70 hover:bg-amber-50/30 border border-slate-200/80 hover:border-amber-200 transition cursor-pointer flex flex-col justify-between gap-2.5 group shadow-2xs"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white flex items-center justify-center font-black text-sm shrink-0 shadow-xs">
+                        {fb.customerName ? fb.customerName.charAt(0).toUpperCase() : 'G'}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 group-hover:text-amber-700 transition flex items-center gap-1.5">
+                          <span>{fb.customerName || 'Dining Guest'}</span>
+                          <span className="text-[10px] font-semibold text-slate-600 bg-slate-200/70 px-1.5 py-0.2 rounded-md">
+                            Table {fb.tableNumber || '01'}
+                          </span>
+                        </h4>
+                        <span className="text-[10px] text-slate-400">
+                          {fb.date || 'Today'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-0.5 px-2 py-0.8 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs font-black shrink-0">
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-500" />
+                      <span>{fb.overallRating}.0</span>
+                    </div>
+                  </div>
+
+                  {fb.writtenText ? (
+                    <p className="text-xs text-slate-700 italic line-clamp-2">
+                      "{fb.writtenText}"
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic">
+                      Satisfied dining review submitted
+                    </p>
+                  )}
+
+                  {fb.selectedTags && fb.selectedTags.length > 0 && (
+                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                      {fb.selectedTags.slice(0, 3).map((tag, tIdx) => (
+                        <span key={tIdx} className="text-[10px] px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600 font-medium">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {fb.restaurantResponse && (
+                    <div className="mt-1 p-2 rounded-xl bg-emerald-50/80 border border-emerald-100 text-[11px] text-emerald-800 flex items-start gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                      <span className="line-clamp-1">
+                        <strong>Replied:</strong> {fb.restaurantResponse}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Quick Table Detail Modal */}
       {selectedTableModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs">
@@ -691,6 +937,24 @@ export default function DashboardOverview({
                   )}
                 </div>
               )}
+
+              {/* Quick Add Water Bottle Action */}
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await addWaterBottleToTableBill(selectedTableModal.table.tableNumber, { quantity: 1, price: 20 });
+                    toast.success(`💧 Added 1x Mineral Water Bottle to Table ${selectedTableModal.table.tableNumber} bill! (₹20)`, { icon: '🍾' });
+                    setSelectedTableModal(null);
+                  } catch (err) {
+                    toast.error('Failed to add water bottle');
+                  }
+                }}
+                className="w-full py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-bold text-xs transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Droplets className="w-3.5 h-3.5 text-blue-600" />
+                <span>+ Add Water Bottle to Bill (₹20)</span>
+              </button>
             </div>
 
             {/* Quick Status Update Buttons */}

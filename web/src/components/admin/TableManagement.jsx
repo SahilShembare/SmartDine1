@@ -15,7 +15,8 @@ import {
   X,
   Sparkles,
   Trash2,
-  AlertCircle
+  AlertCircle,
+  Droplets
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useTableOrder } from '../../context/TableOrderContext';
@@ -32,7 +33,8 @@ export default function TableManagement() {
     deleteTable,
     resetToRealTables,
     isOrderPaid = () => false,
-    markTableAsPaidByAdmin
+    markTableAsPaidByAdmin,
+    addWaterBottleToTableBill
   } = useTableOrder();
 
   const [selectedTable, setSelectedTable] = useState(null);
@@ -639,6 +641,24 @@ export default function TableManagement() {
                   )}
                 </div>
               )}
+
+              {/* Quick Add Water Bottle Action */}
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await addWaterBottleToTableBill(selectedTable.tableNumber, { quantity: 1, price: 20 });
+                    toast.success(`💧 Added 1x Water Bottle to Table ${selectedTable.tableNumber} bill! (₹20)`, { icon: '🍾' });
+                    setSelectedTable(null);
+                  } catch (err) {
+                    toast.error('Failed to add water bottle');
+                  }
+                }}
+                className="w-full py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-bold text-xs transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Droplets className="w-3.5 h-3.5 text-blue-600" />
+                <span>+ Add Water Bottle (₹20)</span>
+              </button>
             </div>
 
             {/* Change Status Buttons */}

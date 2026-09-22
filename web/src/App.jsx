@@ -128,6 +128,14 @@ function AppContent() {
                   } 
                 />
                 <Route 
+                  path="/admin/feedback" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <AdminDashboard initialTab="feedback" />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
                   path="/admin/payments" 
                   element={
                     <ProtectedRoute allowedRoles={['admin']}>

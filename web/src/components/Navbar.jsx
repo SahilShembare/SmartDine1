@@ -13,7 +13,6 @@ import {
   Sparkles,
   QrCode,
   User,
-  Crown,
   Bell,
   BellRing,
   Search,
@@ -59,7 +58,6 @@ export default function Navbar() {
   const hideTopNavItems = isHomePage || isLoginPage || isScanPage || isMenuPage || isCartPage || isProfilePage || isBillPage || isTrackPage;
 
   const guestName = currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || 'Guest';
-  const avatarUrl = currentUser?.photoURL || localStorage.getItem('smartdine_guest_avatar') || '';
 
   const activeWaiterCall = getActiveWaiterCallForTable ? getActiveWaiterCallForTable(currentTable) : null;
 
@@ -336,12 +334,8 @@ export default function Navbar() {
                   onClick={() => setScanDropdownOpen(!scanDropdownOpen)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-bold transition shadow-sm cursor-pointer"
                 >
-                  <div className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-xs shadow-sm overflow-hidden">
-                    {avatarUrl ? (
-                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <span>{guestName ? guestName.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}</span>
-                    )}
+                  <div className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-xs shadow-sm">
+                    {guestName ? guestName.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}
                   </div>
                   <span className="max-w-[110px] truncate font-bold text-slate-200">
                     {guestName}
@@ -351,12 +345,8 @@ export default function Navbar() {
                 {scanDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl py-2 z-50 text-slate-100 animate-in fade-in duration-150">
                     <div className="px-4 py-2.5 border-b border-slate-800 flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs font-bold overflow-hidden shrink-0">
-                        {avatarUrl ? (
-                          <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                        ) : (
-                          <span>{guestName.charAt(0).toUpperCase()}</span>
-                        )}
+                      <div className="w-7 h-7 rounded-full bg-orange-500 text-white flex items-center justify-center text-xs font-bold shrink-0">
+                        {guestName ? guestName.charAt(0).toUpperCase() : <User className="w-4 h-4" />}
                       </div>
                       <p className="text-xs font-black text-white truncate">{guestName}</p>
                     </div>
@@ -384,17 +374,12 @@ export default function Navbar() {
                   title="Customer Profile & Dining Details"
                   className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 text-xs font-bold transition shadow-sm cursor-pointer group"
                 >
-                  <div className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center font-black text-xs shadow-sm overflow-hidden">
-                    {avatarUrl ? (
-                      <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <span>{currentUser?.displayName ? currentUser.displayName.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}</span>
-                    )}
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white flex items-center justify-center font-black text-xs shadow-sm">
+                    {currentUser?.displayName ? currentUser.displayName.charAt(0).toUpperCase() : (guestName ? guestName.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />)}
                   </div>
                   <span className="hidden sm:inline max-w-[110px] truncate font-bold text-slate-200">
                     {currentUser?.displayName || guestName || 'Profile'}
                   </span>
-                  <Crown className="w-3 h-3 text-amber-400 group-hover:scale-110 transition-transform" />
                 </Link>
               </div>
             ) : null}

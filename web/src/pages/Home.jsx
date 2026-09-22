@@ -598,12 +598,12 @@ export default function Home() {
             ) : (
               <div className="grid grid-cols-2 gap-2.5">
                 <button
-                  onClick={() => handleCallWaiter('Drinking Water')}
+                  onClick={() => handleCallWaiter('Packaged Water Bottle (1L)')}
                   className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left space-y-1 transition active:scale-95 cursor-pointer"
                 >
                   <Droplets className="w-5 h-5 text-blue-400" />
-                  <div className="font-extrabold text-xs text-white">Water</div>
-                  <div className="text-[10px] text-slate-400">Regular / Chilled</div>
+                  <div className="font-extrabold text-xs text-white">Water Bottle</div>
+                  <div className="text-[10px] text-slate-400">Packaged Chilled (1L)</div>
                 </button>
 
                 <button

@@ -1539,6 +1539,23 @@ export const DEMO_MENU_ITEMS = [
     imageUrl: "/dishes/mango_lassi.jpg",
     createdAt: new Date().toISOString()
   },
+  {
+    id: "item-water-bottle",
+    name: "Mineral Water Bottle (1L)",
+    category: "🥤 Drinks",
+    categoryId: "drinks",
+    description: "Sealed packaged mineral water bottle served chilled.",
+    price: 20,
+    vegetarian: true,
+    isVeg: true,
+    available: true,
+    popular: true,
+    prepTime: "1 min",
+    rating: 5.0,
+    ingredients: ["Purified Natural Mineral Water", "Electrolytes"],
+    imageUrl: "https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=600&auto=format&fit=crop&q=80",
+    createdAt: new Date().toISOString()
+  },
 
   // ==========================================
   // 26. INDIAN SWEETS (item-229 to item-230)

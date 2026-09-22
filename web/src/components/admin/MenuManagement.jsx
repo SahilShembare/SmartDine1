@@ -73,13 +73,47 @@ export default function MenuManagement({ autoOpenAdd = false }) {
     });
   }, [menuItems, selectedCategory, searchQuery]);
 
+// Client-side image compressor for superfast uploads without exceeding quotas
+const compressImage = (file) => {
+  return new Promise((resolve) => {
+    if (!file) return resolve('');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 800;
+        if (width > height && width > maxDim) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else if (height > maxDim) {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = () => resolve(e.target.result);
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
   // Open Add Item Modal
   const handleOpenAddModal = () => {
     setEditingItem(null);
+    const activeCatObj = categories.find(c => c.id === selectedCategory);
+    const defaultCat = activeCatObj || categories[0] || { id: 'main-course', name: 'Main Course' };
     setFormData({
       name: '',
-      categoryId: categories[0]?.id || 'main-course',
-      category: categories[0]?.name || 'Main Course',
+      categoryId: defaultCat.id,
+      category: defaultCat.name,
       price: '',
       description: '',
       imageUrl: '/dishes/paneer_butter_masala.jpg',
@@ -114,16 +148,17 @@ export default function MenuManagement({ autoOpenAdd = false }) {
     setIsItemModalOpen(true);
   };
 
-  // Image file handler
-  const handleImageFileChange = (e) => {
+  // Image file handler with auto-compression
+  const handleImageFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-        setFormData(prev => ({ ...prev, imageUrl: reader.result }));
-      };
-      reader.readAsDataURL(file);
+      try {
+        const compressed = await compressImage(file);
+        setImagePreview(compressed);
+        setFormData(prev => ({ ...prev, imageUrl: compressed }));
+      } catch (err) {
+        console.warn('Image compression error, using raw file:', err);
+      }
     }
   };
 
@@ -153,10 +188,13 @@ export default function MenuManagement({ autoOpenAdd = false }) {
 
       if (editingItem) {
         await updateMenuItem(editingItem.id, itemPayload);
-        toast.success('Food item updated successfully!');
+        toast.success(`"${itemPayload.name}" updated successfully!`, { icon: '✨' });
       } else {
         await addMenuItem(itemPayload);
-        toast.success('Food item added successfully!');
+        toast.success(`"${itemPayload.name}" added to Menu!`, { icon: '🍽️' });
+        // Automatically switch view so the newly added dish is immediately visible
+        setSelectedCategory('all');
+        setSearchQuery('');
       }
       setIsItemModalOpen(false);
     } catch (err) {

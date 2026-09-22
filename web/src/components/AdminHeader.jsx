@@ -8,7 +8,9 @@ import {
   Clock, 
   AlertCircle,
   ExternalLink,
-  ChevronDown
+  ChevronDown,
+  MessageSquareHeart,
+  Star
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTableOrder } from '../context/TableOrderContext';
@@ -19,7 +21,7 @@ export default function AdminHeader({
   setActiveTab 
 }) {
   const { currentUser } = useAuth();
-  const { orders = [] } = useTableOrder();
+  const { orders = [], customerFeedbacks = [] } = useTableOrder();
   
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -48,6 +50,7 @@ export default function AdminHeader({
       case 'menu': return 'Menu Management';
       case 'tables': return 'Table Management';
       case 'customers': return 'Customer Directory';
+      case 'feedback': return 'Customer Feedback & Reviews';
       case 'payments': return 'Payments & Transactions';
       case 'reports': return 'Sales & Performance Reports';
       case 'sales-analysis': return 'Sales Analysis (Monthly & Yearly)';
@@ -140,6 +143,33 @@ export default function AdminHeader({
                 </div>
 
                 <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                  {customerFeedbacks.length > 0 && (
+                    <div 
+                      onClick={() => {
+                        if (setActiveTab) setActiveTab('feedback');
+                        setShowNotifications(false);
+                      }}
+                      className="p-3 bg-amber-50/40 hover:bg-amber-50 transition cursor-pointer flex items-start gap-3 border-b border-amber-100"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
+                        <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1">
+                          <h4 className="text-xs font-bold text-slate-800 truncate">
+                            Latest Dining Review
+                          </h4>
+                          <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full">
+                            {customerFeedbacks[0].overallRating}★ Stars
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600 truncate mt-0.5">
+                          {customerFeedbacks[0].customerName || 'Guest'} (Table {customerFeedbacks[0].tableNumber || '01'}): "{customerFeedbacks[0].writtenText || 'Delighted dining experience'}"
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {recentAlerts.length === 0 ? (
                     <div className="p-6 text-center text-xs text-slate-400">
                       No recent notifications
@@ -180,7 +210,7 @@ export default function AdminHeader({
                   )}
                 </div>
 
-                <div className="px-3 pt-2 border-t border-slate-100 text-center">
+                <div className="px-3 pt-2 border-t border-slate-100 flex items-center justify-between">
                   <button
                     type="button"
                     onClick={() => {
@@ -189,7 +219,17 @@ export default function AdminHeader({
                     }}
                     className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 py-1 cursor-pointer"
                   >
-                    View Kitchen Updates →
+                    Kitchen Live →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (setActiveTab) setActiveTab('feedback');
+                      setShowNotifications(false);
+                    }}
+                    className="text-xs font-semibold text-amber-600 hover:text-amber-700 py-1 cursor-pointer"
+                  >
+                    Feedbacks ({customerFeedbacks.length}) →
                   </button>
                 </div>
               </div>

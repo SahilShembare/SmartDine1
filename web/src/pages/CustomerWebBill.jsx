@@ -150,7 +150,20 @@ export default function CustomerWebBill() {
   const isOrderPaid = (order) => {
     if (!order) return false;
     if (order.isPaid === true) return true;
+
+    // Direct check for Razorpay or online UPI transaction proof
+    const txn = String(order.transactionId || order.razorpay_payment_id || '').trim();
+    if (txn && (txn.startsWith('pay_') || txn.startsWith('TXN_PAY') || (txn.startsWith('TXN-') && !txn.includes('COUNTER') && !txn.includes('PENDING')) || (order.paymentGateway && String(order.paymentGateway).toLowerCase() === 'razorpay' && !txn.startsWith('PENDING') && !txn.startsWith('COUNTER')))) {
+      return true;
+    }
+
     const pStatus = String(order.paymentStatus || order.payment_status || '').trim().toLowerCase();
+    if (pStatus === 'paid' || pStatus.includes('paid') || pStatus === 'settled' || pStatus === 'completed') {
+      if (!pStatus.includes('unpaid') && !pStatus.includes('not paid') && !pStatus.includes('cash payment requested')) {
+        return true;
+      }
+    }
+
     if (
       !pStatus ||
       pStatus === 'unpaid' || 
@@ -160,12 +173,7 @@ export default function CustomerWebBill() {
     ) {
       return false;
     }
-    if (pStatus === 'paid' || pStatus.includes('paid') || pStatus === 'settled' || pStatus === 'completed') {
-      if (!pStatus.includes('unpaid') && !pStatus.includes('not paid')) {
-        return true;
-      }
-    }
-    const txn = order.transactionId || order.razorpay_payment_id || '';
+
     if ((order.paidAt || order.paid_at) && txn && !txn.startsWith('PENDING') && !txn.startsWith('COUNTER')) {
       return true;
     }
@@ -198,7 +206,9 @@ export default function CustomerWebBill() {
       const discountedSub = Math.max(0, subtotal - disc);
       const tax = Number(targetOrder.tax) || Math.round(discountedSub * 0.05 * 100) / 100;
       const total = Number(targetOrder.total) || Math.round((discountedSub + tax) * 100) / 100;
-      const isPaid = isOrderPaid(targetOrder);
+      const txn = String(targetOrder.transactionId || targetOrder.razorpay_payment_id || '').trim();
+      const hasOnlineProof = txn.startsWith('pay_') || txn.startsWith('TXN_PAY') || (txn.startsWith('TXN-') && !txn.includes('COUNTER') && !txn.includes('PENDING'));
+      const isPaid = isOrderPaid(targetOrder) || hasOnlineProof;
 
       return {
         tableNumber: targetOrder.tableNumber || formattedTable,
@@ -233,7 +243,9 @@ export default function CustomerWebBill() {
 
     // 1. If targetOrder is specifically requested: ALWAYS return receipt for targetOrder whether paid or counter pending
     if (targetOrder) {
-      const isPaid = isOrderPaid(targetOrder);
+      const txn = String(targetOrder.transactionId || targetOrder.razorpay_payment_id || '').trim();
+      const hasOnlineProof = txn.startsWith('pay_') || txn.startsWith('TXN_PAY') || (txn.startsWith('TXN-') && !txn.includes('COUNTER') && !txn.includes('PENDING'));
+      const isPaid = isOrderPaid(targetOrder) || hasOnlineProof;
       const items = (targetOrder.items || []).map(i => ({
         itemId: i.itemId || i.id,
         name: i.name,
@@ -248,14 +260,22 @@ export default function CustomerWebBill() {
       const targetInvNo = targetOrder.invoiceNumber || sessionInvoiceNumber;
       const targetOrdNo = formatOrderNumber(targetOrder.orderNumber || targetOrder.id);
 
+      const resolvedPaymentMethod = isPaid
+        ? (targetOrder.paymentMethod && !targetOrder.paymentMethod.toLowerCase().includes('counter')
+            ? targetOrder.paymentMethod
+            : (hasOnlineProof ? 'Online UPI (Verified)' : 'Online Payment (Paid)'))
+        : (targetOrder.paymentMethod || 'Pay at Counter');
+
+      const resolvedPaymentStatus = isPaid ? 'PAID' : (targetOrder.paymentStatus || 'PENDING');
+
       return {
         invoiceNumber: formatInvoiceNumber(targetInvNo),
         orderNumber: targetOrdNo,
         orderId: targetOrder.id,
-        transactionId: targetOrder.transactionId || targetOrder.razorpay_payment_id || `TXN-${targetOrdNo}`,
+        transactionId: txn || `TXN-${targetOrdNo}`,
         tableNumber: targetOrder.tableNumber || formattedTable,
-        paymentMethod: targetOrder.paymentMethod || targetOrder.payment_method || (isPaid ? 'Online Verified (Paid)' : 'Pay at Counter'),
-        paymentStatus: targetOrder.paymentStatus || (isPaid ? 'PAID' : 'PENDING'),
+        paymentMethod: resolvedPaymentMethod,
+        paymentStatus: resolvedPaymentStatus,
         amount: total,
         discount: Number(targetOrder.discountAmount) || 0,
         subtotal: subtotal,
@@ -561,12 +581,15 @@ export default function CustomerWebBill() {
         transactionId: transactionId,
         discountAmount: discountAmount,
         couponCode: appliedCoupon?.code || null,
-        invoiceNumber: settledInvoice
+        invoiceNumber: settledInvoice,
+        orderId: targetOrder?.id || effectiveOrderId
       });
 
       try {
         confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
       } catch {}
+
+      setCashRequested(false);
 
       setPaymentSuccessData({
         invoiceNumber: settledInvoice,
@@ -574,6 +597,8 @@ export default function CustomerWebBill() {
         transactionId: transactionId,
         tableNumber: formattedTable,
         paymentMethod: paymentLabel,
+        paymentStatus: 'PAID',
+        isPaid: true,
         amount: billData.total,
         discount: discountAmount,
         subtotal: billData.subtotal,
@@ -581,6 +606,8 @@ export default function CustomerWebBill() {
         items: billData.consolidatedItems,
         paidAt: new Date().toLocaleString()
       });
+
+      setShowReceiptView(true);
 
       toast.success('✅ Online Payment Verified & Successful!', { icon: '🎉' });
     } catch (err) {
@@ -784,6 +811,16 @@ export default function CustomerWebBill() {
               <Receipt className="w-3.5 h-3.5 text-amber-400" />
               <span>Back to Bill Checkout & Settlement</span>
             </button>
+
+            {(receipt.orderId || billData.orderIds?.[0] || targetOrder?.id) && (
+              <Link
+                to={`/track/${receipt.orderId || billData.orderIds?.[0] || targetOrder?.id}`}
+                className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ChefHat className="w-4 h-4" />
+                <span>Track Food Preparation & Kitchen Status →</span>
+              </Link>
+            )}
 
             <Link
               to={`/menu?table=${tblNo}`}
@@ -1033,7 +1070,7 @@ export default function CustomerWebBill() {
             <div className="space-y-3">
 
               {/* Active Cash/Counter Settlement Pending Banner */}
-              {(hasActiveUnpaidOrders || cashRequested || billData.activeOrders.some(o => String(o.paymentStatus || '').toLowerCase().includes('requested') || String(o.paymentMethod || '').toLowerCase().includes('counter'))) && (
+              {(!effectiveReceipt?.isPaid && !billData.isPaid && (hasActiveUnpaidOrders || (cashRequested && !effectiveReceipt?.isPaid) || billData.activeOrders.some(o => !isOrderPaid(o) && (String(o.paymentStatus || '').toLowerCase().includes('requested') || String(o.paymentMethod || '').toLowerCase().includes('counter'))))) ? (
                 <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-amber-300 animate-in fade-in">
                   <Clock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5 animate-pulse" />
                   <div className="text-xs space-y-1">
@@ -1050,7 +1087,24 @@ export default function CustomerWebBill() {
                     </p>
                   </div>
                 </div>
-              )}
+              ) : (effectiveReceipt?.isPaid || billData.isPaid) ? (
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-start gap-3 text-emerald-300 animate-in fade-in">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                  <div className="text-xs space-y-1">
+                    <div className="font-bold text-white flex items-center gap-2">
+                      <span>🟢 Bill Status: PAID & VERIFIED</span>
+                      {targetOrder && (
+                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+                          #{formatOrderNumber(targetOrder.orderNumber || targetOrder.id)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-emerald-200/90 text-[11px] leading-relaxed">
+                      Payment verified and settled! Thank you for dining with SmartDine.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
               
               {/* Payment Mode Selector Tabs */}
               <div className="flex items-center justify-between">

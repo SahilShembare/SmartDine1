@@ -16,7 +16,8 @@ import {
   CalendarDays,
   BellRing,
   Settings, 
-  LogOut
+  LogOut,
+  MessageSquareHeart
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -28,7 +29,7 @@ export default function Sidebar({
   chefName
 }) {
   const { currentUser, logout } = useAuth();
-  const { orders, waiterCalls = [] } = useTableOrder();
+  const { orders, waiterCalls = [], customerFeedbacks = [] } = useTableOrder();
   const navigate = useNavigate();
 
   // Active uncompleted orders count
@@ -52,6 +53,7 @@ export default function Sidebar({
     { to: '/admin/menu', label: 'Menu Management', icon: UtensilsCrossed },
     { to: '/admin/payments', label: 'Payments & Bills', icon: CreditCard, badge: pendingBillCount > 0 ? pendingBillCount : null, badgeColor: 'bg-emerald-500' },
     { to: '/admin/customers', label: 'Customers', icon: Users },
+    { to: '/admin/feedback', label: 'Customer Feedback', icon: MessageSquareHeart, badge: customerFeedbacks.length > 0 ? customerFeedbacks.length : null, badgeColor: 'bg-amber-500' },
     { to: '/admin/coupons', label: 'Offers & Coupons', icon: TicketPercent },
     { to: '/admin/analytics', label: 'Analytics & Sales', icon: BarChart3 },
     { to: '/admin/notifications', label: 'Notifications', icon: BellRing, badge: pendingWaiterCount > 0 ? pendingWaiterCount : null, badgeColor: 'bg-amber-500' },
@@ -184,19 +186,20 @@ export default function Sidebar({
                 </NavLink>
               );
             })}
+
+            {/* Logout Button directly below Settings */}
+            <div className="pt-2 border-t border-slate-800/80 mt-2">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-red-400 hover:text-white hover:bg-red-950/60 border border-red-500/20 transition cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-red-400" />
+                <span>{mode === 'kitchen' ? 'Sign Out Kitchen' : 'Logout Admin'}</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-
-      {/* Footer / Logout */}
-      <div className="pt-3 border-t border-slate-800/80">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-red-400 hover:text-white hover:bg-red-600/30 border border-red-500/30 transition cursor-pointer"
-        >
-          <LogOut className="w-4 h-4" />
-          <span>{mode === 'kitchen' ? 'Sign Out' : 'Sign Out Admin'}</span>
-        </button>
       </div>
     </aside>
   );

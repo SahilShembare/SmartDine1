@@ -277,11 +277,20 @@ export default function CustomerWebTrack() {
         {/* 3. HERO ORDER STATUS CARD */}
         <div className="rounded-3xl bg-slate-900/90 border border-slate-800/90 p-6 text-center space-y-3 relative overflow-hidden shadow-2xl">
           
-          {/* Status Badge Pill */}
-          <div className="flex justify-center">
+          {/* Status Badge Pill & Payment Pill */}
+          <div className="flex items-center justify-center gap-2 flex-wrap">
             <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${badgeConfig.bg}`}>
               <span className={`w-2 h-2 rounded-full ${badgeConfig.dot} animate-ping`} />
               <span>{badgeConfig.label}</span>
+            </span>
+
+            {/* Payment status badge */}
+            <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 ${
+              order?.isPaid || String(order?.paymentStatus || '').toLowerCase() === 'paid'
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+            }`}>
+              <span>{order?.isPaid || String(order?.paymentStatus || '').toLowerCase() === 'paid' ? '💳 Bill Paid (Verified)' : '💵 Pay at Counter (Pending)'}</span>
             </span>
           </div>
 
@@ -421,18 +430,56 @@ export default function CustomerWebTrack() {
             ))}
           </div>
 
-          <div className="pt-2 border-t border-slate-800 flex justify-between text-xs text-slate-400">
-            <span>Payment: {order.paymentMethod || 'Pay at Counter'}</span>
-            <span className={`font-black uppercase ${
-              String(order.paymentStatus || '').toLowerCase() === 'paid' ? 'text-emerald-400' : 'text-amber-400'
-            }`}>
-              {String(order.paymentStatus || '').toLowerCase() === 'paid' ? '🟢 PAID' : '🟠 PAY AT COUNTER (PENDING)'}
-            </span>
-          </div>
+          {(() => {
+            const txn = String(order.transactionId || order.razorpay_payment_id || '').trim();
+            const hasOnlineProof = txn.startsWith('pay_') || txn.startsWith('TXN_PAY') || (txn.startsWith('TXN-') && !txn.includes('COUNTER') && !txn.includes('PENDING'));
+            const pStatus = String(order.paymentStatus || '').toLowerCase();
+            const isPaid = Boolean(order.isPaid || hasOnlineProof || pStatus === 'paid' || pStatus.includes('paid') || Boolean(order.paidAt));
+            const method = isPaid 
+              ? (order.paymentMethod && !order.paymentMethod.toLowerCase().includes('counter') 
+                  ? order.paymentMethod 
+                  : (hasOnlineProof ? 'Online UPI (Verified)' : 'Online Payment (Paid)'))
+              : (order.paymentMethod || 'Pay at Counter');
+
+            return (
+              <div className="pt-2 border-t border-slate-800 flex justify-between text-xs text-slate-400">
+                <span>Payment: {method}</span>
+                <span className={`font-black uppercase ${
+                  isPaid ? 'text-emerald-400' : 'text-amber-400'
+                }`}>
+                  {isPaid ? '🟢 PAID' : '🟠 PAY AT COUNTER (PENDING)'}
+                </span>
+              </div>
+            );
+          })()}
         </div>
 
-        {/* 7. ACTION BUTTONS: VIEW BILL RECEIPT & ORDER MORE */}
+        {/* 7. ACTION BUTTONS: PAY ONLINE, VIEW BILL RECEIPT & ORDER MORE */}
         <div className="space-y-2">
+          {(() => {
+            const txn = String(order.transactionId || order.razorpay_payment_id || '').trim();
+            const hasOnlineProof = txn.startsWith('pay_') || txn.startsWith('TXN_PAY') || (txn.startsWith('TXN-') && !txn.includes('COUNTER') && !txn.includes('PENDING'));
+            const pStatus = String(order.paymentStatus || '').toLowerCase();
+            const isPaid = Boolean(order.isPaid || hasOnlineProof || pStatus === 'paid' || pStatus.includes('paid') || Boolean(order.paidAt));
+
+            if (!isPaid) {
+              return (
+                <Link
+                  to={
+                    isTableAssigned 
+                      ? `/bill?table=${order.tableNumber}&orderId=${order.id}` 
+                      : `/bill?orderId=${order.id}`
+                  }
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs transition flex items-center justify-center gap-2 shadow-glow cursor-pointer mb-2"
+                >
+                  <CreditCard className="w-4 h-4 text-white" />
+                  <span>Pay Now via UPI / Online (₹{(order.total || order.amount || 0).toFixed(0)}) →</span>
+                </Link>
+              );
+            }
+            return null;
+          })()}
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Link
               to={

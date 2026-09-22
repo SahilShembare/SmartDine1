@@ -27,9 +27,9 @@ import {
   Trash2, 
   Copy, 
   Check, 
-  Crown, 
   ShieldCheck, 
   AlertCircle, 
+  CreditCard,
   UtensilsCrossed, 
   PhoneCall, 
   MessageCircle, 
@@ -40,9 +40,7 @@ import {
   ChevronUp,
   Globe,
   Moon,
-  Volume2,
-  Camera,
-  Upload
+  Volume2
 } from 'lucide-react';
 
 import CustomerFeedbackModal from '../components/CustomerFeedbackModal';
@@ -65,8 +63,6 @@ export default function CustomerProfile() {
   const [isCallWaiterOpen, setIsCallWaiterOpen] = useState(false);
   const activeWaiterCall = getActiveWaiterCallForTable ? getActiveWaiterCallForTable(currentTable) : null;
 
-  const avatarInputRef = React.useRef(null);
-
   // Active section tab
   const tabParam = searchParams.get('tab') || 'orders';
   const [activeTab, setActiveTab] = useState(tabParam);
@@ -79,6 +75,12 @@ export default function CustomerProfile() {
   const switchTab = (tabId) => {
     setActiveTab(tabId);
     setSearchParams({ tab: tabId });
+    setTimeout(() => {
+      const panel = document.getElementById('profile-content-panel');
+      if (panel && window.innerWidth < 1024) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 60);
   };
 
   // Profile Form States
@@ -89,33 +91,7 @@ export default function CustomerProfile() {
   const [phone, setPhone] = useState(
     currentUser?.phoneNumber || localStorage.getItem('smartdine_guest_phone') || ''
   );
-  const [avatarUrl, setAvatarUrl] = useState(
-    currentUser?.photoURL || localStorage.getItem('smartdine_guest_avatar') || ''
-  );
   const [savingProfile, setSavingProfile] = useState(false);
-
-  // Handle Photo Upload
-  const handleAvatarUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Please select an image smaller than 5MB');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result;
-      setAvatarUrl(result);
-      localStorage.setItem('smartdine_guest_avatar', result);
-      if (currentUser && updateProfile) {
-        updateProfile({ photoURL: result }).catch(() => {});
-      }
-      toast.success('Profile picture updated!', { icon: '📸' });
-    };
-    reader.readAsDataURL(file);
-  };
 
   // Favorites state (persisted in localStorage)
   const [favorites, setFavorites] = useState(() => {
@@ -183,14 +159,6 @@ export default function CustomerProfile() {
         type: 'offer'
       },
       {
-        id: 'n2',
-        title: '👑 Royal Rewards Credited',
-        desc: 'You earned 50 reward points on your visit.',
-        time: '2 hours ago',
-        read: false,
-        type: 'reward'
-      },
-      {
         id: 'n3',
         title: '🔥 Weekend Special Offers Live',
         desc: 'Use code ROYAL50 for up to 50% discount on curries & biryanis.',
@@ -235,15 +203,26 @@ export default function CustomerProfile() {
 
   // Filter orders strictly for this customer: exclude demo orders, show only real customer orders
   const myOrders = useMemo(() => {
+    const activeTbl = currentTable || localStorage.getItem('smartdine_active_table');
+    const cleanActiveTbl = activeTbl ? String(activeTbl).padStart(2, '0') : null;
+    const storedGuestName = (localStorage.getItem('smartdine_guest_name') || currentUser?.displayName || displayName || '').trim().toLowerCase();
+
     return orders.filter(o => {
       // 1. Strictly exclude demo / seed orders
-      if (o.isDemo || DEMO_IDS.has(o.id)) return false;
+      if (o.isDemo || DEMO_IDS.has(String(o.id || '')) || DEMO_IDS.has(String(o.orderNumber || ''))) return false;
 
-      // 2. Orders placed from this browser session/device
-      if (customerOrderIds.includes(o.id)) return true;
+      // 2. Orders placed from this browser session/device (matches id, orderNumber, or firestoreDocId)
+      if (customerOrderIds.some(sid => {
+        const s = String(sid).trim().toLowerCase();
+        return s === String(o.id || '').trim().toLowerCase() ||
+               s === String(o.orderNumber || '').trim().toLowerCase() ||
+               (o.firestoreDocId && s === String(o.firestoreDocId).trim().toLowerCase());
+      })) {
+        return true;
+      }
 
       // 3. Match by logged-in user ID or Email
-      if (userUid && o.customerId === userUid) return true;
+      if (userUid && (o.customerId === userUid || o.userId === userUid)) return true;
       if (userEmail && o.customerEmail && o.customerEmail.toLowerCase() === userEmail) return true;
 
       // 4. Match by customer phone number
@@ -253,9 +232,14 @@ export default function CustomerProfile() {
       }
 
       // 5. Match by current active dining table session
-      if (currentTable && String(o.tableNumber).padStart(2, '0') === String(currentTable).padStart(2, '0')) {
-        const guestName = (currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || displayName || '').trim().toLowerCase();
-        if (!guestName || (o.customerName && o.customerName.trim().toLowerCase() === guestName)) {
+      if (cleanActiveTbl && String(o.tableNumber).padStart(2, '0') === cleanActiveTbl) {
+        return true;
+      }
+
+      // 6. Match by guest name if specified
+      if (storedGuestName && storedGuestName !== 'royal guest' && o.customerName) {
+        const oName = String(o.customerName).trim().toLowerCase();
+        if (oName === storedGuestName || oName.includes(storedGuestName) || storedGuestName.includes(oName)) {
           return true;
         }
       }
@@ -271,13 +255,12 @@ export default function CustomerProfile() {
     try {
       if (currentUser && updateProfile) {
         await updateProfile({ 
-          displayName: displayName.trim(),
-          photoURL: avatarUrl 
+          displayName: displayName.trim() 
         });
       }
       localStorage.setItem('smartdine_guest_name', displayName.trim());
       localStorage.setItem('smartdine_guest_phone', phone.trim());
-      if (avatarUrl) localStorage.setItem('smartdine_guest_avatar', avatarUrl);
+      localStorage.removeItem('smartdine_guest_avatar');
       toast.success('Profile details saved successfully!', { icon: '✨' });
       setIsEditing(false);
     } catch (err) {
@@ -341,10 +324,6 @@ export default function CustomerProfile() {
     toast.success('Notifications cleared');
   };
 
-  // Calculate Reward Points (e.g. 50 base points + 10 points per ₹100 spent)
-  const totalSpent = myOrders.reduce((sum, o) => sum + (o.total || 0), 0);
-  const rewardPoints = 150 + Math.floor(totalSpent / 10);
-
   // Favorite Dishes List
   const favoriteDishes = menuItems.filter(item => favorites.includes(item.id));
 
@@ -354,7 +333,6 @@ export default function CustomerProfile() {
     { id: 'favorites', label: 'Favorites', icon: Heart, count: favoriteDishes.length },
     { id: 'feedback', label: 'My Feedback', icon: Star, count: customerFeedbacks.length },
     { id: 'offers', label: 'Offers & Coupons', icon: Gift, count: coupons.length },
-    { id: 'rewards', label: 'Reward Points', icon: Crown, count: rewardPoints },
     { id: 'notifications', label: 'Notifications', icon: Bell, count: notifications.filter(n => !n.read).length },
     { id: 'settings', label: 'Settings', icon: SettingsIcon },
     { id: 'support', label: 'Help & Support', icon: HelpCircle },
@@ -363,15 +341,6 @@ export default function CustomerProfile() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 py-6 sm:py-10 px-4 sm:px-6 lg:px-8 font-sans">
       
-      {/* Hidden file input for Photo Upload */}
-      <input 
-        type="file" 
-        ref={avatarInputRef} 
-        accept="image/*" 
-        onChange={handleAvatarUpload} 
-        className="hidden" 
-      />
-
       <div className="max-w-6xl mx-auto space-y-6">
         
         {/* Top Profile Hero Card with Luxury Obsidian Dark & Amber Styling */}
@@ -380,46 +349,18 @@ export default function CustomerProfile() {
           <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
             <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
               
-              {/* Profile Avatar with Glowing Ring and Camera Button */}
-              <div className="relative group/avatar">
-                <div 
-                  onClick={() => avatarInputRef.current?.click()}
-                  title="Tap to change profile photo"
-                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-orange-600 via-amber-500 to-amber-200 p-1 shadow-xl flex items-center justify-center cursor-pointer overflow-hidden relative"
-                >
-                  {avatarUrl ? (
-                    <img 
-                      src={avatarUrl} 
-                      alt="Customer Profile" 
-                      className="w-full h-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full rounded-full bg-slate-950 flex items-center justify-center text-amber-400 font-black text-3xl sm:text-4xl shadow-inner">
-                      {displayName ? displayName.charAt(0).toUpperCase() : <User className="w-10 h-10" />}
-                    </div>
-                  )}
-
-                  {/* Hover Camera Overlay */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity rounded-full">
-                    <Camera className="w-6 h-6 text-amber-400" />
-                  </div>
+              {/* Profile Monogram / User Icon */}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-tr from-orange-600 via-amber-500 to-amber-400 p-1 shadow-xl flex items-center justify-center shrink-0">
+                <div className="w-full h-full rounded-[20px] bg-slate-950 flex items-center justify-center text-amber-400 font-black text-3xl sm:text-4xl shadow-inner">
+                  {displayName ? displayName.charAt(0).toUpperCase() : <User className="w-10 h-10" />}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  title="Upload New Photo"
-                  className="absolute -bottom-1 -right-1 p-2 rounded-full bg-gradient-to-r from-orange-600 to-amber-600 text-white hover:brightness-110 shadow-lg transition cursor-pointer"
-                >
-                  <Camera className="w-4 h-4" />
-                </button>
               </div>
 
               {/* Identity info */}
               <div className="space-y-1">
                 <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                    {displayName || 'Royal Dining Guest'}
+                    {displayName || 'Dining Guest'}
                   </h1>
                   <button
                     onClick={() => {
@@ -434,18 +375,13 @@ export default function CustomerProfile() {
                 </div>
 
                 <p className="text-xs sm:text-sm text-slate-400 font-medium">
-                  {currentUser?.email || (phone ? `+91 ${phone}` : 'SmartDine Food Ordering Member')}
+                  {currentUser?.email || (phone ? `+91 ${phone}` : 'SmartDine Customer')}
                 </p>
 
                 <div className="flex items-center justify-center sm:justify-start gap-2 pt-1 flex-wrap">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/80 border border-amber-500/40 text-amber-400 text-xs font-bold shadow-sm">
-                    <Crown className="w-3.5 h-3.5" />
-                    <span>Royal VIP Tier</span>
-                  </div>
-
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs font-bold shadow-sm">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>{rewardPoints} Reward Coins</span>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/80 border border-slate-700/60 text-slate-300 text-xs font-semibold shadow-sm">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Verified Dining Customer</span>
                   </div>
                 </div>
               </div>
@@ -502,11 +438,41 @@ export default function CustomerProfile() {
           </button>
         </div>
 
+        {/* Mobile Horizontal Quick-Tab Switcher for 1-tap seamless switching */}
+        <div className="lg:hidden flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+          {navTabs.map((tab) => {
+            const TabIcon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => switchTab(tab.id)}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold shrink-0 transition cursor-pointer ${
+                  isActive
+                    ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow'
+                    : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white'
+                }`}
+              >
+                <TabIcon className="w-3.5 h-3.5" />
+                <span>{tab.label}</span>
+                {tab.count !== undefined && tab.count > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                    isActive ? 'bg-white text-orange-600' : 'bg-slate-800 text-amber-400 border border-slate-700'
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Main Profile Layout: Sidebar (Desktop) + Tab Content (Right) */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* LEFT SIDEBAR NAVIGATION (Desktop & Tablet) */}
-          <div className="lg:col-span-4 space-y-3">
+          <div className="hidden lg:block lg:col-span-4 space-y-3">
             
             {/* Navigation Card */}
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-3 shadow-xl overflow-hidden space-y-1">
@@ -560,7 +526,7 @@ export default function CustomerProfile() {
           </div>
 
           {/* RIGHT CONTENT DISPLAY PANEL */}
-          <div className="lg:col-span-8">
+          <div className="lg:col-span-8" id="profile-content-panel">
             
             {/* 1. MY ORDERS & HISTORY TAB */}
             {activeTab === 'orders' && (
@@ -617,6 +583,21 @@ export default function CustomerProfile() {
                                     Table {order.tableNumber}
                                   </span>
                                 )}
+                                {(() => {
+                                  const txn = String(order.transactionId || order.razorpay_payment_id || '').trim();
+                                  const hasOnlineProof = txn.startsWith('pay_') || txn.startsWith('TXN_PAY') || (txn.startsWith('TXN-') && !txn.includes('COUNTER') && !txn.includes('PENDING'));
+                                  const pStatus = String(order.paymentStatus || order.payment_status || '').trim().toLowerCase();
+                                  const isPaid = Boolean(order.isPaid || hasOnlineProof || (pStatus === 'paid' || pStatus.includes('paid')) || Boolean(order.paidAt));
+                                  return (
+                                    <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
+                                      isPaid
+                                        ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/30'
+                                        : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                                    }`}>
+                                      {isPaid ? '🟢 PAID' : '🟠 PAY AT COUNTER'}
+                                    </span>
+                                  );
+                                })()}
                                 <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
                                   order.status === 'completed'
                                     ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/30'
@@ -639,7 +620,15 @@ export default function CustomerProfile() {
                                 ₹{(order.total || 0).toFixed(0)}
                               </div>
                               <span className="text-[10px] text-slate-400 font-medium">
-                                {order.paymentMethod || 'Dine-In Billing'}
+                                {(() => {
+                                  const txn = String(order.transactionId || order.razorpay_payment_id || '').trim();
+                                  const hasOnlineProof = txn.startsWith('pay_') || txn.startsWith('TXN_PAY') || (txn.startsWith('TXN-') && !txn.includes('COUNTER') && !txn.includes('PENDING'));
+                                  const pStatus = String(order.paymentStatus || order.payment_status || '').trim().toLowerCase();
+                                  const isPaid = Boolean(order.isPaid || hasOnlineProof || (pStatus === 'paid' || pStatus.includes('paid')) || Boolean(order.paidAt));
+                                  return isPaid
+                                    ? (order.paymentMethod && !order.paymentMethod.toLowerCase().includes('counter') ? order.paymentMethod : 'Online UPI (Paid)')
+                                    : (order.paymentMethod || 'Pay at Counter');
+                                })()}
                               </span>
                             </div>
                           </div>
@@ -659,8 +648,27 @@ export default function CustomerProfile() {
                             ))}
                           </div>
 
-                          {/* Action Buttons: View Tracking, Bill Receipt & Reorder */}
+                          {/* Action Buttons: View Tracking, Bill Receipt, Pay via UPI & Reorder */}
                           <div className="flex items-center justify-end gap-2 pt-1 flex-wrap">
+                            {(() => {
+                              const txn = String(order.transactionId || order.razorpay_payment_id || '').trim();
+                              const hasOnlineProof = txn.startsWith('pay_') || txn.startsWith('TXN_PAY') || (txn.startsWith('TXN-') && !txn.includes('COUNTER') && !txn.includes('PENDING'));
+                              const pStatus = String(order.paymentStatus || order.payment_status || '').trim().toLowerCase();
+                              const isPaid = Boolean(order.isPaid || hasOnlineProof || (pStatus === 'paid' || pStatus.includes('paid')) || Boolean(order.paidAt));
+                              if (!isPaid) {
+                                return (
+                                  <button
+                                    onClick={() => navigate(`/bill?table=${order.tableNumber || currentTable || '01'}&orderId=${order.id}`)}
+                                    className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-glow"
+                                  >
+                                    <CreditCard className="w-3.5 h-3.5 text-white" />
+                                    <span>Pay via UPI</span>
+                                  </button>
+                                );
+                              }
+                              return null;
+                            })()}
+
                             <button
                               onClick={() => navigate(`/bill?table=${order.tableNumber || currentTable || '01'}&orderId=${order.id}&view=receipt`)}
                               className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-white border border-amber-500/30 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
@@ -975,69 +983,7 @@ export default function CustomerProfile() {
               </div>
             )}
 
-            {/* 5. REWARD POINTS TAB */}
-            {activeTab === 'rewards' && (
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-6">
-                <div>
-                  <h2 className="text-lg sm:text-xl font-black text-white flex items-center gap-2">
-                    <Crown className="w-5 h-5 text-amber-400" />
-                    <span>Royal Dining Reward Coins</span>
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Earn coins on every delicious order and redeem them for instant discounts.
-                  </p>
-                </div>
 
-                {/* Balance Card with Golden Glow */}
-                <div className="p-6 rounded-3xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 text-white border-2 border-amber-500/50 shadow-glow relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div className="space-y-1 text-center sm:text-left">
-                    <div className="text-xs uppercase font-bold text-amber-400 tracking-wider">
-                      Available Reward Balance
-                    </div>
-                    <div className="text-3xl sm:text-4xl font-black text-white flex items-center justify-center sm:justify-start gap-2">
-                      <Sparkles className="w-7 h-7 text-amber-400" />
-                      <span>{rewardPoints} Coins</span>
-                    </div>
-                    <p className="text-xs text-slate-400">
-                      1 Reward Coin = ₹1 Discount on your food bill
-                    </p>
-                  </div>
-
-                  <div className="text-center sm:text-right">
-                    <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-500 text-slate-950 shadow-sm">
-                      ★ Royal Gold Member
-                    </span>
-                  </div>
-                </div>
-
-                {/* How it works */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 text-center space-y-1">
-                    <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center mx-auto border border-slate-700 font-black">
-                      1
-                    </div>
-                    <h4 className="font-bold text-xs text-white">Dine & Order</h4>
-                    <p className="text-[11px] text-slate-400">Order dishes from your table menu.</p>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 text-center space-y-1">
-                    <div className="w-9 h-9 rounded-xl bg-slate-900 text-amber-400 flex items-center justify-center mx-auto border border-slate-700 font-black">
-                      2
-                    </div>
-                    <h4 className="font-bold text-xs text-white">Earn Coins</h4>
-                    <p className="text-[11px] text-slate-400">Earn 10 coins for every ₹100 spent.</p>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-slate-950/80 border border-slate-800 text-center space-y-1">
-                    <div className="w-9 h-9 rounded-xl bg-slate-900 text-emerald-400 flex items-center justify-center mx-auto border border-slate-700 font-black">
-                      3
-                    </div>
-                    <h4 className="font-bold text-xs text-white">Redeem & Save</h4>
-                    <p className="text-[11px] text-slate-400">Get instant discount on next orders.</p>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* 6. NOTIFICATIONS TAB */}
             {activeTab === 'notifications' && (
@@ -1122,61 +1068,7 @@ export default function CustomerProfile() {
                     Edit Profile Information
                   </h3>
 
-                  {/* Avatar & Profile Photo Section */}
-                  <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-xs font-bold text-white">Customer Profile Photo</div>
-                        <div className="text-[11px] text-slate-400">Upload from device or select a preset royal avatar.</div>
-                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() => avatarInputRef.current?.click()}
-                        className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-gradient-to-r hover:from-orange-600 hover:to-amber-600 hover:text-white text-slate-200 border border-slate-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
-                      >
-                        <Camera className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Upload Photo</span>
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-3 pt-1 overflow-x-auto pb-1">
-                      {/* Current Preview */}
-                      <div className="w-12 h-12 rounded-full border-2 border-amber-500 p-0.5 shrink-0 shadow-sm">
-                        {avatarUrl ? (
-                          <img src={avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full rounded-full bg-slate-950 flex items-center justify-center text-amber-400 font-black text-sm">
-                            {displayName ? displayName.charAt(0).toUpperCase() : <User className="w-5 h-5" />}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Preset Royal Avatars */}
-                      {[
-                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-                        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-                        'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-                        'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80'
-                      ].map((preset, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => {
-                            setAvatarUrl(preset);
-                            localStorage.setItem('smartdine_guest_avatar', preset);
-                            if (currentUser && updateProfile) updateProfile({ photoURL: preset }).catch(() => {});
-                            toast.success('Avatar selected!', { icon: '✨' });
-                          }}
-                          className={`w-11 h-11 rounded-full p-0.5 shrink-0 transition cursor-pointer border-2 ${
-                            avatarUrl === preset ? 'border-amber-500 scale-110 shadow-md ring-2 ring-amber-400' : 'border-slate-700 hover:border-amber-500'
-                          }`}
-                        >
-                          <img src={preset} alt="Preset Avatar" className="w-full h-full rounded-full object-cover" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>

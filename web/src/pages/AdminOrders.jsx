@@ -57,6 +57,9 @@ export default function AdminOrders() {
 
   const isOrderPaid = (o) => {
     if (!o) return false;
+    if (o.isPaid === true) return true;
+    const txn = String(o.transactionId || o.razorpay_payment_id || '').trim();
+    if (txn && (txn.startsWith('pay_') || txn.startsWith('TXN_PAY'))) return true;
     const p = String(o.paymentStatus || '').trim().toLowerCase();
     if (p === 'unpaid' || p === 'pending' || p.includes('requested') || p.includes('awaiting')) return false;
     return p === 'paid' || p === 'cash paid' || p === 'online paid' || !!o.paidAt;

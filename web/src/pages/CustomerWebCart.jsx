@@ -572,13 +572,16 @@ export default function CustomerWebCart() {
         notes: orderNotes.trim(),
         paymentMethod: methodLabel,
         payment_method: methodLabel,
+        paymentGateway: isPaid ? 'Razorpay' : 'None',
         payment_gateway: isPaid ? 'Razorpay' : 'None',
         paymentStatus: paymentStatus, // 'PAID' or 'PENDING'
         payment_status: paymentStatus,
+        isPaid: isPaid,
         transactionId: rzpResponse?.razorpay_payment_id || transactionId,
         razorpay_order_id: rzpResponse?.razorpay_order_id || null,
         razorpay_payment_id: rzpResponse?.razorpay_payment_id || null,
         razorpay_signature: rzpResponse?.razorpay_signature || null,
+        paidAt: isPaid ? new Date().toISOString() : null,
         paid_at: isPaid ? new Date().toISOString() : null,
         refund_status: null,
         currency: 'INR',
@@ -763,7 +766,19 @@ export default function CustomerWebCart() {
 
   // Render Order Placed Confirmation & Feedback Screen when an order has just been placed
   if (completedOrderData) {
-    const isPaid = completedOrderData.paymentStatus === 'PAID';
+    const liveOrder = (orders || []).find(o => 
+      String(o.id) === String(completedOrderData.orderId) || 
+      String(o.orderNumber) === String(completedOrderData.orderId)
+    );
+    const isLivePaid = liveOrder ? isOrderPaid(liveOrder) : false;
+    const isPaid = isLivePaid || completedOrderData.paymentStatus === 'PAID';
+    const effectivePaymentMethod = isPaid
+      ? (liveOrder?.paymentMethod && !liveOrder.paymentMethod.toLowerCase().includes('counter')
+          ? liveOrder.paymentMethod
+          : (completedOrderData.paymentMethod && !completedOrderData.paymentMethod.toLowerCase().includes('counter')
+              ? completedOrderData.paymentMethod
+              : 'Online UPI (Verified)'))
+      : completedOrderData.paymentMethod;
 
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 pb-24 font-sans">
@@ -810,8 +825,8 @@ export default function CustomerWebCart() {
             </h2>
             <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
               {isPaid
-                ? `Payment of ₹${completedOrderData.amount.toFixed(2)} verified via Razorpay. Order sent directly to chef queue.`
-                : `Order for Table ${completedOrderData.tableNumber} is sent to kitchen. Please settle your bill of ₹${completedOrderData.amount.toFixed(2)} at the counter after dining.`}
+                ? `Payment of ₹${completedOrderData.amount.toFixed(2)} verified via online payment. Order sent directly to chef queue.`
+                : `Order for Table ${completedOrderData.tableNumber} is sent to kitchen. Please settle your bill of ₹${completedOrderData.amount.toFixed(2)} via UPI online or at the counter.`}
             </p>
           </div>
 
@@ -837,7 +852,7 @@ export default function CustomerWebCart() {
               </div>
               <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 col-span-2">
                 <span className="text-[10px] text-slate-400 block font-semibold">Payment Method</span>
-                <span className="font-bold text-white">{completedOrderData.paymentMethod}</span>
+                <span className="font-bold text-white">{effectivePaymentMethod}</span>
               </div>
               {completedOrderData.paymentId && (
                 <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 col-span-2 flex items-center justify-between">
@@ -888,6 +903,16 @@ export default function CustomerWebCart() {
 
           {/* Action Buttons */}
           <div className="space-y-3 pt-2">
+            {!isPaid && (
+              <Link
+                to={`/bill?table=${completedOrderData.tableNumber}&orderId=${completedOrderData.orderId}`}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <CreditCard className="w-4 h-4 text-white" />
+                <span>Pay Now via UPI / Online (₹{completedOrderData.amount.toFixed(0)}) →</span>
+              </Link>
+            )}
+
             <button
               onClick={() => navigate(`/track/${completedOrderData.orderId}`)}
               className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-sm shadow-glow transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"

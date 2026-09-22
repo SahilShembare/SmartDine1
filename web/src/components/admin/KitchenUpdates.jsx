@@ -14,13 +14,36 @@ import {
   Sparkles
 } from 'lucide-react';
 import { useTableOrder } from '../../context/TableOrderContext';
+import toast from 'react-hot-toast';
 
 export default function KitchenUpdates() {
-  const { orders = [] } = useTableOrder();
+  const { orders = [], updateOrderStatus } = useTableOrder();
 
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'pending' | 'preparing' | 'ready' | 'served'
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTicketModal, setSelectedTicketModal] = useState(null);
+
+  const handleAdvanceStatus = async (orderId, nextStatus) => {
+    try {
+      if (updateOrderStatus) {
+        await updateOrderStatus(orderId, nextStatus);
+      }
+      toast.success(
+        nextStatus === 'preparing'
+          ? '🔥 Cooking started!'
+          : nextStatus === 'ready'
+          ? '🛎️ Food is ready for service!'
+          : nextStatus === 'served'
+          ? '🍽️ Marked as served to table!'
+          : '✅ Ticket completed!'
+      );
+      if (selectedTicketModal && (selectedTicketModal.id === orderId || selectedTicketModal.orderNumber === orderId)) {
+        setSelectedTicketModal(prev => prev ? { ...prev, status: nextStatus } : null);
+      }
+    } catch (err) {
+      toast.error('Failed to update status');
+    }
+  };
 
   // Filter active kitchen orders (exclude cancelled)
   const kitchenOrders = useMemo(() => {
@@ -327,7 +350,16 @@ export default function KitchenUpdates() {
                       </span>
                     </div>
                   </div>
-                  {getStatusBadge(ticket.status)}
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      ticket.isPaid || String(ticket.paymentStatus || '').toLowerCase() === 'paid'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                    }`}>
+                      {ticket.isPaid || String(ticket.paymentStatus || '').toLowerCase() === 'paid' ? '✓ Paid' : 'Pending Pay'}
+                    </span>
+                    {getStatusBadge(ticket.status)}
+                  </div>
                 </div>
 
                 {/* Ticket Body: Itemized Food List */}
@@ -366,20 +398,71 @@ export default function KitchenUpdates() {
                 </div>
 
                 {/* Ticket Footer */}
-                <div className="p-4 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                  <div className="text-xs text-slate-500">
-                    <span className="block text-[11px] text-slate-400">Guest:</span>
-                    <strong className="text-slate-800 font-semibold">{ticket.customerName || 'Dine-in Guest'}</strong>
+                <div className="p-3.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between gap-2">
+                  <div className="text-xs text-slate-500 min-w-0">
+                    <span className="block text-[10px] text-slate-400">Guest:</span>
+                    <strong className="text-slate-800 font-semibold truncate block max-w-[120px]">{ticket.customerName || 'Dine-in Guest'}</strong>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTicketModal(ticket)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-semibold transition cursor-pointer shadow-xs"
-                  >
-                    <Eye className="w-3.5 h-3.5 text-orange-600" />
-                    <span>View Ticket</span>
-                  </button>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {(() => {
+                      const s = String(ticket.status || '').toLowerCase().trim();
+                      if (s === 'pending' || s === 'placed') {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => handleAdvanceStatus(ticket.id, 'preparing')}
+                            className="px-2.5 py-1.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-[11px] font-bold transition cursor-pointer"
+                          >
+                            🔥 Cook
+                          </button>
+                        );
+                      }
+                      if (s === 'preparing' || s === 'accepted') {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => handleAdvanceStatus(ticket.id, 'ready')}
+                            className="px-2.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold transition cursor-pointer"
+                          >
+                            🛎️ Ready
+                          </button>
+                        );
+                      }
+                      if (s === 'ready') {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => handleAdvanceStatus(ticket.id, 'served')}
+                            className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition cursor-pointer"
+                          >
+                            🍽️ Served
+                          </button>
+                        );
+                      }
+                      if (s === 'served') {
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => handleAdvanceStatus(ticket.id, 'completed')}
+                            className="px-2.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold transition cursor-pointer"
+                          >
+                            ✅ Done
+                          </button>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTicketModal(ticket)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-semibold transition cursor-pointer shadow-xs"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-orange-600" />
+                      <span>View</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -449,11 +532,67 @@ export default function KitchenUpdates() {
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
+            {/* Kitchen Lifecycle Stage Transition Buttons */}
+            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+                {(() => {
+                  const s = String(selectedTicketModal.status || '').toLowerCase().trim();
+                  if (s === 'pending' || s === 'placed') {
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleAdvanceStatus(selectedTicketModal.id, 'preparing')}
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold shadow-xs transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <ChefHat className="w-4 h-4" />
+                        <span>🔥 Start Cooking (Preparing)</span>
+                      </button>
+                    );
+                  }
+                  if (s === 'preparing' || s === 'accepted') {
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleAdvanceStatus(selectedTicketModal.id, 'ready')}
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold shadow-xs transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <BellRing className="w-4 h-4" />
+                        <span>🛎️ Mark Ready for Service</span>
+                      </button>
+                    );
+                  }
+                  if (s === 'ready') {
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleAdvanceStatus(selectedTicketModal.id, 'served')}
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold shadow-xs transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <Utensils className="w-4 h-4" />
+                        <span>🍽️ Mark Served to Table</span>
+                      </button>
+                    );
+                  }
+                  if (s === 'served') {
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => handleAdvanceStatus(selectedTicketModal.id, 'completed')}
+                        className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-700 to-green-700 hover:from-emerald-600 hover:to-green-600 text-white text-xs font-bold shadow-xs transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>✅ Complete Order</span>
+                      </button>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+
               <button
                 type="button"
                 onClick={() => setSelectedTicketModal(null)}
-                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition cursor-pointer"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition cursor-pointer"
               >
                 Close Ticket
               </button>

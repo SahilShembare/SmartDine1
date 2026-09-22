@@ -107,22 +107,33 @@ export default function CustomerFeedbackModal({
       setAiAnalysisResult(aiAnalysis);
 
       // 2. Apply to customer's recommendation learning loop
-      applyFeedbackToProfile({
-        overallRating,
-        itemRatings,
-        selectedTags,
-        orderItems
-      });
+      // 2. Apply to customer's recommendation learning loop
+      try {
+        applyFeedbackToProfile({
+          overallRating,
+          itemRatings,
+          selectedTags,
+          orderItems
+        });
+      } catch (err) {
+        console.warn('Recommendation profile feedback error (ignored):', err);
+      }
 
       // 3. Persist feedback into TableOrderContext & sync to admin review telemetry
+      let guestName = '';
+      try {
+        guestName = localStorage.getItem('smartdine_guest_name') || '';
+      } catch {}
+
       if (submitOrderFeedback) {
         await submitOrderFeedback({
           orderId,
           tableNumber,
+          customerName: guestName || `Table ${tableNumber || '01'} Guest`,
           overallRating,
           itemRatings,
           selectedTags,
-          writtenText: writtenText.trim(),
+          writtenText: (writtenText || '').trim(),
           orderItems,
           aiAnalysis,
           date: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -144,7 +155,8 @@ export default function CustomerFeedbackModal({
         if (onComplete) onComplete();
       }, 1500);
     } catch (err) {
-      toast.error('Failed to submit feedback');
+      console.error('Feedback submission error:', err);
+      toast.error('Failed to submit feedback. Please try again.');
     } finally {
       setIsSubmitting(false);
     }

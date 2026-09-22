@@ -12,8 +12,18 @@ export const generateBillHtml = (receipt) => {
   const customerName = receipt.customerName || `Table ${tblNo} Guest`;
   const paidTime = receipt.paidAt || new Date().toLocaleString();
   const txnId = receipt.transactionId || 'TXN-COUNTER';
-  const payMethod = receipt.paymentMethod || (receipt.isPaid ? 'Online Payment (Verified)' : 'Pay at Counter');
-  const isPaid = Boolean(receipt.isPaid);
+  const hasOnlineTxn = String(txnId).startsWith('pay_') || String(txnId).startsWith('TXN_PAY') || (String(txnId).startsWith('TXN-') && !String(txnId).includes('COUNTER') && !String(txnId).includes('PENDING'));
+  const isPaid = Boolean(
+    receipt.isPaid || 
+    hasOnlineTxn || 
+    String(receipt.paymentStatus || '').toLowerCase() === 'paid' || 
+    String(receipt.payment_status || '').toLowerCase() === 'paid'
+  );
+  const payMethod = isPaid 
+    ? (receipt.paymentMethod && !receipt.paymentMethod.toLowerCase().includes('counter') 
+        ? receipt.paymentMethod 
+        : (hasOnlineTxn ? 'Online UPI (Verified)' : 'Online Payment (Verified)'))
+    : (receipt.paymentMethod || 'Pay at Counter');
 
   const items = (receipt.items && receipt.items.length > 0) ? receipt.items : [];
   const totalAmt = Number(receipt.amount ?? receipt.total ?? 0);
@@ -382,8 +392,18 @@ export const generateBillCanvas = (receipt) => {
   const ordNo = receipt.orderNumber || (receipt.orderId ? formatOrderNumber(receipt.orderId) : 'ORD-1001');
   const paidTime = receipt.paidAt || new Date().toLocaleString();
   const txnId = receipt.transactionId || 'TXN-COUNTER';
-  const payMethod = receipt.paymentMethod || (receipt.isPaid ? 'Online Payment (Verified)' : 'Pay at Counter');
-  const isPaid = Boolean(receipt.isPaid);
+  const hasOnlineTxn = String(txnId).startsWith('pay_') || String(txnId).startsWith('TXN_PAY') || (String(txnId).startsWith('TXN-') && !String(txnId).includes('COUNTER') && !String(txnId).includes('PENDING'));
+  const isPaid = Boolean(
+    receipt.isPaid || 
+    hasOnlineTxn || 
+    String(receipt.paymentStatus || '').toLowerCase() === 'paid' || 
+    String(receipt.payment_status || '').toLowerCase() === 'paid'
+  );
+  const payMethod = isPaid 
+    ? (receipt.paymentMethod && !receipt.paymentMethod.toLowerCase().includes('counter') 
+        ? receipt.paymentMethod 
+        : (hasOnlineTxn ? 'Online UPI (Verified)' : 'Online Payment (Verified)'))
+    : (receipt.paymentMethod || 'Pay at Counter');
 
   const items = (receipt.items && receipt.items.length > 0) ? receipt.items : [];
   const totalAmt = Number(receipt.amount ?? receipt.total ?? 0);
