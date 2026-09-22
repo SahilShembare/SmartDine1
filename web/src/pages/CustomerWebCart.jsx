@@ -37,12 +37,16 @@ import {
   XCircle,
   Wallet,
   Info,
-  ExternalLink
+  ExternalLink,
+  Printer,
+  Download
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { openRazorpayPayment } from '../utils/razorpay';
 import { getCartComplementaryItems, getAiSuggestedCombo } from '../services/customerAiService';
 import CustomerFeedbackModal from '../components/CustomerFeedbackModal';
+import BillDownloadModal from '../components/BillDownloadModal';
+import { printBill } from '../utils/billReceipt';
 import { formatOrderNumber } from '../utils/orderNumber';
 
 const DEFAULT_VOUCHERS = [
@@ -208,6 +212,7 @@ export default function CustomerWebCart() {
   const [showMissingKeysModal, setShowMissingKeysModal] = useState(false);
   const [paymentFailedData, setPaymentFailedData] = useState(null);
   const [activeRazorpayOrderId, setActiveRazorpayOrderId] = useState(null);
+  const [showCartDownloadModal, setShowCartDownloadModal] = useState(false);
 
   // Card Payment Details
   const [cardType, setCardType] = useState('debit'); // 'debit' | 'credit'
@@ -892,12 +897,46 @@ export default function CustomerWebCart() {
             </button>
 
             <Link
-              to={isPaid ? `/bill?table=${completedOrderData.tableNumber}&orderId=${completedOrderData.orderId}&view=receipt` : `/bill?table=${completedOrderData.tableNumber}&orderId=${completedOrderData.orderId}`}
+              to={`/bill?table=${completedOrderData.tableNumber}&orderId=${completedOrderData.orderId}&view=receipt`}
               className="w-full py-3 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs border border-slate-800 shadow-xs transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Receipt className="w-4 h-4 text-amber-400" />
-              <span>{isPaid ? 'View & Print Bill Receipt' : 'View / Settle Table Bill'}</span>
+              <span>{isPaid ? 'View & Print Bill Receipt' : 'View Bill Receipt'}</span>
             </Link>
+
+            {/* Direct Quick Bill Actions (Print & Download PDF / JPG) */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => printBill({
+                  orderId: completedOrderData.orderId,
+                  orderNumber: completedOrderData.orderId,
+                  tableNumber: completedOrderData.tableNumber,
+                  customerName: customerName || `Table ${completedOrderData.tableNumber} Guest`,
+                  amount: completedOrderData.amount,
+                  items: completedOrderData.orderItems,
+                  paymentMethod: completedOrderData.paymentMethod,
+                  isPaid: isPaid,
+                  transactionId: completedOrderData.paymentId,
+                  paidAt: completedOrderData.paidAt || new Date().toLocaleString()
+                })}
+                className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs border border-slate-800 shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                title="Print official bill"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print Bill</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowCartDownloadModal(true)}
+                className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-orange-400 font-bold text-xs border border-slate-800 shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+                title="Download bill as PDF or JPG"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download Bill</span>
+              </button>
+            </div>
 
             <button
               onClick={() => setShowFeedbackModal(true)}
@@ -931,6 +970,24 @@ export default function CustomerWebCart() {
           onSkip={() => {
             setShowFeedbackModal(false);
             navigate(`/track/${completedOrderData.orderId}`);
+          }}
+        />
+
+        {/* Bill Download Modal (PDF / JPG) */}
+        <BillDownloadModal
+          isOpen={showCartDownloadModal}
+          onClose={() => setShowCartDownloadModal(false)}
+          receipt={{
+            orderId: completedOrderData.orderId,
+            orderNumber: completedOrderData.orderId,
+            tableNumber: completedOrderData.tableNumber,
+            customerName: customerName || `Table ${completedOrderData.tableNumber} Guest`,
+            amount: completedOrderData.amount,
+            items: completedOrderData.orderItems,
+            paymentMethod: completedOrderData.paymentMethod,
+            isPaid: isPaid,
+            transactionId: completedOrderData.paymentId,
+            paidAt: completedOrderData.paidAt || new Date().toLocaleString()
           }}
         />
       </div>

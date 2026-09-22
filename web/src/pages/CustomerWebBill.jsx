@@ -36,10 +36,12 @@ import { openRazorpayPayment } from '../utils/razorpay';
 import CustomerFeedbackModal from '../components/CustomerFeedbackModal';
 import { formatOrderNumber, formatInvoiceNumber, getOrAssignInvoiceNumber, getNextInvoiceNumber } from '../utils/orderNumber';
 import { localStore } from '../firebase/config';
+import BillDownloadModal from '../components/BillDownloadModal';
+import { printBill, downloadBillAsPdf, downloadBillAsJpg } from '../utils/billReceipt';
 
 export default function CustomerWebBill() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { currentUser } = useAuth();
   const { 
     orders = [],
@@ -53,34 +55,64 @@ export default function CustomerWebBill() {
   const orderIdParam = searchParams.get('orderId');
   const viewReceiptParam = searchParams.get('view') === 'receipt';
   
+  // Resolve target table
+  const tableParam = searchParams.get('table') || currentTable || localStorage.getItem('smartdine_active_table') || '01';
+  const formattedTable = String(tableParam).padStart(2, '0');
+
   // Resolve target order: check URL orderId first, then last order placed from this browser session
   const lastPlacedOrderId = localStorage.getItem('smartdine_last_order_id');
   const effectiveOrderId = orderIdParam || lastPlacedOrderId || null;
   
   // Robust targetOrder resolution across React state AND localStore
   const targetOrder = useMemo(() => {
-    if (!effectiveOrderId) return null;
-    const effStr = String(effectiveOrderId).trim();
-    const matchOrder = (o) => (
-      String(o.id) === effStr || 
-      String(o.orderNumber) === effStr ||
-      (o.firestoreDocId && String(o.firestoreDocId) === effStr) ||
-      (o.orderNumber && formatOrderNumber(o.orderNumber) === effStr) ||
-      (o.id && formatOrderNumber(o.id) === effStr)
-    );
+    const allKnownOrders = (orders && orders.length > 0) ? orders : (() => {
+      try { return localStore.getOrders() || []; } catch { return []; }
+    })();
 
-    const found = orders.find(matchOrder);
-    if (found) return found;
-    try {
-      const local = localStore.getOrders();
-      return local.find(matchOrder) || null;
-    } catch {
-      return null;
+    if (effectiveOrderId) {
+      const effStr = String(effectiveOrderId).trim();
+      const matchOrder = (o) => (
+        String(o.id) === effStr || 
+        String(o.orderNumber) === effStr ||
+        (o.firestoreDocId && String(o.firestoreDocId) === effStr) ||
+        (o.orderNumber && formatOrderNumber(o.orderNumber) === effStr) ||
+        (o.id && formatOrderNumber(o.id) === effStr)
+      );
+
+      const found = allKnownOrders.find(matchOrder);
+      if (found) return found;
     }
-  }, [effectiveOrderId, orders]);
 
-  const tableParam = searchParams.get('table') || targetOrder?.tableNumber || currentTable || '01';
-  const formattedTable = String(tableParam).padStart(2, '0');
+    // Also check smartdine_customer_order_ids from localStorage
+    try {
+      const savedIds = JSON.parse(localStorage.getItem('smartdine_customer_order_ids') || '[]');
+      if (Array.isArray(savedIds) && savedIds.length > 0) {
+        for (const sid of savedIds) {
+          const sStr = String(sid).trim();
+          const foundSaved = allKnownOrders.find(o => 
+            String(o.id) === sStr || 
+            String(o.orderNumber) === sStr || 
+            (o.firestoreDocId && String(o.firestoreDocId) === sStr)
+          );
+          if (foundSaved) return foundSaved;
+        }
+      }
+    } catch {}
+
+    // Fallback: If table has any orders, pick the latest order for this table
+    const tableOrders = allKnownOrders.filter(o => 
+      String(o.tableNumber).padStart(2, '0') === formattedTable
+    );
+    if (tableOrders.length > 0) {
+      return [...tableOrders].sort((a, b) => {
+        const tA = new Date(a.createdAt || a.paidAt || 0).getTime();
+        const tB = new Date(b.createdAt || b.paidAt || 0).getTime();
+        return tB - tA;
+      })[0];
+    }
+
+    return null;
+  }, [effectiveOrderId, orders, formattedTable]);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState('');
@@ -140,6 +172,16 @@ export default function CustomerWebBill() {
     return false;
   };
 
+  // Deterministic, persistent GST Tax Invoice Number for this session/table (Declared BEFORE billData to eliminate TDZ error)
+  const sessionInvoiceNumber = useMemo(() => {
+    if (targetOrder?.invoiceNumber) return formatInvoiceNumber(targetOrder.invoiceNumber);
+    const existingPaid = (orders || []).find(o => 
+      String(o.tableNumber).padStart(2, '0') === formattedTable && o.invoiceNumber
+    );
+    if (existingPaid?.invoiceNumber) return formatInvoiceNumber(existingPaid.invoiceNumber);
+    return getOrAssignInvoiceNumber(targetOrder, orders);
+  }, [targetOrder, orders, formattedTable]);
+
   // If targetOrder is known, display specifically targetOrder so other orders on this table do not pollute the bill
   const billData = useMemo(() => {
     if (targetOrder) {
@@ -185,17 +227,6 @@ export default function CustomerWebBill() {
     };
   }, [rawBillData, targetOrder, discountAmount, formattedTable, sessionInvoiceNumber]);
 
-  // Deterministic, persistent GST Tax Invoice Number for this session/table
-  const sessionInvoiceNumber = useMemo(() => {
-    if (targetOrder?.invoiceNumber) return formatInvoiceNumber(targetOrder.invoiceNumber);
-    if (billData.invoiceNumber) return formatInvoiceNumber(billData.invoiceNumber);
-    const existingPaid = (orders || []).find(o => 
-      String(o.tableNumber).padStart(2, '0') === formattedTable && o.invoiceNumber
-    );
-    if (existingPaid?.invoiceNumber) return formatInvoiceNumber(existingPaid.invoiceNumber);
-    return getOrAssignInvoiceNumber(targetOrder || billData.activeOrders, orders);
-  }, [targetOrder, billData.invoiceNumber, billData.activeOrders, orders, formattedTable]);
-
   // Compute settled receipt data for table or target order
   const receiptData = useMemo(() => {
     if (paymentSuccessData) return paymentSuccessData;
@@ -238,7 +269,7 @@ export default function CustomerWebBill() {
     }
 
     // 2. Fallback: If no target order is specified, get the latest settled transaction for this table
-    const allTablePaid = orders.filter(o => 
+    const allTablePaid = (orders || []).filter(o => 
       String(o.tableNumber).padStart(2, '0') === formattedTable && isOrderPaid(o)
     );
 
@@ -329,10 +360,29 @@ export default function CustomerWebBill() {
       };
     }
 
-    return null;
+    // 4. Default guaranteed fallback receipt so receipt is NEVER null
+    return {
+      invoiceNumber: sessionInvoiceNumber,
+      orderNumber: `ORD-${formattedTable}-01`,
+      orderId: `ORD-${formattedTable}-01`,
+      transactionId: 'TXN-COUNTER',
+      tableNumber: formattedTable,
+      paymentMethod: 'Pay at Counter',
+      paymentStatus: 'PENDING',
+      amount: billData?.total || 0,
+      discount: billData?.discountAmount || 0,
+      subtotal: billData?.subtotal || 0,
+      tax: billData?.tax || 0,
+      items: billData?.consolidatedItems || [],
+      paidAt: new Date().toLocaleString(),
+      orderCount: billData?.orderCount || 1,
+      customerName: currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || `Table ${formattedTable} Guest`,
+      isPaid: false
+    };
   }, [paymentSuccessData, targetOrder, orders, formattedTable, currentUser, sessionInvoiceNumber, billData]);
 
   const effectiveReceipt = receiptData;
+  const activeReceipt = effectiveReceipt;
   const hasSettledReceipt = Boolean(receiptData && (paymentSuccessData || receiptData.isPaid));
   const hasActiveUnpaidOrders = (billData.activeOrders && billData.activeOrders.length > 0) || (targetOrder && !isOrderPaid(targetOrder));
 
@@ -341,25 +391,10 @@ export default function CustomerWebBill() {
 
   const isViewingReceipt = Boolean(
     paymentSuccessData || 
-    (viewReceiptParam && effectiveReceipt) ||
-    (showReceiptView && effectiveReceipt) ||
+    viewReceiptParam || 
+    showReceiptView || 
     (!hasActiveUnpaidOrders && hasSettledReceipt)
   );
-
-  const activeReceipt = effectiveReceipt || {
-    invoiceNumber: sessionInvoiceNumber,
-    orderNumber: billData.orderIds?.map(formatOrderNumber).join(', ') || 'ORD-1001',
-    transactionId: 'TXN-DIRECT',
-    tableNumber: formattedTable,
-    paymentMethod: paymentMode.toUpperCase(),
-    amount: billData.total,
-    subtotal: billData.subtotal,
-    tax: billData.tax,
-    discount: discountAmount,
-    items: billData.consolidatedItems,
-    paidAt: new Date().toLocaleString(),
-    customerName: currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || `Table ${formattedTable} Guest`
-  };
 
   // Format Card Number
   const handleCardNumberChange = (e) => {
@@ -555,501 +590,27 @@ export default function CustomerWebBill() {
     }
   };
 
-  // PRINT BILL (Color-enabled)
+  // PRINT BILL (High-compatibility print)
   const handlePrintReceipt = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      window.print();
-      return;
-    }
-
-    const receipt = activeReceipt;
-    const items = (receipt.items && receipt.items.length > 0) ? receipt.items : billData.consolidatedItems;
-    const totalAmt = Number(receipt.amount ?? billData.total);
-    const subtotalAmt = Number(receipt.subtotal ?? billData.subtotal);
-    const taxAmt = Number(receipt.tax ?? billData.tax);
-    const discAmt = Number(receipt.discount ?? discountAmount);
-    const invNo = formatInvoiceNumber(receipt.invoiceNumber || sessionInvoiceNumber);
-    const ordNo = receipt.orderNumber || billData.orderIds?.map(formatOrderNumber).join(', ') || 'ORD-1001';
-    const txnId = receipt.transactionId || 'TXN-DIRECT';
-    const payMethod = receipt.paymentMethod || paymentMode.toUpperCase();
-    const paidTime = receipt.paidAt || new Date().toLocaleString();
-    const tblNo = receipt.tableNumber || formattedTable;
-
-    const htmlContent = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>SmartDine Tax Invoice - Table ${tblNo} - ${invNo}</title>
-  <style>
-    @page { margin: 12mm; }
-    body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      margin: 0;
-      padding: 15px;
-      background-color: #F8FAFC;
-      color: #0F172A;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-    }
-    .invoice-card {
-      max-width: 540px;
-      margin: 0 auto;
-      background: #FFFFFF;
-      border: 2px solid #E2E8F0;
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-    }
-    .header {
-      background: linear-gradient(135deg, #020617 0%, #0F172A 100%);
-      color: #F8FAFC;
-      padding: 20px;
-      text-align: center;
-      border-bottom: 3px solid #F59E0B;
-    }
-    .restaurant-title {
-      font-size: 22px;
-      font-weight: 900;
-      color: #F59E0B;
-      margin: 0;
-    }
-    .tagline {
-      font-size: 11px;
-      color: #F8FAFC;
-      opacity: 0.9;
-      margin-top: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    .meta-grid {
-      display: flex;
-      justify-content: space-between;
-      padding: 14px 20px;
-      background: #F8FAFC;
-      border-bottom: 1.5px dashed #CBD5E1;
-      font-size: 11px;
-    }
-    .meta-box span { color: #64748B; display: block; font-size: 10px; text-transform: uppercase; }
-    .meta-box strong { color: #0F172A; font-size: 12px; }
-    .table-badge {
-      display: inline-block;
-      background: #EA580C;
-      color: #FFFFFF;
-      padding: 3px 10px;
-      border-radius: 10px;
-      font-weight: 800;
-      font-size: 11px;
-    }
-    .items-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-    .items-table th {
-      background: #0F172A;
-      color: #F59E0B;
-      padding: 8px 18px;
-      text-align: left;
-      font-size: 10px;
-      text-transform: uppercase;
-    }
-    .items-table td {
-      padding: 9px 18px;
-      border-bottom: 1px solid #F1F5F9;
-    }
-    .items-table tr:nth-child(even) { background: #F8FAFC; }
-    .veg-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 2px;
-      background: #16A34A;
-      margin-right: 6px;
-    }
-    .nonveg-dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 2px;
-      background: #E11D48;
-      margin-right: 6px;
-    }
-    .calc-section {
-      padding: 14px 20px;
-      background: #F8FAFC;
-      border-top: 2px dashed #CBD5E1;
-    }
-    .calc-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 11px;
-      margin-bottom: 5px;
-      color: #64748B;
-      font-weight: 600;
-    }
-    .calc-row.discount { color: #16A34A; font-weight: 800; }
-    .grand-total {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-top: 8px;
-      margin-top: 6px;
-      border-top: 2px solid #0F172A;
-      font-size: 15px;
-      font-weight: 900;
-      color: #0F172A;
-    }
-    .grand-total .amount { color: #EA580C; font-size: 20px; font-weight: 900; }
-    .paid-stamp {
-      background: #ECFDF5;
-      border: 2px solid #059669;
-      color: #059669;
-      padding: 8px;
-      border-radius: 12px;
-      text-align: center;
-      font-weight: 900;
-      font-size: 12px;
-      margin: 12px 20px;
-    }
-    .footer {
-      background: #020617;
-      color: #F59E0B;
-      text-align: center;
-      padding: 12px;
-      font-size: 11px;
-      font-weight: 700;
-    }
-  </style>
-</head>
-<body>
-  <div class="invoice-card">
-    <div class="header">
-      <h1 class="restaurant-title">👑 SMARTDINE RESTAURANT</h1>
-      <div class="tagline">Authentic Royal Indian Cuisine • Tax Invoice</div>
-    </div>
-
-    <div class="meta-grid">
-      <div class="meta-box">
-        <span>Tax Invoice No</span>
-        <strong style="font-family: monospace; font-size: 13px; color: #0F172A;">${invNo}</strong>
-      </div>
-      <div class="meta-box">
-        <span>Order Token</span>
-        <strong style="font-family: monospace; font-size: 13px; color: #EA580C;">${ordNo}</strong>
-      </div>
-      <div class="meta-box">
-        <span>Dining Table</span>
-        <div class="table-badge">Table ${tblNo}</div>
-      </div>
-      <div class="meta-box" style="text-align: right;">
-        <span>Date & Time</span>
-        <strong>${paidTime}</strong>
-      </div>
-    </div>
-
-    <div style="background: #FFFBEB; border-bottom: 1px dashed #FDE68A; padding: 6px 20px; font-size: 9.5px; color: #92400E; display: flex; justify-content: space-between;">
-      <span><strong>GSTIN:</strong> 27AABCS1429B1Z8</span>
-      <span><strong>SAC:</strong> 996331 (Restaurant Dining)</span>
-      <span><strong>FSSAI Lic:</strong> 11522036000412</span>
-    </div>
-
-    <table class="items-table">
-      <thead>
-        <tr>
-          <th>Delicacy / Dish</th>
-          <th style="text-align: center;">Qty</th>
-          <th style="text-align: right;">Rate</th>
-          <th style="text-align: right;">Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${items.map(item => `
-          <tr>
-            <td>
-              <span class="${item.isVeg !== false ? 'veg-dot' : 'nonveg-dot'}"></span>
-              <strong>${item.name}</strong>
-            </td>
-            <td style="text-align: center; color: #EA580C; font-weight: 800;">${item.quantity}x</td>
-            <td style="text-align: right; color: #64748B;">₹${(Number(item.price) || 0).toFixed(0)}</td>
-            <td style="text-align: right; font-weight: 800; color: #0F172A;">₹${(Number(item.totalPrice) || (Number(item.price) * Number(item.quantity)) || 0).toFixed(2)}</td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-
-    <div class="calc-section">
-      <div class="calc-row">
-        <span>Subtotal (${items.length} items)</span>
-        <strong style="color: #0F172A;">₹${subtotalAmt.toFixed(2)}</strong>
-      </div>
-      ${discAmt > 0 ? `
-      <div class="calc-row discount">
-        <span>Discount Applied (${appliedCoupon?.code || 'COUPON'})</span>
-        <span>-₹${discAmt.toFixed(2)}</span>
-      </div>` : ''}
-      <div class="calc-row">
-        <span>CGST (2.5%)</span>
-        <strong style="color: #0F172A;">₹${(taxAmt / 2).toFixed(2)}</strong>
-      </div>
-      <div class="calc-row">
-        <span>SGST (2.5%)</span>
-        <strong style="color: #0F172A;">₹${(taxAmt / 2).toFixed(2)}</strong>
-      </div>
-      <div class="grand-total">
-        <span>GRAND TOTAL PAID</span>
-        <span class="amount">₹${totalAmt.toFixed(2)}</span>
-      </div>
-    </div>
-
-    <div class="paid-stamp">
-      PAID & VERIFIED OFFICIAL INVOICE ✅ (${payMethod})<br>
-      <small style="font-size: 10px; font-weight: 600; color: #047857;">Txn ID: ${txnId}</small>
-    </div>
-
-    <div class="footer">
-      ✨ Thank you for dining with SmartDine! Visit Again! ✨
-    </div>
-  </div>
-
-  <script>
-    window.onload = function() {
-      window.print();
-    }
-  </script>
-</body>
-</html>
-    `;
-
-    printWindow.document.open();
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
+    printBill(activeReceipt);
   };
 
-  // 1. DOWNLOAD AS PDF
+  // 1. DOWNLOAD AS PDF (Real .pdf file download)
   const handleDownloadPdf = () => {
-    handlePrintReceipt();
+    downloadBillAsPdf(activeReceipt);
     setShowDownloadModal(false);
-    toast.success('Select "Save as PDF" in your print dialog! 📄', { icon: '📄' });
   };
 
-  // 2. DOWNLOAD AS IMAGE (100% PURE WHITE BACKGROUND JPG)
+  // 2. DOWNLOAD AS IMAGE (Pure White JPG file download)
   const handleDownloadImage = () => {
-    const canvas = document.createElement('canvas');
-    const width = 600;
-    const receipt = activeReceipt;
-    const items = (receipt.items && receipt.items.length > 0) ? receipt.items : billData.consolidatedItems;
-    const totalAmt = Number(receipt.amount ?? billData.total);
-    const subtotalAmt = Number(receipt.subtotal ?? billData.subtotal);
-    const taxAmt = Number(receipt.tax ?? billData.tax);
-    const discAmt = Number(receipt.discount ?? discountAmount);
-    const invNo = formatInvoiceNumber(receipt.invoiceNumber || sessionInvoiceNumber);
-    const ordNo = receipt.orderNumber || billData.orderIds?.map(formatOrderNumber).join(', ') || 'ORD-1001';
-    const txnId = receipt.transactionId || 'TXN-DIRECT';
-    const payMethod = receipt.paymentMethod || paymentMode.toUpperCase();
-    const paidTime = receipt.paidAt || new Date().toLocaleString();
-    const tblNo = receipt.tableNumber || formattedTable;
-
-    const height = Math.max(520, 440 + (items.length * 32));
-
-    canvas.width = width * 2; // High-DPI 2x Retina scale
-    canvas.height = height * 2;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(2, 2);
-
-    // 1. PURE 100% SOLID WHITE BACKGROUND
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, width, height);
-
-    // 2. Outer Card Border
-    ctx.lineWidth = 3;
-    ctx.strokeStyle = '#F59E0B';
-    ctx.strokeRect(15, 15, width - 30, height - 30);
-
-    // 3. Header Section
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 22px system-ui, -apple-system, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('👑 SMARTDINE RESTAURANT', width / 2, 55);
-
-    ctx.fillStyle = '#EA580C';
-    ctx.font = 'bold 11px system-ui, -apple-system, sans-serif';
-    ctx.fillText('AUTHENTIC ROYAL DINING • TAX INVOICE', width / 2, 75);
-
-    // Gold divider under header
-    ctx.strokeStyle = '#F59E0B';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(30, 95);
-    ctx.lineTo(width - 30, 95);
-    ctx.stroke();
-
-    // 4. Meta Row
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#64748B';
-    ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText('INVOICE NO', 35, 118);
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 11px monospace';
-    ctx.fillText(invNo, 35, 134);
-
-    ctx.fillStyle = '#64748B';
-    ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText('ORDER TOKEN', 175, 118);
-    ctx.fillStyle = '#EA580C';
-    ctx.font = 'bold 11px monospace';
-    ctx.fillText(ordNo, 175, 134);
-
-    ctx.fillStyle = '#64748B';
-    ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText('DINING TABLE', width / 2 + 50, 118);
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.fillText(`Table ${tblNo}`, width / 2 + 50, 134);
-
-    ctx.fillStyle = '#64748B';
-    ctx.font = '10px system-ui, sans-serif';
-    ctx.fillText('DATE & TIME', width - 150, 118);
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 10px system-ui, sans-serif';
-    ctx.fillText(paidTime, width - 150, 134);
-
-    // Divider
-    ctx.strokeStyle = '#E2E8F0';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(30, 155);
-    ctx.lineTo(width - 30, 155);
-    ctx.stroke();
-
-    // 5. Table Header Row
-    let y = 175;
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 11px system-ui, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('DELICACY / DISH', 40, y);
-    ctx.fillText('QTY', width - 170, y);
-    ctx.textAlign = 'right';
-    ctx.fillText('AMOUNT', width - 40, y);
-
-    // Divider under table header
-    ctx.strokeStyle = '#0F172A';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(30, y + 8);
-    ctx.lineTo(width - 30, y + 8);
-    ctx.stroke();
-
-    // 6. Items list
-    y += 28;
-    items.forEach((item) => {
-      ctx.textAlign = 'left';
-      // Veg/Non-Veg dot
-      ctx.fillStyle = item.isVeg !== false ? '#16A34A' : '#E11D48';
-      ctx.fillRect(40, y - 8, 8, 8);
-
-      ctx.fillStyle = '#0F172A';
-      ctx.font = 'bold 12px system-ui, sans-serif';
-      ctx.fillText((item.name || 'Delicacy').substring(0, 24), 56, y);
-
-      ctx.fillStyle = '#EA580C';
-      ctx.font = 'bold 12px system-ui, sans-serif';
-      ctx.fillText(`${item.quantity}x`, width - 170, y);
-
-      ctx.textAlign = 'right';
-      ctx.fillStyle = '#0F172A';
-      ctx.fillText(`₹${(Number(item.totalPrice) || (Number(item.price) * Number(item.quantity)) || 0).toFixed(2)}`, width - 40, y);
-      y += 26;
-    });
-
-    // Divider
-    y += 6;
-    ctx.strokeStyle = '#E2E8F0';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(30, y);
-    ctx.lineTo(width - 30, y);
-    ctx.stroke();
-
-    // 7. Summary Calculation
-    y += 24;
-    ctx.textAlign = 'left';
-    ctx.font = '11px system-ui, sans-serif';
-    ctx.fillStyle = '#64748B';
-    ctx.fillText('Subtotal', 40, y);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#0F172A';
-    ctx.fillText(`₹${subtotalAmt.toFixed(2)}`, width - 40, y);
-
-    if (discAmt > 0) {
-      y += 20;
-      ctx.textAlign = 'left';
-      ctx.fillStyle = '#16A34A';
-      ctx.fillText(`Discount (${appliedCoupon?.code || 'COUPON'})`, 40, y);
-      ctx.textAlign = 'right';
-      ctx.fillText(`-₹${discAmt.toFixed(2)}`, width - 40, y);
-    }
-
-    y += 20;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#64748B';
-    ctx.fillText('GST (5% SGST + CGST)', 40, y);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#0F172A';
-    ctx.fillText(`₹${taxAmt.toFixed(2)}`, width - 40, y);
-
-    // Grand total
-    y += 26;
-    ctx.strokeStyle = '#0F172A';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(30, y - 6);
-    ctx.lineTo(width - 30, y - 6);
-    ctx.stroke();
-
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 15px system-ui, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('GRAND TOTAL PAID', 40, y + 10);
-    ctx.fillStyle = '#EA580C';
-    ctx.font = 'bold 20px system-ui, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(`₹${totalAmt.toFixed(2)}`, width - 40, y + 10);
-
-    // 8. Paid Stamp Box
-    y += 36;
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(30, y, width - 60, 42);
-    ctx.strokeStyle = '#059669';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(30, y, width - 60, 42);
-
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#059669';
-    ctx.font = 'bold 12px system-ui, sans-serif';
-    ctx.fillText(`PAID & VERIFIED OFFICIAL INVOICE ✅ (${payMethod})`, width / 2, y + 20);
-    ctx.font = '10px monospace';
-    ctx.fillStyle = '#1B5E20';
-    ctx.fillText(`Txn ID: ${txnId}`, width / 2, y + 34);
-
-    // 9. Export as 100% clean white background JPG
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `SmartDine_Invoice_Table${tblNo}_${invNo}.jpg`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setShowDownloadModal(false);
-      toast.success('Pure White JPG Bill Image downloaded! 🖼️', { icon: '🖼️' });
-    }, 'image/jpeg', 1.0);
+    downloadBillAsJpg(activeReceipt);
+    setShowDownloadModal(false);
   };
+  const handleDownloadJpg = handleDownloadImage;
 
   // ================= PAID TAX INVOICE & BILL RECEIPT VIEW =================
-  if (isViewingReceipt && effectiveReceipt) {
-    const receipt = effectiveReceipt;
+  if (isViewingReceipt && (effectiveReceipt || activeReceipt)) {
+    const receipt = effectiveReceipt || activeReceipt;
     const items = (receipt.items && receipt.items.length > 0) ? receipt.items : [];
     const totalAmt = Number(receipt.amount ?? 0);
     const subtotalAmt = Number(receipt.subtotal ?? (totalAmt * 0.95));
@@ -1067,154 +628,73 @@ export default function CustomerWebBill() {
       <div className="min-h-[calc(100vh-4rem)] bg-slate-950 text-slate-100 flex items-center justify-center p-3 sm:p-5 font-sans relative selection:bg-orange-500 selection:text-white">
         
         {/* Download Format Selector Modal (PDF vs Image) */}
-        {showDownloadModal && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
-            <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <FileDown className="w-5 h-5 text-orange-400" />
-                  <h3 className="text-sm font-black text-white">Download Bill Receipt</h3>
-                </div>
-                <button
-                  onClick={() => setShowDownloadModal(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+        <BillDownloadModal
+          isOpen={showDownloadModal}
+          onClose={() => setShowDownloadModal(false)}
+          receipt={receipt}
+        />
 
-              <p className="text-xs text-slate-400">
-                Choose your preferred format to save the verified tax invoice:
-              </p>
-
-              <div className="grid grid-cols-1 gap-2.5">
-                {/* PDF Option */}
-                <button
-                  type="button"
-                  onClick={handleDownloadPdf}
-                  className="w-full p-3.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 transition flex items-center justify-between group cursor-pointer shadow-sm"
-                >
-                  <div className="flex items-center gap-3 text-left">
-                    <div className="w-9 h-9 rounded-xl bg-rose-950/60 text-rose-400 border border-rose-500/30 flex items-center justify-center font-black text-xs shrink-0">
-                      PDF
-                    </div>
-                    <div>
-                      <div className="text-xs font-black text-white">Download PDF Invoice</div>
-                      <div className="text-[10px] text-slate-400">Printable official document</div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </button>
-
-                {/* Image Option */}
-                <button
-                  type="button"
-                  onClick={handleDownloadImage}
-                  className="w-full p-3.5 rounded-2xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 transition flex items-center justify-between group cursor-pointer shadow-sm"
-                >
-                  <div className="flex items-center gap-3 text-left">
-                    <div className="w-9 h-9 rounded-xl bg-blue-950/60 text-blue-400 border border-blue-500/30 flex items-center justify-center font-black text-xs shrink-0">
-                      <ImageIcon className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-black text-white">Download Image (JPG)</div>
-                      <div className="text-[10px] text-slate-400">Clear HD Photo Receipt (JPG)</div>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden p-5 sm:p-6 space-y-4 animate-in zoom-in-95 duration-200">
+        {/* Outer Receipt Container */}
+        <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200">
           
-          {/* Header with Verified / Status Badge */}
-          <div className="text-center space-y-1">
-            <div className={`w-12 h-12 rounded-full border-2 flex items-center justify-center mx-auto shadow-glow ${
-              receipt.isPaid
-                ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500'
-                : 'bg-amber-500/15 text-amber-400 border-amber-500'
-            }`}>
-              {receipt.isPaid ? (
-                <Check className="w-7 h-7 stroke-[3]" />
-              ) : (
-                <Clock className="w-7 h-7" />
-              )}
+          {/* Header */}
+          <div className="text-center space-y-1 border-b border-slate-800 pb-4">
+            <div className="inline-flex p-2.5 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/30 text-amber-400 mb-1 shadow-inner">
+              <Receipt className="w-6 h-6" />
             </div>
-            <h1 className="text-xl font-black text-white tracking-tight flex items-center justify-center gap-1.5">
-              <span>{receipt.isPaid ? 'Bill Settled & Paid' : 'Table Bill Receipt'}</span>
-              <span>{receipt.isPaid ? '✅' : '🟠'}</span>
-            </h1>
-            <p className="text-xs text-slate-400">
-              {receipt.isPaid ? `Official Tax Invoice for Table #${tblNo}` : `Payment Pending for Table #${tblNo} (Pay at Counter)`}
-            </p>
+            <h1 className="text-lg font-black text-white tracking-tight">SmartDine Restaurant</h1>
+            <p className="text-[11px] text-slate-400">GSTIN: 27AABCS1429B1ZB • FSSAI Lic: 11521034000452</p>
+            <p className="text-[10px] text-slate-500">Fine Dining & Authentic Delicacies • Table {tblNo}</p>
           </div>
 
-          {/* Color-Rich Digital Invoice Card */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 shadow-inner">
-            
-            <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5">
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-500">Tax Invoice Number</div>
-                <div className="font-mono text-xs font-bold text-amber-400">{invNo}</div>
-              </div>
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-500">Order Token</div>
-                <div className="font-mono text-xs font-bold text-slate-200">{ordNo}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-[10px] uppercase font-bold text-slate-500">Dining Table</div>
-                <div className="text-xs font-black text-amber-400">Table #{tblNo}</div>
-              </div>
+          {/* Meta Information Bar */}
+          <div className="bg-slate-950/80 rounded-2xl p-3 border border-slate-800/80 grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <span className="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Invoice No</span>
+              <span className="font-mono text-amber-400 font-black text-[11px]">{invNo}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Order No</span>
+              <span className="font-mono text-slate-200 font-bold text-[11px]">{ordNo}</span>
+            </div>
+            <div>
+              <span className="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Table / Guest</span>
+              <span className="text-slate-200 font-bold text-[11px]">Table {tblNo} • {customerName}</span>
+            </div>
+            <div className="text-right">
+              <span className="text-slate-500 block text-[10px] uppercase font-bold tracking-wider">Date & Time</span>
+              <span className="text-slate-300 text-[10px]">{paidTime}</span>
+            </div>
+            <div className="col-span-2 pt-1 border-t border-slate-900 flex justify-between items-center text-[10px]">
+              <span className="text-slate-500 font-bold uppercase">Txn ID</span>
+              <span className="font-mono text-slate-400">{txnId}</span>
+            </div>
+          </div>
+
+          {/* Consolidated Ordered Items List */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-[11px] font-black uppercase tracking-wider text-slate-400 px-1 border-b border-slate-800 pb-1.5">
+              <span>Item & Quantity</span>
+              <span>Amount</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-400">
-              <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Payment Mode</span>
-                <span className="font-semibold text-slate-200 truncate block">{payMethod}</span>
-              </div>
-              <div className="text-right">
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Date & Time</span>
-                <span className="font-semibold text-slate-300 block">{paidTime}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Txn ID</span>
-                <span className="font-mono text-[10px] text-amber-400/90 truncate block">{txnId}</span>
-              </div>
-              <div className="text-right">
-                <span className="text-slate-500 block text-[10px] uppercase font-semibold">Guest</span>
-                <span className="font-semibold text-slate-300 truncate block">{customerName}</span>
-              </div>
+            <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+              {items.map((item, idx) => (
+                <div key={idx} className="flex justify-between items-center text-xs py-1 border-b border-slate-900/50">
+                  <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${item.isVeg !== false ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    <span className="text-slate-200 font-medium truncate">{item.name}</span>
+                    <span className="text-slate-500 font-mono text-[11px]">×{item.quantity}</span>
+                  </div>
+                  <span className="font-mono font-bold text-slate-300 text-xs shrink-0">
+                    ₹{((Number(item.price) || 0) * (Number(item.quantity) || 1)).toFixed(2)}
+                  </span>
+                </div>
+              ))}
             </div>
 
-            {/* Delicacies List */}
-            {items.length > 0 && (
-              <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
-                <div className="flex items-center justify-between text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                  <span>Delicacies Invoiced ({items.length})</span>
-                  <span>Amount</span>
-                </div>
-                <div className="max-h-40 overflow-y-auto pr-1 space-y-1.5 divide-y divide-slate-900">
-                  {items.map((item, idx) => (
-                    <div key={idx} className="pt-1.5 first:pt-0 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-1.5 truncate pr-2">
-                        <span className={`w-2 h-2 rounded-sm ${item.isVeg !== false ? 'bg-emerald-400' : 'bg-rose-400'} shrink-0`} />
-                        <span className="font-medium text-slate-200 truncate">{item.name}</span>
-                        <span className="text-amber-400 font-bold text-[11px]">x{item.quantity}</span>
-                      </div>
-                      <span className="font-bold text-slate-300 shrink-0">
-                        ₹{(Number(item.totalPrice) || (Number(item.price) * Number(item.quantity)) || 0).toFixed(0)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Subtotal & Taxes Breakdown */}
-            <div className="pt-2.5 border-t border-slate-800/80 space-y-1 text-xs">
+            {/* Calculations Breakdown */}
+            <div className="pt-2 border-t border-slate-800 space-y-1 text-xs">
               <div className="flex justify-between text-slate-400">
                 <span>Subtotal</span>
                 <span className="text-slate-200 font-bold">₹{subtotalAmt.toFixed(2)}</span>
@@ -1230,8 +710,8 @@ export default function CustomerWebBill() {
                 <span className="text-slate-300">₹{taxAmt.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-slate-800 text-sm font-black text-white">
-                <span>Total Paid Amount</span>
-                <span className="text-emerald-400 text-xl font-black font-mono">₹{totalAmt.toFixed(2)}</span>
+                <span>{receipt.isPaid ? 'Total Paid Amount' : 'Total Bill Amount'}</span>
+                <span className={`${receipt.isPaid ? 'text-emerald-400' : 'text-amber-400'} text-xl font-black font-mono`}>₹{totalAmt.toFixed(2)}</span>
               </div>
             </div>
 
@@ -1262,6 +742,11 @@ export default function CustomerWebBill() {
                 type="button"
                 onClick={() => {
                   setShowReceiptView(false);
+                  setSearchParams(prev => {
+                    const n = new URLSearchParams(prev);
+                    n.delete('view');
+                    return n;
+                  });
                   navigate(`/bill?table=${tblNo}${receipt.orderId ? `&orderId=${receipt.orderId}` : ''}`);
                 }}
                 className="w-full py-3 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow transition flex items-center justify-center gap-1.5 cursor-pointer"
@@ -1282,6 +767,23 @@ export default function CustomerWebBill() {
                 <span>⭐ Rate Food & Dining Experience</span>
               </button>
             )}
+
+            {/* Back to Billing / Checkout View */}
+            <button
+              type="button"
+              onClick={() => {
+                setShowReceiptView(false);
+                setSearchParams(prev => {
+                  const n = new URLSearchParams(prev);
+                  n.delete('view');
+                  return n;
+                });
+              }}
+              className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 font-bold text-xs border border-slate-800 shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Receipt className="w-3.5 h-3.5 text-amber-400" />
+              <span>Back to Bill Checkout & Settlement</span>
+            </button>
 
             <Link
               to={`/menu?table=${tblNo}`}
@@ -1379,22 +881,51 @@ export default function CustomerWebBill() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <button
               type="button"
-              onClick={() => setShowReceiptView(true)}
-              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-[11px] border border-slate-700 transition flex items-center gap-1 shadow-xs cursor-pointer"
+              onClick={() => {
+                setShowReceiptView(true);
+                setSearchParams(prev => {
+                  const n = new URLSearchParams(prev);
+                  n.set('view', 'receipt');
+                  return n;
+                });
+              }}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-[11px] border border-slate-700 transition flex items-center gap-1 shadow-xs cursor-pointer"
+              title="View full tax invoice receipt"
             >
               <Receipt className="w-3.5 h-3.5 text-amber-400" />
-              <span>View Bill Receipt</span>
+              <span>View Receipt</span>
             </button>
-            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase border flex items-center gap-1 ${
+
+            <button
+              type="button"
+              onClick={handlePrintReceipt}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-[11px] border border-slate-700 transition flex items-center gap-1 shadow-xs cursor-pointer"
+              title="Print Bill to physical printer"
+            >
+              <Printer className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Print</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowDownloadModal(true)}
+              className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-orange-400 font-bold text-[11px] border border-slate-700 transition flex items-center gap-1 shadow-xs cursor-pointer"
+              title="Download Bill as PDF or JPG"
+            >
+              <Download className="w-3.5 h-3.5 text-orange-400" />
+              <span className="hidden sm:inline">Download</span>
+            </button>
+
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase border flex items-center gap-1 ${
               hasActiveUnpaidOrders
                 ? 'bg-amber-500/15 text-amber-400 border-amber-500/40 animate-pulse'
                 : 'bg-emerald-950 text-emerald-400 border-emerald-700'
             }`}>
-              {hasActiveUnpaidOrders && <Clock className="w-3.5 h-3.5" />}
-              <span>{hasActiveUnpaidOrders ? 'UNPAID (Pay at Counter)' : 'PAID'}</span>
+              {hasActiveUnpaidOrders && <Clock className="w-3 h-3" />}
+              <span>{hasActiveUnpaidOrders ? 'UNPAID' : 'PAID'}</span>
             </span>
             <span className="text-[11px] font-mono text-slate-400 hidden xs:inline">{sessionInvoiceNumber}</span>
           </div>
@@ -1469,6 +1000,29 @@ export default function CustomerWebBill() {
                 <span>Payable Amount</span>
                 <span className="text-amber-400 text-xl font-black font-mono">₹{billData.total.toFixed(2)}</span>
               </div>
+            </div>
+
+            {/* Quick Bill Actions (Print & Download PDF/JPG) */}
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
+              <button
+                type="button"
+                onClick={handlePrintReceipt}
+                className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-800 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                title="Print current bill"
+              >
+                <Printer className="w-3.5 h-3.5 text-amber-400" />
+                <span>Print Bill</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowDownloadModal(true)}
+                className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-orange-400 border border-slate-800 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                title="Download bill as PDF or JPG"
+              >
+                <Download className="w-3.5 h-3.5 text-orange-400" />
+                <span>Download Bill</span>
+              </button>
             </div>
 
           </div>
@@ -1818,6 +1372,13 @@ export default function CustomerWebBill() {
         </div>
 
       </div>
+
+      {/* Download Format Selector Modal (PDF vs JPG) for checkout view */}
+      <BillDownloadModal
+        isOpen={showDownloadModal}
+        onClose={() => setShowDownloadModal(false)}
+        receipt={activeReceipt}
+      />
     </div>
   );
 }

@@ -13,6 +13,7 @@
     "clsx": "^2.1.1",
     "firebase": "^11.4.0",
     "html5-qrcode": "^2.3.8",
+    "jspdf": "^4.2.1",
     "lucide-react": "^0.477.0",
     "nodemailer": "^10.0.10",
     "qrcode.react": "^4.2.0",

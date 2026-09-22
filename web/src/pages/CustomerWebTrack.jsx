@@ -19,9 +19,13 @@ import {
   Flame,
   PartyPopper,
   CreditCard,
-  Smile
+  Smile,
+  Printer,
+  Download
 } from 'lucide-react';
 import { formatOrderNumber } from '../utils/orderNumber';
+import BillDownloadModal from '../components/BillDownloadModal';
+import { printBill } from '../utils/billReceipt';
 
 export default function CustomerWebTrack() {
   const { orderId } = useParams();
@@ -32,6 +36,7 @@ export default function CustomerWebTrack() {
   });
 
   const [currentTime, setCurrentTime] = useState(Date.now());
+  const [showTrackDownloadModal, setShowTrackDownloadModal] = useState(false);
 
   // Sync order via Firestore snapshot (real-time) and local orders array
   useEffect(() => {
@@ -427,27 +432,80 @@ export default function CustomerWebTrack() {
         </div>
 
         {/* 7. ACTION BUTTONS: VIEW BILL RECEIPT & ORDER MORE */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Link
-            to={
-              String(order.paymentStatus || '').toLowerCase() === 'paid'
-                ? (isTableAssigned ? `/bill?table=${order.tableNumber}&orderId=${order.id}&view=receipt` : `/bill?orderId=${order.id}&view=receipt`)
-                : (isTableAssigned ? `/bill?table=${order.tableNumber}&orderId=${order.id}` : `/bill?orderId=${order.id}`)
-            }
-            className="py-3.5 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-white border border-amber-500/40 font-black text-sm transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
-          >
-            <Receipt className="w-4 h-4 text-amber-400" />
-            <span>{String(order.paymentStatus || '').toLowerCase() === 'paid' ? 'View Bill Receipt' : 'View / Settle Bill'}</span>
-          </Link>
+        <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <Link
+              to={
+                isTableAssigned 
+                  ? `/bill?table=${order.tableNumber}&orderId=${order.id}&view=receipt` 
+                  : `/bill?orderId=${order.id}&view=receipt`
+              }
+              className="py-3 px-4 rounded-2xl bg-slate-900 hover:bg-slate-800 text-amber-400 hover:text-white border border-amber-500/40 font-black text-xs transition flex items-center justify-center gap-2 shadow-md cursor-pointer"
+            >
+              <Receipt className="w-4 h-4 text-amber-400" />
+              <span>View Tax Invoice Receipt</span>
+            </Link>
 
-          <Link
-            to={`/menu${isTableAssigned ? `?table=${order.tableNumber}` : ''}`}
-            className="py-3.5 px-4 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-sm transition flex items-center justify-center gap-2 shadow-glow"
-          >
-            <UtensilsCrossed className="w-4 h-4" />
-            <span>Order More Delicacies</span>
-          </Link>
+            <Link
+              to={`/menu${isTableAssigned ? `?table=${order.tableNumber}` : ''}`}
+              className="py-3 px-4 rounded-2xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs transition flex items-center justify-center gap-2 shadow-glow"
+            >
+              <UtensilsCrossed className="w-4 h-4" />
+              <span>Order More Delicacies</span>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => printBill({
+                orderId: order.id,
+                orderNumber: order.orderNumber || order.id,
+                tableNumber: order.tableNumber,
+                customerName: order.customerName || `Table ${order.tableNumber} Guest`,
+                amount: order.total || order.amount,
+                items: order.items,
+                paymentMethod: order.paymentMethod,
+                isPaid: String(order.paymentStatus || '').toLowerCase() === 'paid',
+                transactionId: order.transactionId,
+                paidAt: order.paidAt || order.createdAt || new Date().toLocaleString()
+              })}
+              className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-400 border border-slate-800 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              title="Print official bill receipt"
+            >
+              <Printer className="w-3.5 h-3.5 text-amber-400" />
+              <span>Print Bill</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowTrackDownloadModal(true)}
+              className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-orange-400 border border-slate-800 font-bold text-xs transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              title="Download bill as PDF or JPG"
+            >
+              <Download className="w-3.5 h-3.5 text-orange-400" />
+              <span>Download (PDF/JPG)</span>
+            </button>
+          </div>
         </div>
+
+        {/* Bill Download Modal */}
+        <BillDownloadModal
+          isOpen={showTrackDownloadModal}
+          onClose={() => setShowTrackDownloadModal(false)}
+          receipt={{
+            orderId: order.id,
+            orderNumber: order.orderNumber || order.id,
+            tableNumber: order.tableNumber,
+            customerName: order.customerName || `Table ${order.tableNumber} Guest`,
+            amount: order.total || order.amount,
+            items: order.items,
+            paymentMethod: order.paymentMethod,
+            isPaid: String(order.paymentStatus || '').toLowerCase() === 'paid',
+            transactionId: order.transactionId,
+            paidAt: order.paidAt || order.createdAt || new Date().toLocaleString()
+          }}
+        />
 
       </div>
     </div>
