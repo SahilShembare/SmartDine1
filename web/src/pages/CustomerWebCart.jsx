@@ -182,7 +182,9 @@ export default function CustomerWebCart() {
     cartTotal, 
     placeOrder,
     menuItems,
-    addToCart 
+    addToCart,
+    orders = [],
+    isOrderPaid
   } = useTableOrder();
 
   // Customer Contact Info - Auto-fetched from Profile
@@ -766,11 +768,11 @@ export default function CustomerWebCart() {
 
   // Render Order Placed Confirmation & Feedback Screen when an order has just been placed
   if (completedOrderData) {
-    const liveOrder = (orders || []).find(o => 
-      String(o.id) === String(completedOrderData.orderId) || 
-      String(o.orderNumber) === String(completedOrderData.orderId)
-    );
-    const isLivePaid = liveOrder ? isOrderPaid(liveOrder) : false;
+    const liveOrder = Array.isArray(orders) ? orders.find(o => 
+      String(o?.id) === String(completedOrderData?.orderId) || 
+      String(o?.orderNumber) === String(completedOrderData?.orderId)
+    ) : null;
+    const isLivePaid = liveOrder ? (typeof isOrderPaid === 'function' ? isOrderPaid(liveOrder) : Boolean(liveOrder.isPaid || liveOrder.paymentStatus === 'PAID')) : false;
     const isPaid = isLivePaid || completedOrderData.paymentStatus === 'PAID';
     const effectivePaymentMethod = isPaid
       ? (liveOrder?.paymentMethod && !liveOrder.paymentMethod.toLowerCase().includes('counter')

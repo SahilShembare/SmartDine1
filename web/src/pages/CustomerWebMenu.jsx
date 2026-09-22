@@ -5,11 +5,6 @@ import { useTableOrder } from '../context/TableOrderContext';
 import { useAuth } from '../context/AuthContext';
 import { getAiRecommendation } from '../utils/aiRecommender';
 import { 
-  getTimeContext, 
-  getCustomerProfile, 
-  saveCustomerProfile, 
-  TASTE_PREFERENCE_CHIPS, 
-  getPersonalizedRecommendations,
   getSimilarDishes 
 } from '../services/customerAiService';
 import confetti from 'canvas-confetti';
@@ -38,7 +33,8 @@ import {
   ArrowRight,
   CheckCircle2,
   Bell,
-  Menu
+  Menu,
+  Receipt
 } from 'lucide-react';
 import CustomerProfileModal from '../components/CustomerProfileModal';
 import CallWaiterModal from '../components/CallWaiterModal';
@@ -102,64 +98,9 @@ export default function CustomerWebMenu() {
 
   // AI Recommendation State
   const [aiRecommendation, setAiRecommendation] = useState(null);
-  const [customerProfile, setCustomerProfile] = useState(() => getCustomerProfile());
-  const [showTasteChips, setShowTasteChips] = useState(() => customerProfile.isNewUser || (customerProfile.preferences && customerProfile.preferences.length === 0));
-  const [whyModalItem, setWhyModalItem] = useState(null);
-  const [showAllRecs, setShowAllRecs] = useState(false);
 
-  // Time-of-day Context
-  const timeContext = useMemo(() => getTimeContext(), []);
 
-  // Multi-signal AI Recommendations
-  const personalizedRecs = useMemo(() => {
-    return getPersonalizedRecommendations({
-      menuItems,
-      cart,
-      customerProfile,
-      limit: showAllRecs ? 8 : 4
-    });
-  }, [menuItems, cart, customerProfile, showAllRecs]);
 
-  // Scroll Detection for Compact Top Dashboard with smooth hysteresis (no jitter/glitch)
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [recsExpanded, setRecsExpanded] = useState(false);
-
-  useEffect(() => {
-    let ticking = false;
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          const offset = window.scrollY || document.documentElement.scrollTop;
-          // Hysteresis deadband: compact past 140px, expand only when returning to top (< 40px)
-          setIsScrolled((prev) => {
-            if (!prev && offset > 140) return true;
-            if (prev && offset < 40) return false;
-            return prev;
-          });
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
-
-  // Handle Toggle Taste Chip
-  const handleTogglePreference = (chipId) => {
-    const prev = customerProfile.preferences || [];
-    let updated;
-    if (prev.includes(chipId)) {
-      updated = prev.filter(p => p !== chipId);
-    } else {
-      updated = [...prev, chipId];
-    }
-    const updatedProfile = { ...customerProfile, preferences: updated, isNewUser: false };
-    setCustomerProfile(updatedProfile);
-    saveCustomerProfile(updatedProfile);
-  };
 
   // Extract table parameter from QR scan URL e.g. /menu?table=01
   useEffect(() => {
@@ -254,730 +195,247 @@ export default function CustomerWebMenu() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-32 font-sans">
       
-      {/* Sticky Top Header / Table Status Banner */}
-      <section className={`bg-slate-950/95 backdrop-blur-xl border-b border-slate-800/80 sticky top-16 z-30 shadow-2xl transition-all duration-300 ${
-        isScrolled ? 'px-3 sm:px-4 py-2' : 'px-4 pt-5 pb-4'
-      }`}>
-        <div className={`max-w-4xl mx-auto transition-all duration-300 ${isScrolled ? 'space-y-1.5' : 'space-y-3'}`}>
-          {isScrolled ? (
-            /* ============================================================ */
-            /* 1. COMPACT SCROLLED VIEW (LOW HEIGHT, STREAMLINED)           */
-            /* ============================================================ */
-            <>
-              {/* Row 1: Compact Table & Search & Action Bar */}
-              <div className="flex items-center justify-between gap-2">
-                {/* Left Table Badge / Scan */}
-                {currentTable ? (
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 text-amber-400 border border-amber-500/30 text-xs font-black shrink-0 shadow-sm">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                    <span>Table <strong>{currentTable}</strong></span>
-                  </div>
-                ) : (
-                  <Link
-                    to="/scan"
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs font-bold shrink-0 shadow-glow"
-                  >
-                    <QrCode className="w-3.5 h-3.5" />
-                    <span className="hidden xs:inline">Scan QR</span>
-                  </Link>
-                )}
-
-                {/* Center Compact Search Input */}
-                <div className="relative flex-1 min-w-0 max-w-md">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search dishes..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-8 pr-7 py-1 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition shadow-inner"
-                  />
-                  {search && (
-                    <button
-                      onClick={() => setSearch('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5 cursor-pointer"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Right Compact Action Icons */}
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    onClick={() => reloadLatestMenu()}
-                    title="Reload Menu"
-                    className="p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-amber-400/40 text-slate-400 hover:text-amber-400 text-xs transition cursor-pointer active:rotate-180"
-                  >
-                    <RotateCw className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* Open Sidebar Drawer & Profile */}
-                  <button
-                    type="button"
-                    onClick={() => setIsSidebarOpen(true)}
-                    className="p-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-amber-400/40 text-slate-200 text-xs font-bold transition cursor-pointer flex items-center justify-center"
-                    title="Open Sidebar Navigation & Profile"
-                  >
-                    <Menu className="w-4 h-4 text-amber-400" />
-                  </button>
-
-
-                  <Link
-                    to="/cart"
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-black shadow-glow transition active:scale-95 relative"
-                    title="Cart"
-                  >
-                    <ShoppingBag className="w-3.5 h-3.5" />
-                    {cartItemCount > 0 && (
-                      <span className="px-1.5 py-0.2 rounded-full bg-slate-950 text-amber-400 text-[10px] font-black ring-1 ring-amber-400/30">
-                        {cartItemCount}
-                      </span>
-                    )}
-                  </Link>
-                </div>
-              </div>
-
-              {/* Row 2: Unified Filter & Category Scrolling Strip */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none scroll-smooth">
-                {/* Veg Filter */}
-                <button
-                  onClick={() => setDietFilter(dietFilter === 'veg' ? 'all' : 'veg')}
-                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[11px] font-bold transition border shrink-0 cursor-pointer ${
-                    dietFilter === 'veg'
-                      ? 'bg-emerald-950/80 border-emerald-500 text-emerald-400 shadow-sm ring-1 ring-emerald-500/50'
-                      : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <span className={`w-3 h-3 rounded border flex items-center justify-center ${
-                    dietFilter === 'veg' ? 'border-emerald-500 bg-emerald-950' : 'border-emerald-500'
-                  }`}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  </span>
-                  <span>Veg</span>
-                </button>
-
-                {/* Non-Veg Filter */}
-                <button
-                  onClick={() => setDietFilter(dietFilter === 'nonveg' ? 'all' : 'nonveg')}
-                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[11px] font-bold transition border shrink-0 cursor-pointer ${
-                    dietFilter === 'nonveg'
-                      ? 'bg-red-950/80 border-red-500 text-red-400 shadow-sm ring-1 ring-red-500/50'
-                      : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <span className={`w-3 h-3 rounded border flex items-center justify-center ${
-                    dietFilter === 'nonveg' ? 'border-red-500 bg-red-950' : 'border-red-500'
-                  }`}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  </span>
-                  <span>Non-Veg</span>
-                </button>
-
-                {/* Favorites Filter */}
-                <button
-                  onClick={() => setDietFilter(dietFilter === 'favorites' ? 'all' : 'favorites')}
-                  className={`flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[11px] font-bold transition border shrink-0 cursor-pointer ${
-                    dietFilter === 'favorites'
-                      ? 'bg-rose-950/80 border-rose-500 text-rose-400 shadow-sm ring-1 ring-rose-500/50'
-                      : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <Heart className={`w-3 h-3 ${dietFilter === 'favorites' ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
-                  <span>Favs {favorites.length > 0 && `(${favorites.length})`}</span>
-                </button>
-
-                {/* Divider */}
-                <div className="w-[1px] h-3.5 bg-slate-800 shrink-0 mx-0.5" />
-
-                {/* All Category Button */}
-                <button
-                  onClick={() => setSelectedCategory('all')}
-                  className={`px-3 py-0.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1 shrink-0 ${
-                    selectedCategory === 'all'
-                      ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow font-black border border-orange-400/40'
-                      : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800/80 border border-slate-800'
-                  }`}
-                >
-                  <span>🍽️ All</span>
-                  <span className={`text-[9px] px-1 py-0.2 rounded-full ${selectedCategory === 'all' ? 'bg-white/25 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                    {menuItems.length}
-                  </span>
-                </button>
-
-                {/* Category Pills */}
-                {categories.filter(cat => menuItems.some(i => i.categoryId === cat.id || i.category === cat.name)).map((cat) => {
-                  const count = menuItems.filter(i => i.categoryId === cat.id || i.category === cat.name).length;
-                  const isThaliCat = cat.name.toLowerCase().includes('thali');
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCategory(cat.id)}
-                      className={`px-3 py-0.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1 shrink-0 ${
-                        selectedCategory === cat.id
-                          ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow font-black border border-orange-400/40'
-                          : isThaliCat
-                            ? 'bg-slate-900/90 text-amber-300 border border-amber-500/40 hover:bg-slate-800'
-                            : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800/80 border border-slate-800'
-                      }`}
-                    >
-                      {isThaliCat && <Crown className="w-2.5 h-2.5 text-amber-400" />}
-                      <span>{cat.name}</span>
-                      {count > 0 && (
-                        <span className={`text-[9px] px-1 py-0.2 rounded-full ${selectedCategory === cat.id ? 'bg-white/25 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                          {count}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          ) : (
-            /* ============================================================ */
-            /* 2. FULL TOP DASHBOARD VIEW (UNSCROLLED AT TOP)               */
-            /* ============================================================ */
-            <>
-              {/* Table Header Bar */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-amber-400 shadow-sm">
-                    <UtensilsCrossed className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h1 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
-                      <span>SmartDine</span>
-                    </h1>
-                    <p className="text-[11px] text-slate-400 font-medium">
-                      {currentTable ? `Dining on Table ${currentTable}` : 'Select table to order'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      reloadLatestMenu();
-                    }}
-                    title="Reload Latest Menu & Dishes"
-                    className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-amber-400/40 text-slate-400 hover:text-amber-400 text-xs transition cursor-pointer flex items-center gap-1 active:rotate-180"
-                  >
-                    <RotateCw className="w-3.5 h-3.5" />
-                  </button>
-
-                  {/* Sidebar Drawer & Profile Trigger Button */}
-                  <button
-                    type="button"
-                    onClick={() => setIsSidebarOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-amber-400/40 text-slate-200 text-xs font-bold transition shadow-sm cursor-pointer"
-                    title="Open Sidebar Menu & Profile"
-                  >
-                    <Menu className="w-4 h-4 text-amber-400" />
-                    <span className="hidden sm:inline text-xs font-semibold text-slate-300">Menu</span>
-                  </button>
-
-                  {currentTable ? (
-                    <div className="px-3 py-1.5 rounded-xl bg-slate-900 text-amber-400 border border-amber-500/30 font-black text-xs flex items-center gap-1.5 shadow-sm">
-                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                      <span>Table <strong>{currentTable}</strong></span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Link
-                        to="/scan"
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold transition cursor-pointer shadow-glow"
-                      >
-                        <QrCode className="w-3.5 h-3.5" />
-                        <span>Scan Table QR</span>
-                      </Link>
-                    </div>
-                  )}
-
-                  {/* Cart Button in Menu Header */}
-                  <Link
-                    to="/cart"
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-black shadow-glow transition active:scale-95 cursor-pointer relative"
-                    title="View Dining Cart"
-                  >
-                    <ShoppingBag className="w-4 h-4" />
-                    <span className="hidden xs:inline">Cart</span>
-                    {cartItemCount > 0 && (
-                      <span className="px-1.5 py-0.2 rounded-full bg-slate-950 text-amber-400 text-[10px] font-black ring-1 ring-amber-400/30">
-                        {cartItemCount}
-                      </span>
-                    )}
-                  </Link>
-                </div>
-              </div>
-
-              {/* Search bar */}
-              <div className="relative">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="Search dishes (e.g. Butter Chicken, Paneer Tikka, Thali, Biryani, Naan)..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition shadow-inner"
-                />
-                {search && (
-                  <button
-                    onClick={() => setSearch('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              {/* Category Carousel Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none scroll-smooth">
-                <button
-                  onClick={() => setSelectedCategory('all')}
-                  className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shadow-sm ${
-                    selectedCategory === 'all'
-                      ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow font-black border border-orange-400/40'
-                      : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800/80 border border-slate-800'
-                  }`}
-                >
-                  <span>🍽️ All</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === 'all' ? 'bg-white/25 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                    {menuItems.length}
-                  </span>
-                </button>
-
-                {categories.filter(cat => menuItems.some(i => i.categoryId === cat.id || i.category === cat.name)).map((cat) => {
-                  const count = menuItems.filter(i => i.categoryId === cat.id || i.category === cat.name).length;
-                  const isThaliCat = cat.name.toLowerCase().includes('thali');
-                  return (
-                    <button
-                      key={cat.id}
-                      onClick={() => setSelectedCategory(cat.id)}
-                      className={`px-4 py-2 rounded-2xl text-xs font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 shadow-sm ${
-                        selectedCategory === cat.id
-                          ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow font-black border border-orange-400/40'
-                          : isThaliCat
-                            ? 'bg-slate-900/90 text-amber-300 border border-amber-500/40 hover:bg-slate-800'
-                            : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800/80 border border-slate-800'
-                      }`}
-                    >
-                      {isThaliCat && <Crown className="w-3 h-3 text-amber-400" />}
-                      <span>{cat.name}</span>
-                      {count > 0 && (
-                        <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${selectedCategory === cat.id ? 'bg-white/25 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                          {count}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Quick Filters: Veg, Non-Veg & Favorites buttons */}
-              <div className="flex items-center justify-between pt-0.5 flex-wrap gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {/* Veg Button */}
-                  <button
-                    onClick={() => setDietFilter(dietFilter === 'veg' ? 'all' : 'veg')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer ${
-                      dietFilter === 'veg'
-                        ? 'bg-emerald-950/80 border-emerald-500 text-emerald-400 shadow-sm ring-1 ring-emerald-500/50'
-                        : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${
-                      dietFilter === 'veg' ? 'border-emerald-500 bg-emerald-950' : 'border-emerald-500'
-                    }`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                    </span>
-                    <span>Veg</span>
-                  </button>
-
-                  {/* Non-Veg Button */}
-                  <button
-                    onClick={() => setDietFilter(dietFilter === 'nonveg' ? 'all' : 'nonveg')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer ${
-                      dietFilter === 'nonveg'
-                        ? 'bg-red-950/80 border-red-500 text-red-400 shadow-sm ring-1 ring-red-500/50'
-                        : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <span className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${
-                      dietFilter === 'nonveg' ? 'border-red-500 bg-red-950' : 'border-red-500'
-                    }`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                    </span>
-                    <span>Non-Veg</span>
-                  </button>
-
-                  {/* Favorites Button */}
-                  <button
-                    onClick={() => setDietFilter(dietFilter === 'favorites' ? 'all' : 'favorites')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border cursor-pointer ${
-                      dietFilter === 'favorites'
-                        ? 'bg-rose-950/80 border-rose-500 text-rose-400 shadow-sm ring-1 ring-rose-500/50'
-                        : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <Heart className={`w-3.5 h-3.5 ${dietFilter === 'favorites' ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
-                    <span>Favorites {favorites.length > 0 && `(${favorites.length})`}</span>
-                  </button>
-                </div>
-
-                <span className="text-[11px] font-medium text-slate-400">
-                  Showing <strong className="text-amber-400 font-bold">{filteredDishes.length}</strong> delicacies
+      {/* Top Restaurant & Table Welcome Banner (Normal page flow, scrolls naturally without jumping) */}
+      <div className="max-w-4xl mx-auto px-4 pt-4 pb-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-amber-400 shadow-sm shrink-0">
+              <UtensilsCrossed className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-base sm:text-lg font-black text-white flex items-center gap-2 truncate">
+                <span>SmartDine</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-900 text-amber-400 border border-amber-500/30 shrink-0">
+                  Live Menu
                 </span>
+              </h1>
+              <p className="text-[11px] text-slate-400 font-medium truncate">
+                {currentTable ? `Dining on Table ${currentTable}` : 'Select table to order'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {currentTable ? (
+              <div className="flex items-center gap-2">
+                <div className="px-3 py-1.5 rounded-xl bg-slate-900 text-amber-400 border border-amber-500/30 font-black text-xs flex items-center gap-1.5 shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span>Table <strong>{currentTable}</strong></span>
+                </div>
+
+                <Link
+                  to={`/bill?table=${currentTable}`}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold transition shadow-glow cursor-pointer active:scale-95 shrink-0"
+                  title="View & Pay Bill"
+                >
+                  <Receipt className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">View & Pay Bill</span>
+                  <span className="sm:hidden">Bill</span>
+                </Link>
               </div>
-            </>
-          )}
+            ) : (
+              <Link
+                to="/scan"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold transition cursor-pointer shadow-glow"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>Scan Table QR</span>
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Fixed-Height Sticky Filter & Search Bar (Zero layout shift, zero jitter, 60fps smooth scrolling) */}
+      <section className="bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 sticky top-16 z-30 shadow-md px-3 sm:px-4 py-2">
+        <div className="max-w-4xl mx-auto space-y-1.5">
+          {/* Row 1: Compact Table & Search & Action Bar */}
+          <div className="flex items-center justify-between gap-2">
+            {/* Left Table Badge / Scan */}
+            {currentTable ? (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 text-amber-400 border border-amber-500/30 text-xs font-black shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                  <span>Table <strong>{currentTable}</strong></span>
+                </div>
+
+                <Link
+                  to={`/bill?table=${currentTable}`}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold shadow-glow cursor-pointer transition active:scale-95"
+                  title="View & Pay Bill"
+                >
+                  <Receipt className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Pay Bill</span>
+                </Link>
+              </div>
+            ) : (
+              <Link
+                to="/scan"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs font-bold shrink-0 shadow-glow"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Scan QR</span>
+              </Link>
+            )}
+
+            {/* Center Compact Search Input */}
+            <div className="relative flex-1 min-w-0 max-w-md">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search dishes (Butter Chicken, Biryani, Thali...)"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-8 pr-7 py-1 rounded-xl bg-slate-900/90 border border-slate-800 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition shadow-inner"
+              />
+              {search && (
+                <button
+                  onClick={() => setSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-0.5 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Right Compact Action Icons */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => reloadLatestMenu()}
+                title="Reload Menu"
+                className="p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-amber-400/40 text-slate-400 hover:text-amber-400 text-xs transition cursor-pointer active:rotate-180"
+              >
+                <RotateCw className="w-3.5 h-3.5" />
+              </button>
+
+              {/* Open Sidebar Drawer & Profile */}
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(true)}
+                className="p-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-800 hover:border-amber-400/40 text-slate-200 text-xs font-bold transition cursor-pointer flex items-center justify-center"
+                title="Open Sidebar Navigation & Profile"
+              >
+                <Menu className="w-4 h-4 text-amber-400" />
+              </button>
+
+              <Link
+                to="/cart"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-black shadow-glow transition active:scale-95 relative"
+                title="Cart"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                {cartItemCount > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-slate-950 text-amber-400 text-[10px] font-black ring-1 ring-amber-400/30">
+                    {cartItemCount}
+                  </span>
+                )}
+              </Link>
+            </div>
+          </div>
+
+          {/* Row 2: Unified Filter & Category Scrolling Strip */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none scroll-smooth">
+            {/* Veg Filter */}
+            <button
+              onClick={() => setDietFilter(dietFilter === 'veg' ? 'all' : 'veg')}
+              className={`flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[11px] font-bold transition border shrink-0 cursor-pointer ${
+                dietFilter === 'veg'
+                  ? 'bg-emerald-950/80 border-emerald-500 text-emerald-400 shadow-sm ring-1 ring-emerald-500/50'
+                  : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <span className={`w-3 h-3 rounded border flex items-center justify-center ${
+                dietFilter === 'veg' ? 'border-emerald-500 bg-emerald-950' : 'border-emerald-500'
+              }`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              </span>
+              <span>Veg</span>
+            </button>
+
+            {/* Non-Veg Filter */}
+            <button
+              onClick={() => setDietFilter(dietFilter === 'nonveg' ? 'all' : 'nonveg')}
+              className={`flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[11px] font-bold transition border shrink-0 cursor-pointer ${
+                dietFilter === 'nonveg'
+                  ? 'bg-red-950/80 border-red-500 text-red-400 shadow-sm ring-1 ring-red-500/50'
+                  : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <span className={`w-3 h-3 rounded border flex items-center justify-center ${
+                dietFilter === 'nonveg' ? 'border-red-500 bg-red-950' : 'border-red-500'
+              }`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+              </span>
+              <span>Non-Veg</span>
+            </button>
+
+            {/* Favorites Filter */}
+            <button
+              onClick={() => setDietFilter(dietFilter === 'favorites' ? 'all' : 'favorites')}
+              className={`flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[11px] font-bold transition border shrink-0 cursor-pointer ${
+                dietFilter === 'favorites'
+                  ? 'bg-rose-950/80 border-rose-500 text-rose-400 shadow-sm ring-1 ring-rose-500/50'
+                  : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Heart className={`w-3 h-3 ${dietFilter === 'favorites' ? 'fill-rose-500 text-rose-500' : 'text-slate-400'}`} />
+              <span>Favs {favorites.length > 0 && `(${favorites.length})`}</span>
+            </button>
+
+            {/* Divider */}
+            <div className="w-[1px] h-3.5 bg-slate-800 shrink-0 mx-0.5" />
+
+            {/* All Category Button */}
+            <button
+              onClick={() => setSelectedCategory('all')}
+              className={`px-3 py-0.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                selectedCategory === 'all'
+                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow font-black border border-orange-400/40'
+                  : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800/80 border border-slate-800'
+              }`}
+            >
+              <span>🍽️ All</span>
+              <span className={`text-[9px] px-1 py-0.2 rounded-full ${selectedCategory === 'all' ? 'bg-white/25 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                {menuItems.length}
+              </span>
+            </button>
+
+            {/* Category Pills */}
+            {categories.filter(cat => menuItems.some(i => i.categoryId === cat.id || i.category === cat.name)).map((cat) => {
+              const count = menuItems.filter(i => i.categoryId === cat.id || i.category === cat.name).length;
+              const isThaliCat = cat.name.toLowerCase().includes('thali');
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-3 py-0.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition cursor-pointer flex items-center gap-1 shrink-0 ${
+                    selectedCategory === cat.id
+                      ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow font-black border border-orange-400/40'
+                      : isThaliCat
+                        ? 'bg-slate-900/90 text-amber-300 border border-amber-500/40 hover:bg-slate-800'
+                        : 'bg-slate-900/80 text-slate-300 hover:text-white hover:bg-slate-800/80 border border-slate-800'
+                  }`}
+                >
+                  {isThaliCat && <Crown className="w-2.5 h-2.5 text-amber-400" />}
+                  <span>{cat.name}</span>
+                  {count > 0 && (
+                    <span className={`text-[9px] px-1 py-0.2 rounded-full ${selectedCategory === cat.id ? 'bg-white/25 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </section>
 
       {/* Main Content Area */}
       <main className="max-w-4xl mx-auto px-4 py-5 space-y-6">
 
-        {/* ============================================================ */}
-        {/* 1. NEW CUSTOMER EXPERIENCE: TASTE PREFERENCES ONBOARDING     */}
-        {/* ============================================================ */}
-        {showTasteChips ? (
-          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 text-white border border-amber-500/40 shadow-xl relative overflow-hidden animate-in fade-in duration-200">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base">👋</span>
-                  <h3 className="text-sm sm:text-base font-black text-white">Welcome to SmartDine!</h3>
-                  <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded-full bg-gradient-to-r from-orange-600 to-amber-600 text-white">
-                    AI Personalization
-                  </span>
-                </div>
-                <p className="text-xs text-slate-300 mt-1">
-                  Tell us what you like and our recommendation engine will curate the menu to your taste.
-                </p>
-              </div>
 
-              <button
-                onClick={() => setShowTasteChips(false)}
-                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-xs transition cursor-pointer shrink-0"
-                title="Dismiss or skip"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            {/* Preference Chips */}
-            <div className="flex flex-wrap gap-2 mt-3.5">
-              {TASTE_PREFERENCE_CHIPS.map((chip) => {
-                const isSelected = customerProfile.preferences && customerProfile.preferences.includes(chip.id);
-                return (
-                  <button
-                    key={chip.id}
-                    type="button"
-                    onClick={() => handleTogglePreference(chip.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer border ${
-                      isSelected
-                        ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white border-amber-400 shadow-sm scale-105'
-                        : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:bg-slate-800 hover:border-slate-600'
-                    }`}
-                  >
-                    <span>{chip.label}</span>
-                    {isSelected && <Check className="w-3 h-3 inline ml-1" />}
-                  </button>
-                );
-              })}
-            </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between">
-              <span className="text-[11px] text-amber-400 font-medium">
-                ✨ Suggestions update dynamically in real-time
-              </span>
-              <button
-                onClick={() => setShowTasteChips(false)}
-                className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white font-black text-xs shadow-glow transition cursor-pointer"
-              >
-                Save & View My Menu
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between px-4 py-2.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs shadow-md">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-bold text-white">AI Recommendations Active:</span>
-              <span className="text-slate-400 truncate max-w-xs">
-                {customerProfile.preferences && customerProfile.preferences.length > 0
-                  ? customerProfile.preferences.join(', ')
-                  : 'Time & Popularity Based'}
-              </span>
-            </div>
-            <button
-              onClick={() => setShowTasteChips(true)}
-              className="text-[11px] font-bold text-amber-400 hover:text-amber-300 hover:underline cursor-pointer shrink-0"
-            >
-              Edit Preferences ⚙️
-            </button>
-          </div>
-        )}
-
-        {/* ============================================================ */}
-        {/* 2. PERSONALIZED HOME SECTION: RECOMMENDED FOR YOU            */}
-        {/* ============================================================ */}
-        {personalizedRecs.length > 0 && (
-          !recsExpanded ? (
-            /* ============================================================ */
-            /* 2A. COMPACT MINI-STRIP VIEW (DEFAULT, NO JITTER)             */
-            /* ============================================================ */
-            <div className="bg-slate-900/90 border border-slate-800/90 rounded-2xl p-3 sm:p-3.5 shadow-xl transition-all duration-300 space-y-2.5">
-              <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                    <Sparkles className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <h2 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
-                      <span>Recommended For You</span>
-                      <span className="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                        AI Picked
-                      </span>
-                    </h2>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setRecsExpanded(true)}
-                    className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer transition"
-                    title="Expand full recommendation cards"
-                  >
-                    <span>Expand Details</span>
-                    <ArrowRight className="w-3 h-3 rotate-90" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Compact Horizontal Scroll Strip */}
-              <div className="flex items-center gap-2.5 overflow-x-auto pb-1 scrollbar-none scroll-smooth">
-                {personalizedRecs.map(({ item, primaryReason, whyFactors, score }) => {
-                  const inCart = cart.find(c => c.id === item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => handleOpenFoodModal(item)}
-                      className="min-w-[210px] sm:min-w-[240px] max-w-[250px] p-2 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-orange-500/50 shadow-sm transition-all duration-200 cursor-pointer flex items-center gap-2.5 shrink-0 group"
-                    >
-                      {/* Small thumbnail */}
-                      <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-slate-900 shrink-0 border border-slate-800">
-                        <img
-                          src={item.imageUrl}
-                          alt={item.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                          onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=300'; }}
-                        />
-                        <div className="absolute top-0.5 right-0.5">
-                          <span className="px-1 py-0.2 rounded bg-black/80 text-amber-400 text-[8px] font-bold flex items-center gap-0.5">
-                            ⭐ {item.rating || '4.8'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Title & price & reason */}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-xs font-bold text-white truncate group-hover:text-amber-400 transition">
-                          {item.name}
-                        </h4>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-xs font-black text-amber-400">₹{item.price}</span>
-                          <span className="text-[9px] text-slate-400 truncate max-w-[100px]">{primaryReason}</span>
-                        </div>
-                      </div>
-
-                      {/* Quick Add Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => handleQuickAdd(e, item)}
-                        className={`w-7 h-7 rounded-lg font-black text-xs transition cursor-pointer flex items-center justify-center shrink-0 active:scale-90 ${
-                          inCart
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white shadow-glow'
-                        }`}
-                        title={inCart ? 'Already in cart' : 'Add to cart'}
-                      >
-                        {inCart ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : (
-            /* ============================================================ */
-            /* 2B. FULL EXPANDED VIEW                                       */
-            /* ============================================================ */
-            <div className="bg-slate-900/90 border border-slate-800/90 rounded-3xl p-4 sm:p-5 shadow-xl space-y-4 transition-all duration-300">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-1.5">
-                      <Sparkles className="w-4 h-4 text-amber-400" />
-                      <span>Recommended For You</span>
-                    </h2>
-                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      AI Picked
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-400 font-medium mt-0.5 flex items-center gap-1.5">
-                    <span className="inline-block">{timeContext.badge}</span>
-                    <span>•</span>
-                    <span>Curated to your taste</span>
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-3 self-start sm:self-auto">
-                  <button
-                    onClick={() => setRecsExpanded(false)}
-                    className="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer transition"
-                    title="Collapse to compact horizontal view"
-                  >
-                    <span>Compact View</span>
-                    <ArrowRight className="w-3.5 h-3.5 -rotate-90" />
-                  </button>
-                  <button
-                    onClick={() => setShowAllRecs(!showAllRecs)}
-                    className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer transition"
-                  >
-                    <span>{showAllRecs ? 'Show Less' : 'View More Recommendations'}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Recommendations Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {personalizedRecs.map(({ item, primaryReason, whyFactors, score }) => {
-                  const inCart = cart.find(c => c.id === item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => handleOpenFoodModal(item)}
-                      className="p-3 rounded-2xl bg-slate-950/70 border border-slate-800/80 hover:border-orange-500/50 shadow-sm hover:shadow-[0_8px_30px_rgba(249,115,22,0.15)] transition cursor-pointer flex flex-col justify-between group"
-                    >
-                      <div>
-                        {/* Reason Badge */}
-                        <div className="mb-2">
-                          <span className="inline-block text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md truncate max-w-full">
-                            {primaryReason}
-                          </span>
-                        </div>
-
-                        <div className="relative h-28 rounded-xl overflow-hidden mb-2 bg-slate-900">
-                          <img
-                            src={item.imageUrl}
-                            alt={item.name}
-                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=300'; }}
-                          />
-                          <div className="absolute top-2 right-2">
-                            <span className="px-1.5 py-0.5 rounded-md bg-black/70 text-amber-400 text-[10px] font-bold flex items-center gap-0.5 border border-amber-400/20">
-                              ⭐ {item.rating || '4.8'}
-                            </span>
-                          </div>
-                        </div>
-
-                        <h4 className="text-xs font-black text-white line-clamp-1 group-hover:text-amber-400 transition">
-                          {item.name}
-                        </h4>
-                        <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
-                          {item.description || item.category}
-                        </p>
-                      </div>
-
-                      <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-black text-amber-400">₹{item.price}</span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setWhyModalItem({ item, whyFactors, primaryReason, score });
-                            }}
-                            className="block text-[9px] font-bold text-slate-400 hover:text-amber-400 mt-0.5"
-                          >
-                            Why this?
-                          </button>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={(e) => handleQuickAdd(e, item)}
-                          className={`px-3 py-1.5 rounded-xl font-bold text-xs transition cursor-pointer flex items-center gap-1 ${
-                            inCart
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white shadow-glow'
-                          }`}
-                        >
-                          {inCart ? (
-                            <>
-                              <Check className="w-3 h-3" />
-                              <span>Added</span>
-                            </>
-                          ) : (
-                            <>
-                              <Plus className="w-3 h-3" />
-                              <span>Add</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )
-        )}
-
-        {/* Explainability "Why this?" Modal */}
-        {whyModalItem && (
-          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-5 shadow-2xl animate-in zoom-in-95 duration-150 space-y-3 text-white">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                <div className="flex items-center gap-1.5 text-xs font-black text-white">
-                  <Sparkles className="w-4 h-4 text-amber-400" />
-                  <span>Why AI Recommended This</span>
-                </div>
-                <button
-                  onClick={() => setWhyModalItem(null)}
-                  className="p-1 text-slate-400 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div>
-                <p className="text-xs font-black text-white">{whyModalItem.item.name}</p>
-                <p className="text-[11px] text-amber-400 font-bold mt-0.5">{whyModalItem.primaryReason}</p>
-              </div>
-
-              <div className="space-y-1.5 pt-1">
-                <p className="text-[10px] uppercase font-bold text-slate-400">Signals Evaluated:</p>
-                {whyModalItem.whyFactors.map((factor, i) => (
-                  <div key={i} className="p-2 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-300 flex items-start gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>{factor}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="pt-2">
-                <button
-                  onClick={() => setWhyModalItem(null)}
-                  className="w-full py-2 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white rounded-xl text-xs font-bold shadow-glow"
-                >
-                  Got it
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Regular Menu Filter Dishes */}
         {filteredDishes.length === 0 ? (

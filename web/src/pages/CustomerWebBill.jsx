@@ -30,7 +30,8 @@ import {
   Crown,
   Image as ImageIcon,
   FileDown,
-  X
+  X,
+  ChefHat
 } from 'lucide-react';
 import { openRazorpayPayment } from '../utils/razorpay';
 import CustomerFeedbackModal from '../components/CustomerFeedbackModal';

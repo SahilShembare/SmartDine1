@@ -15,7 +15,8 @@ import {
   UtensilsCrossed,
   Sparkles,
   ShieldCheck,
-  Heart
+  Heart,
+  Receipt
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -148,7 +149,17 @@ export default function CustomerSidebarDrawer({
               )}
             </Link>
 
-
+            <Link
+              to={currentTable ? `/bill?table=${currentTable}` : '/bill'}
+              onClick={onClose}
+              className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-900 transition"
+            >
+              <div className="flex items-center gap-2.5">
+                <Receipt className="w-4 h-4 text-orange-400" />
+                <span>View & Pay Bill</span>
+              </div>
+              <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            </Link>
             <Link
               to="/profile"
               onClick={onClose}

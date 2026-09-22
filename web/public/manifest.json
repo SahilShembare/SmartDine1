@@ -1,8 +1,8 @@
 {
-  "name": "SmartDine — Smart Restaurant Ordering",
-  "short_name": "SmartDine",
+  "name": "SMART DINE - QR Code Based Food Ordering Platform",
+  "short_name": "SMART DINE",
   "id": "smartdine-pwa-app",
-  "description": "Smart QR-Based Food Ordering & Dining Platform",
+  "description": "QR Code Based Food Ordering Platform",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

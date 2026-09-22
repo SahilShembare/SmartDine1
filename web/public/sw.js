@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartdine-pwa-v3';
+const CACHE_NAME = 'smartdine-pwa-v4';
 const STATIC_PRECACHE = [
   '/',
   '/index.html',
