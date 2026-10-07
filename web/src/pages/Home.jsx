@@ -17,17 +17,14 @@ import {
   ShieldCheck,
   Zap,
   X,
-  Bell,
-  CheckCircle2,
-  Droplets,
-  Receipt,
-  FileText,
-  HelpCircle,
   Percent,
   Gift,
   Heart,
-  Quote
+  Quote,
+  Gamepad2,
+  Dices
 } from 'lucide-react';
+import FoodPreferenceGameModal from '../components/FoodPreferenceGameModal';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -46,10 +43,7 @@ export default function Home() {
   const [selectedMood, setSelectedMood] = useState(null);
   const [moodRecommendation, setMoodRecommendation] = useState(null);
   const [isSpinning, setIsSpinning] = useState(false);
-
-  // Feature 2: Call Waiter State
-  const [isWaiterModalOpen, setIsWaiterModalOpen] = useState(false);
-  const [waiterRequestSent, setWaiterRequestSent] = useState(null);
+  const [isFoodGameOpen, setIsFoodGameOpen] = useState(false);
 
   // Feature 4: Customer Reviews Carousel
   const [reviewIndex, setReviewIndex] = useState(0);
@@ -159,15 +153,6 @@ export default function Home() {
         });
       } catch {}
     }, 600);
-  };
-
-  // Call Waiter handler
-  const handleCallWaiter = (serviceType) => {
-    setWaiterRequestSent(serviceType);
-    setTimeout(() => {
-      setWaiterRequestSent(null);
-      setIsWaiterModalOpen(false);
-    }, 3000);
   };
 
   // Real Dining Reviews
@@ -338,6 +323,17 @@ export default function Home() {
                 {m.label}
               </button>
             ))}
+          </div>
+
+          {/* Play Full Game Button */}
+          <div className="text-center pt-1">
+            <button
+              onClick={() => setIsFoodGameOpen(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs shadow-glow transition active:scale-95 cursor-pointer"
+            >
+              <Gamepad2 className="w-4 h-4 animate-bounce" />
+              <span>Play Full AI Food Preference Game 🎮</span>
+            </button>
           </div>
 
           {/* Result Card */}
@@ -559,85 +555,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FEATURE 2: 🛎️ FLOATING CALL WAITER BUTTON & MODAL */}
-      <div className="fixed bottom-20 sm:bottom-6 right-6 z-40">
-        <button
-          onClick={() => setIsWaiterModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black text-xs shadow-glow-lg border-2 border-white/20 transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
-        >
-          <Bell className="w-4 h-4 animate-bounce" />
-          <span>Call Waiter</span>
-        </button>
-      </div>
-
-      {/* Call Waiter Modal */}
-      {isWaiterModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-5 shadow-2xl animate-in zoom-in-95">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/20 text-amber-400">
-                  <Bell className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-base text-white">Table Service Assistance</h3>
-                  <p className="text-[11px] text-slate-400">Table {currentTable || '01'}</p>
-                </div>
-              </div>
-              <button onClick={() => setIsWaiterModalOpen(false)} className="text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {waiterRequestSent ? (
-              <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-center space-y-2">
-                <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-400 animate-bounce" />
-                <h4 className="font-bold text-sm">Request Sent to Captain!</h4>
-                <p className="text-xs text-slate-300">Staff is arriving at Table {currentTable || '01'} with {waiterRequestSent}.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  onClick={() => handleCallWaiter('Packaged Water Bottle (1L)')}
-                  className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left space-y-1 transition active:scale-95 cursor-pointer"
-                >
-                  <Droplets className="w-5 h-5 text-blue-400" />
-                  <div className="font-extrabold text-xs text-white">Water Bottle</div>
-                  <div className="text-[10px] text-slate-400">Packaged Chilled (1L)</div>
-                </button>
-
-                <button
-                  onClick={() => handleCallWaiter('Extra Cutlery & Napkins')}
-                  className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left space-y-1 transition active:scale-95 cursor-pointer"
-                >
-                  <FileText className="w-5 h-5 text-amber-400" />
-                  <div className="font-extrabold text-xs text-white">Napkins</div>
-                  <div className="text-[10px] text-slate-400">Tissues & Spoons</div>
-                </button>
-
-                <button
-                  onClick={() => handleCallWaiter('Bill / Check Request')}
-                  className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left space-y-1 transition active:scale-95 cursor-pointer"
-                >
-                  <Receipt className="w-5 h-5 text-emerald-400" />
-                  <div className="font-extrabold text-xs text-white">Ask for Bill</div>
-                  <div className="text-[10px] text-slate-400">Cash / UPI / Card</div>
-                </button>
-
-                <button
-                  onClick={() => handleCallWaiter('Captain Table Assistance')}
-                  className="p-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-left space-y-1 transition active:scale-95 cursor-pointer"
-                >
-                  <HelpCircle className="w-5 h-5 text-purple-400" />
-                  <div className="font-extrabold text-xs text-white">Call Captain</div>
-                  <div className="text-[10px] text-slate-400">General Support</div>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* DISH PREVIEW POPUP MODAL */}
       {previewDish && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
@@ -704,6 +621,15 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* 🎮 AI Food Preference Game Modal */}
+      <FoodPreferenceGameModal
+        isOpen={isFoodGameOpen}
+        onClose={() => setIsFoodGameOpen(false)}
+        menuItems={menuItems}
+        addToCart={addToCart}
+        onOpenCart={() => navigate('/scan')}
+      />
 
     </div>
   );

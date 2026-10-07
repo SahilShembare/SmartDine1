@@ -217,14 +217,18 @@ export default function KitchenDashboard() {
 
   // 3-Second Active Auto-Refresh Interval
   useEffect(() => {
+    if (refreshOrders) refreshOrders();
     const syncTimer = setInterval(async () => {
       setIsRefreshing(true);
+      if (refreshOrders) {
+        try { await refreshOrders(); } catch {}
+      }
       setLastSyncTime(new Date().toLocaleTimeString());
       setTimeout(() => setIsRefreshing(false), 500);
-    }, 3000);
+    }, 2500);
 
     return () => clearInterval(syncTimer);
-  }, []);
+  }, [refreshOrders]);
 
   // Detect newly arrived orders and trigger audio chime EXACTLY ONCE per order
   useEffect(() => {
@@ -723,6 +727,7 @@ export default function KitchenDashboard() {
             }}
             onOpenOrdersHistory={() => setShowProfileSalesModal(true)}
             onOpenWaiterCalls={() => setShowWaiterCallsModal(true)}
+            onOpenStockAlerts={() => setShowStockModal(true)}
             chefName={chefProfile.displayName}
           />
         </div>
@@ -799,7 +804,44 @@ export default function KitchenDashboard() {
                 <RotateCw className={`w-3 h-3 ml-0.5 ${isRefreshing ? 'animate-spin' : ''}`} />
               </div>
 
+              {/* Chef Profile HUD Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditChefForm(chefProfile);
+                  setShowChefProfileModal(true);
+                }}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition cursor-pointer group shadow-sm"
+                title="View & Edit Kitchen Chef Profile"
+              >
+                <div className="w-5 h-5 rounded-lg bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center text-white text-[10px] font-black group-hover:scale-105 transition-transform">
+                  {chefProfile.displayName ? chefProfile.displayName[0].toUpperCase() : 'K'}
+                </div>
+                <span className="text-xs font-bold text-white hidden md:inline truncate max-w-[120px]">
+                  {chefProfile.displayName}
+                </span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" title="On Duty" />
+              </button>
 
+              {/* Dedicated Waiter Calls Top HUD Button */}
+              <button
+                type="button"
+                onClick={() => setShowWaiterCallsModal(true)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-black transition cursor-pointer shadow-sm ${
+                  pendingWaiterCalls.length > 0
+                    ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-400 animate-pulse shadow-[0_0_15px_rgba(245,158,11,0.5)]'
+                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                }`}
+                title="Customer Floor Service & Waiter Call Requests"
+              >
+                <BellRing className={`w-3.5 h-3.5 ${pendingWaiterCalls.length > 0 ? 'text-slate-950 animate-bounce' : 'text-amber-400'}`} />
+                <span className="hidden sm:inline">Waiter Calls</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                  pendingWaiterCalls.length > 0 ? 'bg-slate-950 text-amber-300' : 'bg-slate-700 text-slate-300'
+                }`}>
+                  {pendingWaiterCalls.length}
+                </span>
+              </button>
 
               {/* Pop-up Notifications Bell Dropdown */}
               <div className="relative">
@@ -963,6 +1005,114 @@ export default function KitchenDashboard() {
 
         <div className="p-4 lg:p-6 space-y-5 max-w-[1920px] w-full mx-auto">
           
+          {/* ================================================================ */}
+          {/* 2. LIVE FLOOR SERVICE ALERTS BANNER (ACTIVE WAITER CALLS)         */}
+          {/* ================================================================ */}
+          {pendingWaiterCalls.length > 0 && (
+            <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-950/80 via-slate-900 to-amber-950/60 border-2 border-amber-500/70 shadow-[0_10px_35px_rgba(245,158,11,0.3)] animate-in slide-in-from-top duration-300 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-amber-500/30 pb-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shrink-0 animate-bounce shadow-md">
+                    <BellRing className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm sm:text-base font-black text-amber-300 tracking-wide uppercase">
+                        Active Waiter Calls from Tables
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 text-[10px] font-black animate-pulse">
+                        {pendingWaiterCalls.length} Needs Attention
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 font-medium">
+                      Customer pressed "Call Waiter" at their dining table. Attend staff or fulfill request.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowWaiterCallsModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-800 text-amber-300 hover:text-amber-200 border border-amber-500/30 text-xs font-bold transition flex items-center gap-1 self-start sm:self-center cursor-pointer"
+                >
+                  <span>Open Call History ({waiterCalls.length})</span>
+                  <span>→</span>
+                </button>
+              </div>
+
+              {/* List of active calls */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                {pendingWaiterCalls.map((call) => {
+                  const isWater = String(call.reason || '').toLowerCase().includes('water') || 
+                                  String(call.notes || '').toLowerCase().includes('water') || 
+                                  String(call.reason || '').toLowerCase().includes('bottle');
+                  const timeFormatted = call.timestamp || call.createdAt
+                    ? new Date(call.timestamp || call.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : 'Just now';
+
+                  return (
+                    <div 
+                      key={call.id} 
+                      className="p-3.5 rounded-2xl bg-slate-950/90 border border-amber-500/40 shadow-md flex flex-col justify-between gap-3 hover:border-amber-400 transition"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-slate-950 flex flex-col items-center justify-center font-black shrink-0 shadow-md ring-2 ring-amber-400/50">
+                          <span className="text-[9px] uppercase tracking-wider font-extrabold leading-none">Table</span>
+                          <span className="text-base font-black leading-tight">{call.tableNumber}</span>
+                        </div>
+
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-xs font-black text-white truncate">{call.reason || 'General Assistance'}</span>
+                            <span className="text-[10px] text-amber-400 font-mono font-bold shrink-0">🕒 {timeFormatted}</span>
+                          </div>
+                          <p className="text-[11px] text-slate-300">
+                            Guest: <strong className="text-slate-100">{call.customerName || 'Guest'}</strong>
+                          </p>
+                          {call.notes && (
+                            <p className="text-xs text-amber-200/95 font-medium italic bg-amber-950/40 px-2 py-1 rounded-lg border border-amber-500/20 truncate">
+                              "{call.notes}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1 border-t border-slate-800/80">
+                        {isWater && (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              if (addWaterBottleToTableBill) {
+                                await addWaterBottleToTableBill(call.tableNumber, { resolveCallId: call.id, quantity: 1, price: 20 });
+                                toast.success(`💧 Added 1x Water Bottle to Table ${call.tableNumber} bill! (₹20)`, { icon: '🍾' });
+                              }
+                            }}
+                            className="flex-1 py-1.5 px-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition active:scale-95 cursor-pointer"
+                            title="Add 1x Water Bottle (₹20) directly to this table's bill and resolve call"
+                          >
+                            <Droplets className="w-3.5 h-3.5" />
+                            <span>+ Water (₹20)</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            resolveWaiterCall && resolveWaiterCall(call.id);
+                            toast.success(`Table ${call.tableNumber} waiter call marked attended! ✓`);
+                          }}
+                          className="flex-1 py-1.5 px-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs flex items-center justify-center gap-1 shadow-sm transition active:scale-95 cursor-pointer"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Mark Attended ✓</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* ================================================================ */}
           {/* 3. KITCHEN OPERATIONS METRICS SUMMARY BAR                         */}
           {/* ================================================================ */}

@@ -7,13 +7,14 @@ const CORS_HEADERS = {
   'Content-Type': 'application/json'
 };
 
-export function processVerifyUserCredentials({ email, password }) {
-  if (!email || !password) {
-    return { status: 400, data: { error: 'Email and password are required.' } };
+export function processVerifyUserCredentials(body = {}) {
+  const { email, identifier, phone, password } = body;
+  const target = email || identifier || phone;
+  if (!target || !password) {
+    return { status: 400, data: { error: 'Email/phone and password are required.' } };
   }
 
-  const cleanEmail = String(email).trim().toLowerCase();
-  const user = verifyUserCredentials(cleanEmail, password);
+  const user = verifyUserCredentials(target, password);
 
   if (user) {
     return {
@@ -24,6 +25,7 @@ export function processVerifyUserCredentials({ email, password }) {
         user: {
           name: user.name || user.email.split('@')[0],
           email: user.email,
+          phone: user.phone || '',
           role: user.role || 'customer'
         }
       }

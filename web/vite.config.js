@@ -100,6 +100,7 @@ function razorpayDevApiPlugin() {
         else if (url === '/api/record-registered-user') handlerPath = './api/record-registered-user.js';
         else if (url === '/api/update-user-password') handlerPath = './api/update-user-password.js';
         else if (url === '/api/verify-user-credentials') handlerPath = './api/verify-user-credentials.js';
+        else if (url === '/api/waiter-calls') handlerPath = './api/waiter-calls.js';
 
         if (!handlerPath) {
           return next();

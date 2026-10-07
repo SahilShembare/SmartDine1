@@ -254,25 +254,39 @@ export function AuthProvider({ children }) {
     return { isDuplicate: false };
   };
 
-  const loginWithEmail = async (email, password) => {
-    const cleanEmail = email.trim().toLowerCase();
+  const loginWithEmail = async (emailOrPhone, password) => {
+    const rawInput = String(emailOrPhone || '').trim();
+    const cleanEmail = rawInput.toLowerCase();
+    const cleanDigits = rawInput.replace(/\D/g, '');
+    const isMobileNumber = cleanDigits.length === 10;
+
+    // 1. Resolve registered user from local list if available
+    const list = getRegisteredAccounts();
+    const localUser = list.find(u => {
+      if (!u) return false;
+      const emailMatch = u.email && u.email.toLowerCase() === cleanEmail;
+      const phoneMatch = isMobileNumber && u.phone && String(u.phone).replace(/\D/g, '') === cleanDigits;
+      const customerDomainMatch = cleanEmail.endsWith('@smartdine.customer') && u.phone && cleanEmail.startsWith(String(u.phone).replace(/\D/g, ''));
+      return emailMatch || phoneMatch || customerDomainMatch;
+    });
+
+    // If logging in via phone number, use their real registered email if found
+    const targetEmail = (isMobileNumber && localUser?.email) ? localUser.email.toLowerCase() : cleanEmail;
 
     if (isFirebaseConfigured) {
       try {
-        const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
+        const cred = await signInWithEmailAndPassword(auth, targetEmail, password);
         return cred.user;
       } catch (firebaseErr) {
         console.warn('Firebase signIn failed, checking registered password store:', firebaseErr.code);
 
         // 1. Check local storage registered accounts
-        const list = getRegisteredAccounts();
-        const localUser = list.find(u => u.email?.toLowerCase() === cleanEmail && u.password === password);
-        if (localUser) {
+        if (localUser && localUser.password === password) {
           const role = localUser.role || (cleanEmail.includes('admin') ? 'admin' : cleanEmail.includes('kitchen') ? 'kitchen' : 'customer');
           const userData = {
             uid: localUser.uid || `local-${Date.now()}`,
-            email: cleanEmail,
-            displayName: localUser.name || cleanEmail.split('@')[0],
+            email: localUser.email || cleanEmail,
+            displayName: localUser.name || (localUser.email ? localUser.email.split('@')[0] : 'User'),
             role: role
           };
           setCurrentUser(userData);
@@ -285,7 +299,12 @@ export function AuthProvider({ children }) {
           const res = await fetch('/api/verify-user-credentials', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: cleanEmail, password })
+            body: JSON.stringify({
+              email: cleanEmail,
+              identifier: rawInput,
+              phone: isMobileNumber ? cleanDigits : undefined,
+              password
+            })
           });
           if (res.ok) {
             const text = await res.text();
@@ -293,8 +312,8 @@ export function AuthProvider({ children }) {
             if (data && data.matched && data.user) {
               const userData = {
                 uid: `server-${Date.now()}`,
-                email: cleanEmail,
-                displayName: data.user.name || cleanEmail.split('@')[0],
+                email: data.user.email || cleanEmail,
+                displayName: data.user.name || (data.user.email ? data.user.email.split('@')[0] : 'User'),
                 role: data.user.role || 'customer'
               };
               setCurrentUser(userData);
@@ -309,12 +328,12 @@ export function AuthProvider({ children }) {
         // 3. Check Firestore registered_users document
         if (db) {
           try {
-            const snap = await getDoc(doc(db, 'registered_users', cleanEmail));
+            const snap = await getDoc(doc(db, 'registered_users', targetEmail));
             if (snap.exists() && snap.data()?.password === password) {
               const uData = snap.data();
               const userData = {
                 uid: `firestore-${Date.now()}`,
-                email: cleanEmail,
+                email: uData.email || cleanEmail,
                 displayName: uData.name || cleanEmail.split('@')[0],
                 role: uData.role || 'customer'
               };
@@ -325,7 +344,15 @@ export function AuthProvider({ children }) {
           } catch (fsErr) {}
         }
 
-        throw firebaseErr;
+        // Friendly error message for UI instead of raw Firebase error
+        const isInvalidCred = firebaseErr.code === 'auth/invalid-credential' || firebaseErr.message?.includes('invalid-credential');
+        const errMessage = isInvalidCred
+          ? 'Invalid email/mobile or password. Please verify your credentials or register a new account.'
+          : (firebaseErr.message || 'Login failed. Please check your credentials.');
+
+        const friendlyErr = new Error(errMessage);
+        friendlyErr.code = firebaseErr.code || 'auth/invalid-credential';
+        throw friendlyErr;
       }
     } else {
       // Local authentication fallback

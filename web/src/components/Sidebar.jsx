@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTableOrder } from '../context/TableOrderContext';
@@ -17,7 +17,10 @@ import {
   BellRing,
   Settings, 
   LogOut,
-  MessageSquareHeart
+  MessageSquareHeart,
+  ChevronDown,
+  ChevronUp,
+  Package
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -26,11 +29,15 @@ export default function Sidebar({
   onOpenChefProfile,
   onOpenOrdersHistory,
   onOpenWaiterCalls,
+  onOpenStockAlerts,
   chefName
 }) {
   const { currentUser, logout } = useAuth();
   const { orders, waiterCalls = [], customerFeedbacks = [] } = useTableOrder();
   const navigate = useNavigate();
+
+  // In Kitchen mode, keep options closed until profile is clicked
+  const [isKitchenMenuOpen, setIsKitchenMenuOpen] = useState(false);
 
   // Active uncompleted orders count
   const activeOrdersCount = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length;
@@ -63,10 +70,24 @@ export default function Sidebar({
   const handleHistoryClick = onOpenOrdersHistory || onOpenProfileSales;
 
   const kitchenLinks = [
-    { to: '/kitchen', label: 'Live Order Queue', icon: ChefHat, end: true, badge: activeOrdersCount > 0 ? activeOrdersCount : null, badgeColor: 'bg-orange-500' },
+    ...(onOpenChefProfile ? [{
+      to: '#chef-profile',
+      label: 'Chef Profile & Details',
+      icon: User,
+      isAction: true,
+      onClick: onOpenChefProfile
+    }] : []),
+    { 
+      to: '/kitchen', 
+      label: 'Live Order Queue', 
+      icon: ChefHat, 
+      end: true, 
+      badge: activeOrdersCount > 0 ? activeOrdersCount : null, 
+      badgeColor: 'bg-orange-500' 
+    },
     {
       to: '#waiter-calls',
-      label: 'Call Waiter',
+      label: 'Call Waiter & Floor Service',
       icon: BellRing,
       isAction: true,
       onClick: onOpenWaiterCalls,
@@ -79,6 +100,13 @@ export default function Sidebar({
       icon: CalendarDays,
       isAction: true,
       onClick: handleHistoryClick
+    }] : []),
+    ...(onOpenStockAlerts ? [{
+      to: '#stock-alerts',
+      label: 'Kitchen Stock Request',
+      icon: Package,
+      isAction: true,
+      onClick: onOpenStockAlerts
     }] : [])
   ];
 
@@ -102,23 +130,34 @@ export default function Sidebar({
 
   return (
     <aside className="w-64 bg-slate-950 border-r border-slate-800/80 flex flex-col justify-between shrink-0 min-h-[calc(100vh-4rem)] p-4 shadow-2xl z-20">
-      <div className="space-y-5">
+      <div className="space-y-4">
         
-        {/* User / Staff Card - Click to open Profile */}
+        {/* User / Staff Card - In Kitchen mode: click toggles all options */}
         <div 
-          onClick={mode === 'kitchen' && onOpenChefProfile ? onOpenChefProfile : undefined}
-          className={`p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between gap-3 shadow-md ${
-            mode === 'kitchen' && onOpenChefProfile 
-              ? 'cursor-pointer hover:border-orange-500/50 hover:bg-slate-800/80 transition group active:scale-[0.98]' 
+          onClick={() => {
+            if (mode === 'kitchen') {
+              setIsKitchenMenuOpen(prev => !prev);
+            } else if (onOpenChefProfile) {
+              onOpenChefProfile();
+            }
+          }}
+          className={`p-3.5 rounded-2xl bg-gradient-to-b from-slate-900 to-slate-900/90 border border-slate-800 flex items-center justify-between gap-3 shadow-md ${
+            mode === 'kitchen' 
+              ? 'cursor-pointer hover:border-orange-500/60 hover:bg-slate-800/80 transition group active:scale-[0.98]' 
               : ''
-          }`}
-          title={mode === 'kitchen' ? "Click to open Kitchen Chef Profile" : undefined}
+          } ${mode === 'kitchen' && isKitchenMenuOpen ? 'border-orange-500/60 ring-2 ring-orange-500/30 bg-slate-800/90' : ''}`}
+          title={mode === 'kitchen' ? (isKitchenMenuOpen ? "Click to collapse options" : "Click profile to view all kitchen options") : undefined}
         >
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center font-black text-white shadow shrink-0 group-hover:scale-105 transition-transform">
-              {finalChefName ? finalChefName[0].toUpperCase() : (mode === 'kitchen' ? 'K' : 'A')}
+            <div className="relative">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center font-black text-white shadow shrink-0 group-hover:scale-105 transition-transform">
+                {finalChefName ? finalChefName[0].toUpperCase() : (mode === 'kitchen' ? 'K' : 'A')}
+              </div>
+              {mode === 'kitchen' && (
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-slate-950 animate-pulse" title="On Duty / Active" />
+              )}
             </div>
-            <div className="overflow-hidden">
+            <div className="overflow-hidden min-w-0">
               <h4 className="text-sm font-bold text-white truncate group-hover:text-orange-400 transition-colors">
                 {finalChefName}
               </h4>
@@ -127,79 +166,122 @@ export default function Sidebar({
               </span>
             </div>
           </div>
+
+          {mode === 'kitchen' && (
+            <div className={`p-1.5 rounded-xl transition-all duration-300 ${
+              isKitchenMenuOpen 
+                ? 'bg-orange-500 text-white rotate-180 shadow-sm' 
+                : 'bg-slate-800 text-slate-400 group-hover:text-white group-hover:bg-slate-700'
+            }`}>
+              <ChevronDown className="w-4 h-4" />
+            </div>
+          )}
         </div>
 
-        {/* Navigation Items */}
-        <div className="space-y-1">
-          <p className="px-3 text-[10px] font-black uppercase tracking-wider text-slate-500 mb-2">
-            Operations Console
-          </p>
-          <div className="space-y-1 max-h-[calc(100vh-22rem)] overflow-y-auto pr-1 custom-scrollbar">
-            {links.map((link) => {
-              const Icon = link.icon;
-              if (link.isAction) {
+        {/* When Kitchen mode & collapsed: show prompt button to open options */}
+        {mode === 'kitchen' && !isKitchenMenuOpen && (
+          <button
+            type="button"
+            onClick={() => setIsKitchenMenuOpen(true)}
+            className="w-full p-3 rounded-2xl bg-slate-900/40 border border-dashed border-slate-800/80 hover:border-orange-500/50 hover:bg-slate-900/80 text-left transition-all duration-200 cursor-pointer group"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-300 group-hover:text-orange-400 flex items-center gap-1.5 transition-colors">
+                <ChefHat className="w-3.5 h-3.5 text-orange-400" />
+                <span>Click Profile for Menu</span>
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-orange-400 animate-bounce" />
+            </div>
+            <p className="text-[10px] text-slate-500 mt-1">
+              Tap profile above to view all kitchen options & actions.
+            </p>
+          </button>
+        )}
+
+        {/* Navigation Items (Always visible for admin, visible only when clicked in kitchen) */}
+        {(mode === 'admin' || isKitchenMenuOpen) && (
+          <div className="space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between px-3 mb-2">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">
+                {mode === 'kitchen' ? 'Kitchen Menu & Actions' : 'Operations Console'}
+              </p>
+              {mode === 'kitchen' && (
+                <button
+                  type="button"
+                  onClick={() => setIsKitchenMenuOpen(false)}
+                  className="text-[10px] text-slate-400 hover:text-white cursor-pointer font-bold"
+                >
+                  Collapse ✕
+                </button>
+              )}
+            </div>
+            <div className="space-y-1 max-h-[calc(100vh-22rem)] overflow-y-auto pr-1 custom-scrollbar">
+              {links.map((link) => {
+                const Icon = link.icon;
+                if (link.isAction) {
+                  return (
+                    <button
+                      key={link.label}
+                      type="button"
+                      onClick={link.onClick}
+                      className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-900 transition cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon className="w-4 h-4 shrink-0 text-orange-400" />
+                        <span>{link.label}</span>
+                      </div>
+                      {link.badge ? (
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full text-slate-950 shadow-sm ${link.badgeColor || 'bg-amber-500'}`}>
+                          {link.badge}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                          Open
+                        </span>
+                      )}
+                    </button>
+                  );
+                }
                 return (
-                  <button
-                    key={link.label}
-                    type="button"
-                    onClick={link.onClick}
-                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-900 transition cursor-pointer"
+                  <NavLink
+                    key={link.to}
+                    to={link.to}
+                    end={link.end}
+                    className={({ isActive }) =>
+                      `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        isActive
+                          ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow border border-orange-400/40'
+                          : 'text-slate-400 hover:text-white hover:bg-slate-900'
+                      }`
+                    }
                   >
                     <div className="flex items-center gap-2.5">
                       <Icon className="w-4 h-4 shrink-0 text-orange-400" />
                       <span>{link.label}</span>
                     </div>
-                    {link.badge ? (
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full text-slate-950 shadow-sm ${link.badgeColor || 'bg-amber-500'}`}>
+                    {link.badge && (
+                      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black text-white ${link.badgeColor}`}>
                         {link.badge}
                       </span>
-                    ) : (
-                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                        Open
-                      </span>
                     )}
-                  </button>
+                  </NavLink>
                 );
-              }
-              return (
-                <NavLink
-                  key={link.to}
-                  to={link.to}
-                  end={link.end}
-                  className={({ isActive }) =>
-                    `flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                      isActive
-                        ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-glow border border-orange-400/40'
-                        : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                    }`
-                  }
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className="w-4 h-4 shrink-0 text-orange-400" />
-                    <span>{link.label}</span>
-                  </div>
-                  {link.badge && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black text-white ${link.badgeColor}`}>
-                      {link.badge}
-                    </span>
-                  )}
-                </NavLink>
-              );
-            })}
+              })}
 
-            {/* Logout Button directly below Settings */}
-            <div className="pt-2 border-t border-slate-800/80 mt-2">
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-red-400 hover:text-white hover:bg-red-950/60 border border-red-500/20 transition cursor-pointer"
-              >
-                <LogOut className="w-4 h-4 text-red-400" />
-                <span>{mode === 'kitchen' ? 'Sign Out Kitchen' : 'Logout Admin'}</span>
-              </button>
+              {/* Logout Button directly below links */}
+              <div className="pt-2 border-t border-slate-800/80 mt-2">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold text-red-400 hover:text-white hover:bg-red-950/60 border border-red-500/20 transition cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4 text-red-400" />
+                  <span>{mode === 'kitchen' ? 'Sign Out Kitchen' : 'Logout Admin'}</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </aside>
   );

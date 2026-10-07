@@ -321,15 +321,14 @@ export default function Login() {
 
     try {
       let finalEmail = loginIdentifier.trim();
-      // If user typed 10-digit mobile number instead of email
+      // If user typed 10-digit mobile number
       if (/^\d{10}$/.test(finalEmail)) {
         localStorage.setItem('smartdine_guest_phone', finalEmail);
-        finalEmail = `${finalEmail}@smartdine.customer`;
       }
 
       await loginWithEmail(finalEmail, password);
-      const isKitchen = finalEmail.includes('kitchen');
-      const isAdmin = finalEmail.includes('admin');
+      const isKitchen = finalEmail.toLowerCase().includes('kitchen');
+      const isAdmin = finalEmail.toLowerCase().includes('admin');
       const userName = isKitchen ? 'Kitchen Staff' : isAdmin ? 'Admin' : 'Customer';
       toast.success(`✅ Login Successful! Welcome back, ${userName}.`);
 
@@ -342,7 +341,19 @@ export default function Login() {
         navigate('/scan');
       }
     } catch (err) {
-      setError(err.message || 'Invalid login credentials. Please check your email/mobile and password.');
+      const msg = err?.message || '';
+      const code = err?.code || '';
+      if (code === 'auth/invalid-credential' || msg.includes('auth/invalid-credential') || msg.includes('invalid-credential')) {
+        setError('Invalid Email/Mobile or Password. Please enter correct credentials or click "Create Account" to register.');
+      } else if (code === 'auth/user-not-found' || msg.includes('user-not-found')) {
+        setError('No account found with this email or mobile. Please click "Create Account" to register.');
+      } else if (code === 'auth/wrong-password' || msg.includes('wrong-password')) {
+        setError('Incorrect password. Please try again or click "Forgot password?".');
+      } else if (code === 'auth/too-many-requests' || msg.includes('too-many-requests')) {
+        setError('Too many failed attempts. Please wait a few moments and try again.');
+      } else {
+        setError(msg || 'Invalid login credentials. Please check your email/mobile and password.');
+      }
     } finally {
       setLoading(false);
     }
@@ -638,10 +649,23 @@ export default function Login() {
                 </button>
               </div>
 
-              {/* Staff Portals Shortcut */}
+              {/* Quick Demo Logins Shortcut */}
               <div className="pt-3 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-                <span className="text-[11px] font-semibold text-slate-400">Staff Portals:</span>
-                <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-slate-400">Quick Demo Logins:</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLoginIdentifier('customer@smartdine.com');
+                      setPassword('customer123456');
+                      setSuccessMsg('👤 Customer Demo mode active');
+                      setError('');
+                    }}
+                    className="px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 text-[11px] font-bold transition flex items-center gap-1 border border-slate-700 cursor-pointer"
+                  >
+                    <User className="w-3 h-3 text-emerald-400" />
+                    <span>Customer</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -650,7 +674,7 @@ export default function Login() {
                       setSuccessMsg('👨‍🍳 Kitchen Staff mode active');
                       setError('');
                     }}
-                    className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-[11px] font-bold transition flex items-center gap-1 border border-slate-700 cursor-pointer"
+                    className="px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-[11px] font-bold transition flex items-center gap-1 border border-slate-700 cursor-pointer"
                   >
                     <ChefHat className="w-3 h-3 text-amber-400" />
                     <span>Kitchen Staff</span>
@@ -663,7 +687,7 @@ export default function Login() {
                       setSuccessMsg('⚙️ Admin Portal mode active');
                       setError('');
                     }}
-                    className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-[11px] font-bold transition flex items-center gap-1 border border-slate-700 cursor-pointer"
+                    className="px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-300 text-[11px] font-bold transition flex items-center gap-1 border border-slate-700 cursor-pointer"
                   >
                     <LayoutDashboard className="w-3 h-3 text-amber-400" />
                     <span>Admin</span>

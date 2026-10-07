@@ -34,11 +34,14 @@ import {
   CheckCircle2,
   Bell,
   Menu,
-  Receipt
+  Receipt,
+  Gamepad2,
+  Dices
 } from 'lucide-react';
 import CustomerProfileModal from '../components/CustomerProfileModal';
 import CallWaiterModal from '../components/CallWaiterModal';
 import CustomerSidebarDrawer from '../components/CustomerSidebarDrawer';
+import FoodPreferenceGameModal from '../components/FoodPreferenceGameModal';
 
 export default function CustomerWebMenu() {
   const [searchParams] = useSearchParams();
@@ -47,6 +50,7 @@ export default function CustomerWebMenu() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isCallWaiterOpen, setIsCallWaiterOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isFoodGameOpen, setIsFoodGameOpen] = useState(false);
   const guestName = currentUser?.displayName || localStorage.getItem('smartdine_guest_name') || '';
   const { 
     currentTable, 
@@ -205,9 +209,6 @@ export default function CustomerWebMenu() {
             <div className="min-w-0">
               <h1 className="text-base sm:text-lg font-black text-white flex items-center gap-2 truncate">
                 <span>SmartDine</span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-900 text-amber-400 border border-amber-500/30 shrink-0">
-                  Live Menu
-                </span>
               </h1>
               <p className="text-[11px] text-slate-400 font-medium truncate">
                 {currentTable ? `Dining on Table ${currentTable}` : 'Select table to order'}
@@ -249,37 +250,10 @@ export default function CustomerWebMenu() {
       {/* Fixed-Height Sticky Filter & Search Bar (Zero layout shift, zero jitter, 60fps smooth scrolling) */}
       <section className="bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 sticky top-16 z-30 shadow-md px-3 sm:px-4 py-2">
         <div className="max-w-4xl mx-auto space-y-1.5">
-          {/* Row 1: Compact Table & Search & Action Bar */}
+          {/* Row 1: Compact Search & Action Bar */}
           <div className="flex items-center justify-between gap-2">
-            {/* Left Table Badge / Scan */}
-            {currentTable ? (
-              <div className="flex items-center gap-1.5 shrink-0">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-900 text-amber-400 border border-amber-500/30 text-xs font-black shadow-sm">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                  <span>Table <strong>{currentTable}</strong></span>
-                </div>
-
-                <Link
-                  to={`/bill?table=${currentTable}`}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white text-xs font-bold shadow-glow cursor-pointer transition active:scale-95"
-                  title="View & Pay Bill"
-                >
-                  <Receipt className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Pay Bill</span>
-                </Link>
-              </div>
-            ) : (
-              <Link
-                to="/scan"
-                className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gradient-to-r from-orange-600 to-amber-600 text-white text-xs font-bold shrink-0 shadow-glow"
-              >
-                <QrCode className="w-3.5 h-3.5" />
-                <span className="hidden xs:inline">Scan QR</span>
-              </Link>
-            )}
-
             {/* Center Compact Search Input */}
-            <div className="relative flex-1 min-w-0 max-w-md">
+            <div className="relative flex-1 min-w-0">
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
@@ -300,6 +274,17 @@ export default function CustomerWebMenu() {
 
             {/* Right Compact Action Icons */}
             <div className="flex items-center gap-1.5 shrink-0">
+              {/* Play Food Game Quick Button */}
+              <button
+                type="button"
+                onClick={() => setIsFoodGameOpen(true)}
+                title="Play AI Food Preference Game"
+                className="px-2 py-1 rounded-xl bg-amber-400/15 border border-amber-400/40 hover:bg-amber-400/25 text-amber-300 text-xs font-bold transition flex items-center gap-1 cursor-pointer active:scale-95 shadow-sm"
+              >
+                <Gamepad2 className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                <span className="hidden sm:inline">AI Matcher</span>
+              </button>
+
               <button
                 onClick={() => reloadLatestMenu()}
                 title="Reload Menu"
@@ -433,9 +418,41 @@ export default function CustomerWebMenu() {
       {/* Main Content Area */}
       <main className="max-w-4xl mx-auto px-4 py-5 space-y-6">
 
+        {/* 🎮 FEATURE: AI FOOD PREFERENCE GAME BANNER */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-slate-900 border border-amber-500/30 p-4 sm:p-5 shadow-xl backdrop-blur-md">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3.5">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 text-slate-950 flex items-center justify-center shadow-lg shrink-0">
+                <Gamepad2 className="w-6 h-6 animate-bounce" />
+              </div>
+              <div className="min-w-0 text-center sm:text-left">
+                <div className="flex items-center justify-center sm:justify-start gap-1.5 flex-wrap">
+                  <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400 text-slate-950">
+                    ✨ AI Taste Matcher
+                  </span>
+                  <span className="text-xs font-black text-amber-300">Confused What To Order?</span>
+                </div>
+                <h3 className="text-sm sm:text-base font-extrabold text-white mt-0.5">
+                  Play Food Preference Game & Get 99% AI Dish Match!
+                </h3>
+                <p className="text-[11px] text-slate-300 line-clamp-1">
+                  Answer 3 quick fun questions — Chef AI will pick your perfect craving & companion pairing
+                </p>
+              </div>
+            </div>
 
-
-
+            <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => setIsFoodGameOpen(true)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs shadow-glow transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Dices className="w-4 h-4" />
+                <span>Play Food Game 🎲</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Regular Menu Filter Dishes */}
         {filteredDishes.length === 0 ? (
@@ -922,6 +939,15 @@ export default function CustomerWebMenu() {
         isOpen={isCallWaiterOpen} 
         onClose={() => setIsCallWaiterOpen(false)} 
         defaultTable={currentTable} 
+      />
+
+      {/* 🎮 AI Food Preference Game Modal */}
+      <FoodPreferenceGameModal
+        isOpen={isFoodGameOpen}
+        onClose={() => setIsFoodGameOpen(false)}
+        menuItems={menuItems}
+        addToCart={addToCart}
+        onOpenCart={() => navigate('/cart')}
       />
 
     </div>

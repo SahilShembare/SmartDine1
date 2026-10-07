@@ -224,20 +224,93 @@ export function TableOrderProvider({ children }) {
     }
   });
 
+  // BroadcastChannel for instant 0ms cross-tab waiter calls synchronization
+  useEffect(() => {
+    let channel = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        channel = new BroadcastChannel('smartdine_waiter_channel');
+        channel.onmessage = (event) => {
+          if (event.data?.type === 'WAITER_CALLS_SYNC' && Array.isArray(event.data.calls)) {
+            setWaiterCalls(event.data.calls);
+            try { localStorage.setItem('smartdine_waiter_calls', JSON.stringify(event.data.calls)); } catch {}
+          }
+        };
+      }
+    } catch {}
+
+    return () => {
+      if (channel) {
+        try { channel.close(); } catch {}
+      }
+    };
+  }, []);
+
+  // Continuous REST API poller for cross-device & network synchronization (every 2 seconds)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLatestWaiterCalls = async () => {
+      try {
+        const res = await fetch('/api/waiter-calls');
+        if (res.ok && isMounted) {
+          const data = await res.json();
+          if (data?.success && Array.isArray(data.calls)) {
+            setWaiterCalls(prev => {
+              const prevStr = JSON.stringify(prev);
+              const map = new Map();
+              data.calls.forEach(c => map.set(String(c.id), c));
+              // Also keep any local calls that haven't reached server yet
+              prev.forEach(c => {
+                if (!map.has(String(c.id))) map.set(String(c.id), c);
+              });
+              const merged = Array.from(map.values()).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+              if (JSON.stringify(merged) !== prevStr) {
+                try { localStorage.setItem('smartdine_waiter_calls', JSON.stringify(merged)); } catch {}
+                return merged;
+              }
+              return prev;
+            });
+          }
+        }
+      } catch {}
+    };
+
+    fetchLatestWaiterCalls();
+    const interval = setInterval(fetchLatestWaiterCalls, 2000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   // Save waiter calls and dispatch cross-tab update
   useEffect(() => {
-    localStorage.setItem('smartdine_waiter_calls', JSON.stringify(waiterCalls));
+    try {
+      localStorage.setItem('smartdine_waiter_calls', JSON.stringify(waiterCalls));
+      localStorage.setItem('smartdine_waiter_ping', String(Date.now()));
+    } catch {}
     window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
       detail: { collection: 'waiter_calls', data: waiterCalls } 
     }));
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('smartdine_waiter_channel');
+        bc.postMessage({ type: 'WAITER_CALLS_SYNC', calls: waiterCalls });
+        bc.close();
+      }
+    } catch {}
   }, [waiterCalls]);
 
   // Sync listener across tabs & windows
   useEffect(() => {
     const handleStorageUpdate = (e) => {
-      if (e.key === 'smartdine_waiter_calls' && e.newValue) {
+      if (e.key === 'smartdine_waiter_calls' || e.key === 'smartdine_waiter_ping') {
         try {
-          setWaiterCalls(JSON.parse(e.newValue));
+          const raw = localStorage.getItem('smartdine_waiter_calls');
+          if (raw) {
+            const fresh = JSON.parse(raw);
+            if (Array.isArray(fresh)) setWaiterCalls(fresh);
+          }
         } catch {}
       }
       if (e.key === 'smartdine_customer_feedbacks' || e.key === 'smartdine_feedback_ping') {
@@ -628,6 +701,31 @@ export function TableOrderProvider({ children }) {
           });
         } catch {}
 
+        // Waiter Calls listener (Cloud Firestore real-time sync across devices)
+        let unsubWaiterCalls = () => {};
+        try {
+          const qWc = query(collection(db, 'waiter_calls'), orderBy('createdAt', 'desc'));
+          unsubWaiterCalls = onSnapshot(qWc, (snapshot) => {
+            if (!snapshot.empty) {
+              const firestoreCalls = snapshot.docs.map(doc => ({ id: doc.id, firestoreDocId: doc.id, ...doc.data() }));
+              const localSaved = localStorage.getItem('smartdine_waiter_calls');
+              const localCalls = localSaved ? JSON.parse(localSaved) : [];
+              const callMap = new Map();
+              firestoreCalls.forEach(c => callMap.set(String(c.id), c));
+              (Array.isArray(localCalls) ? localCalls : []).forEach(c => {
+                if (c && c.id && !callMap.has(String(c.id))) callMap.set(String(c.id), c);
+              });
+              const merged = Array.from(callMap.values()).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+              setWaiterCalls(merged);
+              localStorage.setItem('smartdine_waiter_calls', JSON.stringify(merged));
+            }
+          }, (err) => {
+            console.warn('Firestore waiter_calls listener error (falling back to local sync):', err);
+          });
+        } catch (e) {
+          console.warn('Firestore waiter_calls setup error:', e);
+        }
+
         // Always listen to cross-tab local updates and storage events so all tabs sync in 0ms
         const handleLocalUpdate = (e) => {
           if (e.detail?.collection === 'orders') {
@@ -646,6 +744,9 @@ export function TableOrderProvider({ children }) {
           if (e.detail?.collection === 'tables') setTables(e.detail.data);
           if (e.detail?.collection === 'customerFeedbacks' && Array.isArray(e.detail.data)) {
             setCustomerFeedbacks(e.detail.data);
+          }
+          if (e.detail?.collection === 'waiter_calls' && Array.isArray(e.detail.data)) {
+            setWaiterCalls(e.detail.data);
           }
         };
 
@@ -679,6 +780,12 @@ export function TableOrderProvider({ children }) {
               if (Array.isArray(fresh) && fresh.length > 0) setCustomerFeedbacks(fresh);
             } catch {}
           }
+          if (e.key === 'smartdine_waiter_calls') {
+            try {
+              const fresh = JSON.parse(localStorage.getItem('smartdine_waiter_calls') || '[]');
+              if (Array.isArray(fresh) && fresh.length > 0) setWaiterCalls(fresh);
+            } catch {}
+          }
         };
 
         window.addEventListener('smartdine_db_update', handleLocalUpdate);
@@ -690,6 +797,7 @@ export function TableOrderProvider({ children }) {
           unsubTables();
           unsubOrders();
           unsubFeedbacks();
+          unsubWaiterCalls();
           window.removeEventListener('smartdine_db_update', handleLocalUpdate);
           window.removeEventListener('storage', handleStorageEvent);
         };
@@ -702,6 +810,9 @@ export function TableOrderProvider({ children }) {
           if (e.detail?.collection === 'tables') setTables(e.detail.data);
           if (e.detail?.collection === 'customerFeedbacks' && Array.isArray(e.detail.data)) {
             setCustomerFeedbacks(e.detail.data);
+          }
+          if (e.detail?.collection === 'waiter_calls' && Array.isArray(e.detail.data)) {
+            setWaiterCalls(e.detail.data);
           }
         };
         const handleStorageEvent = (e) => {
@@ -724,6 +835,12 @@ export function TableOrderProvider({ children }) {
             try {
               const fresh = JSON.parse(localStorage.getItem('smartdine_customer_feedbacks') || '[]');
               if (Array.isArray(fresh) && fresh.length > 0) setCustomerFeedbacks(fresh);
+            } catch {}
+          }
+          if (e.key === 'smartdine_waiter_calls') {
+            try {
+              const fresh = JSON.parse(localStorage.getItem('smartdine_waiter_calls') || '[]');
+              if (Array.isArray(fresh) && fresh.length > 0) setWaiterCalls(fresh);
             } catch {}
           }
         };
@@ -1671,6 +1788,26 @@ export function TableOrderProvider({ children }) {
   };
 
   const refreshOrders = async () => {
+    // 1. Sync Waiter Calls from REST API endpoint
+    try {
+      const res = await fetch('/api/waiter-calls');
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.success && Array.isArray(data.calls)) {
+          setWaiterCalls(prev => {
+            const map = new Map();
+            data.calls.forEach(c => map.set(String(c.id), c));
+            prev.forEach(c => {
+              if (!map.has(String(c.id))) map.set(String(c.id), c);
+            });
+            const merged = Array.from(map.values()).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+            try { localStorage.setItem('smartdine_waiter_calls', JSON.stringify(merged)); } catch {}
+            return merged;
+          });
+        }
+      }
+    } catch {}
+
     if (isFirebaseConfigured) {
       try {
         const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
@@ -2054,6 +2191,7 @@ export function TableOrderProvider({ children }) {
   const callWaiter = async ({ tableNumber, reason = 'General Assistance', notes = '', customerName = '' }) => {
     const targetTable = String(tableNumber || currentTable || '01').padStart(2, '0');
     const guestName = customerName || localStorage.getItem('smartdine_guest_name') || 'Guest';
+    const nowIso = new Date().toISOString();
 
     const newCall = {
       id: `call-${Date.now()}`,
@@ -2062,36 +2200,140 @@ export function TableOrderProvider({ children }) {
       reason: reason || 'General Assistance',
       notes: (notes || '').trim(),
       status: 'pending', // 'pending' | 'attended' | 'cancelled'
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: nowIso,
+      timestamp: nowIso,
+      updatedAt: nowIso,
       estimatedArrivalMinutes: 2
     };
 
-    setWaiterCalls(prev => [newCall, ...prev.filter(c => !(String(c.tableNumber).padStart(2, '0') === targetTable && c.status === 'pending'))]);
-
-    // Sync to Firestore if configured
-    if (isFirebaseConfigured && db) {
+    let updatedCalls = [];
+    setWaiterCalls(prev => {
+      const filtered = prev.filter(c => !(String(c.tableNumber).padStart(2, '0') === targetTable && c.status === 'pending'));
+      updatedCalls = [newCall, ...filtered];
       try {
-        await addDoc(collection(db, 'waiter_calls'), newCall);
-      } catch (e) {
-        console.warn('Firestore waiter call note:', e);
+        localStorage.setItem('smartdine_waiter_calls', JSON.stringify(updatedCalls));
+        localStorage.setItem('smartdine_waiter_ping', String(Date.now()));
+        window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+          detail: { collection: 'waiter_calls', data: updatedCalls } 
+        }));
+      } catch {}
+      return updatedCalls;
+    });
+
+    // 0ms instant broadcast across all tabs in browser
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('smartdine_waiter_channel');
+        bc.postMessage({ type: 'WAITER_CALLS_SYNC', calls: updatedCalls });
+        bc.close();
       }
+    } catch {}
+
+    // Immediate REST API sync for cross-device support
+    try {
+      await fetch('/api/waiter-calls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', call: newCall })
+      });
+    } catch (e) {
+      console.warn('REST API waiter call error:', e);
+    }
+
+    // Background non-blocking Firestore sync
+    if (isFirebaseConfigured && db) {
+      Promise.race([
+        setDoc(doc(db, 'waiter_calls', newCall.id), newCall, { merge: true }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500))
+      ]).catch(() => {});
     }
 
     return newCall;
   };
 
   const cancelWaiterCall = async (callId) => {
-    setWaiterCalls(prev => prev.map(c => 
-      c.id === callId ? { ...c, status: 'cancelled', updatedAt: new Date().toISOString() } : c
-    ));
+    const updatedAt = new Date().toISOString();
+    let updatedCalls = [];
+    setWaiterCalls(prev => {
+      updatedCalls = prev.map(c => 
+        c.id === callId ? { ...c, status: 'cancelled', updatedAt } : c
+      );
+      try {
+        localStorage.setItem('smartdine_waiter_calls', JSON.stringify(updatedCalls));
+        localStorage.setItem('smartdine_waiter_ping', String(Date.now()));
+        window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+          detail: { collection: 'waiter_calls', data: updatedCalls } 
+        }));
+      } catch {}
+      return updatedCalls;
+    });
+
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('smartdine_waiter_channel');
+        bc.postMessage({ type: 'WAITER_CALLS_SYNC', calls: updatedCalls });
+        bc.close();
+      }
+    } catch {}
+
+    try {
+      await fetch('/api/waiter-calls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel', callId })
+      });
+    } catch {}
+
+    if (isFirebaseConfigured && db) {
+      Promise.race([
+        updateDoc(doc(db, 'waiter_calls', callId), { status: 'cancelled', updatedAt }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500))
+      ]).catch(() => {});
+    }
+
     return true;
   };
 
   const resolveWaiterCall = async (callId) => {
-    setWaiterCalls(prev => prev.map(c => 
-      c.id === callId ? { ...c, status: 'attended', attendedAt: new Date().toISOString(), updatedAt: new Date().toISOString() } : c
-    ));
+    const resolvedAt = new Date().toISOString();
+    let updatedCalls = [];
+    setWaiterCalls(prev => {
+      updatedCalls = prev.map(c => 
+        c.id === callId ? { ...c, status: 'attended', attendedAt: resolvedAt, resolvedAt, updatedAt: resolvedAt } : c
+      );
+      try {
+        localStorage.setItem('smartdine_waiter_calls', JSON.stringify(updatedCalls));
+        localStorage.setItem('smartdine_waiter_ping', String(Date.now()));
+        window.dispatchEvent(new CustomEvent('smartdine_db_update', { 
+          detail: { collection: 'waiter_calls', data: updatedCalls } 
+        }));
+      } catch {}
+      return updatedCalls;
+    });
+
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('smartdine_waiter_channel');
+        bc.postMessage({ type: 'WAITER_CALLS_SYNC', calls: updatedCalls });
+        bc.close();
+      }
+    } catch {}
+
+    try {
+      await fetch('/api/waiter-calls', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'resolve', callId, resolvedAt })
+      });
+    } catch {}
+
+    if (isFirebaseConfigured && db) {
+      Promise.race([
+        updateDoc(doc(db, 'waiter_calls', callId), { status: 'attended', attendedAt: resolvedAt, resolvedAt, updatedAt: resolvedAt }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500))
+      ]).catch(() => {});
+    }
+
     return true;
   };
 

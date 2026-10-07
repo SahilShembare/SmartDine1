@@ -21,15 +21,15 @@ const TMP_DB_PATH = path.resolve(os.tmpdir(), 'smartdine_registered_users.json')
 
 const INITIAL_USERS = [
   { email: 'admin@smartdine.com', name: 'Master Admin', phone: '9999999999', role: 'admin', password: 'admin123456' },
-  { email: 'kitchen@smartdine.com', name: 'Kitchen Chef', phone: '8888888888', role: 'kitchen', password: 'kitchen123456' }
+  { email: 'kitchen@smartdine.com', name: 'Kitchen Chef', phone: '8888888888', role: 'kitchen', password: 'kitchen123456' },
+  { email: 'customer@smartdine.com', name: 'Rahul Sharma (Customer)', phone: '7777777777', role: 'customer', password: 'customer123456' }
 ];
 
 let memoryUsers = null;
 
 function sanitizeUsers(list) {
   if (!Array.isArray(list)) return [...INITIAL_USERS];
-  // Filter out any legacy hardcoded customer accounts so users can freely register their own real emails
-  return list.filter(u => u && u.email && u.email.toLowerCase() !== 'customer@smartdine.com' && u.email.toLowerCase() !== 'shembaresahil12@gmail.com');
+  return list.filter(u => u && u.email && u.email.toLowerCase() !== 'shembaresahil12@gmail.com');
 }
 
 export function getRegisteredUsers() {
@@ -163,11 +163,18 @@ export function updateUserPassword(email, newPassword) {
   return true;
 }
 
-export function verifyUserCredentials(email, password) {
-  if (!email || !password) return null;
-  const cleanEmail = email.trim().toLowerCase();
+export function verifyUserCredentials(identifier, password) {
+  if (!identifier || !password) return null;
+  const clean = String(identifier).trim().toLowerCase();
+  const cleanDigits = clean.replace(/\D/g, '');
   const users = getRegisteredUsers();
-  const user = users.find(u => u.email && u.email.trim().toLowerCase() === cleanEmail);
+  const user = users.find(u => {
+    if (!u) return false;
+    const emailMatch = u.email && u.email.trim().toLowerCase() === clean;
+    const phoneMatch = cleanDigits.length === 10 && u.phone && String(u.phone).replace(/\D/g, '') === cleanDigits;
+    const customerDomainMatch = clean.endsWith('@smartdine.customer') && u.phone && clean.startsWith(String(u.phone).replace(/\D/g, ''));
+    return emailMatch || phoneMatch || customerDomainMatch;
+  });
   if (user && user.password && user.password === password) {
     return user;
   }
